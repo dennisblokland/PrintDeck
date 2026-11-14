@@ -26,8 +26,7 @@ public sealed class ConnectPrinterHandler(IPrinterSession session, ISettingsStor
 		Result result = await session.ConnectAsync(command.Port, command.BaudRate, ct);
 		if (result.IsSuccess)
 		{
-			PrinterProfile profile = await settings.GetAsync(ct);
-			await settings.SaveAsync(profile with { LastPort = command.Port, DefaultBaudRate = command.BaudRate }, ct);
+			await settings.UpdateAsync(s => s with { LastPort = command.Port, DefaultBaudRate = command.BaudRate }, ct);
 			events.Publish(PrinterChange.Settings);
 		}
 		return result;

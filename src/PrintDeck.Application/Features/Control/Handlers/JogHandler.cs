@@ -23,7 +23,7 @@ public sealed class JogHandler(IPrinterSession session, ISettingsStore settings)
 		if (c.Axis is not (Axis.X or Axis.Y or Axis.Z)) return Result.Failure("Jog one axis at a time.");
 		if (c.Distance == 0 || Math.Abs(c.Distance) > 500) return Result.Failure("Distance must be between 0 and 500 mm.");
 
-		PrinterProfile p = await settings.GetAsync(ct);
+		PrinterProfile p = (await settings.GetAsync(ct)).ActiveProfile;
 		int feed = c.Axis == Axis.Z ? p.JogFeedrateZ : p.JogFeedrateXY;
 		return session.Enqueue(["G91", $"G1 {c.Axis}{Guard.F(c.Distance)} F{feed}", "G90"]);
 	}

@@ -13,5 +13,5 @@
 @code {
 	private string? _url;
 	protected override PrinterChange Interests => PrinterChange.Settings;
-	protected override async Task RefreshAsync() => _url = (await Mediator.Send(new GetPrinterProfileQuery())).WebcamStreamUrl;
+	protected override async Task RefreshAsync() => _url = (await Mediator.Send(new GetSettingsQuery())).WebcamStreamUrl;
 }

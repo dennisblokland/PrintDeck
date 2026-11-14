@@ -20,11 +20,12 @@ public sealed class ApplyTemperaturePresetHandler(IPrinterSession session, ISett
 {
 	public async ValueTask<Result> Handle(ApplyTemperaturePresetCommand c, CancellationToken ct)
 	{
-		PrinterProfile profile = await settings.GetAsync(ct);
+		HostSettings s = await settings.GetAsync(ct);
+		PrinterProfile profile = s.ActiveProfile;
 		if (c.Preset == "Off")
 			return session.Enqueue(Enumerable.Range(0, profile.ExtruderCount).Select(t => $"M104 T{t} S0").Append("M140 S0"));
 
-		TemperaturePreset? preset = profile.Presets.FirstOrDefault(p => p.Name == c.Preset);
+		TemperaturePreset? preset = s.Presets.FirstOrDefault(p => p.Name == c.Preset);
 		if (preset is null) return Result.Failure($"Unknown preset {c.Preset}.");
 
 		List<string> commands = Enumerable.Range(0, profile.ExtruderCount).Select(t => $"M104 T{t} S{preset.Hotend}").ToList();

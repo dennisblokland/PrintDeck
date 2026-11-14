@@ -10,6 +10,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - Control: XY/Z jog with step sizes, homing, extrude/retract (cold-extrusion guard), fan, motors off
 - Files: drag-and-drop upload with analysis (print time, filament, layers) from OrcaSlicer, PrusaSlicer and Cura metadata
 - G-code viewer: 2D layer view and 3D view (three.js, vendored in `wwwroot/lib/three`), coloured by feature (walls, infill, support…), move scrubber, and live follow of the running print
+- **Printer profiles**: save several printers (build volume, extruders, heated bed, jog speeds) and switch in Settings or the connection panel; presets, camera and cancel script stay shared
 - Terminal with command history and temperature-noise filter
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users

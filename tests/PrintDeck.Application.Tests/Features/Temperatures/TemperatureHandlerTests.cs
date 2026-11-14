@@ -52,7 +52,7 @@ public class TemperatureHandlerTests
 	public class ApplyPreset : TemperatureHandlerTests
 	{
 		private ValueTask<Result> Apply(string preset, PrinterProfile? profile = null) =>
-			new ApplyTemperaturePresetHandler(_session, new FakeSettingsStore(profile)).Handle(new ApplyTemperaturePresetCommand(preset), Ct);
+			new ApplyTemperaturePresetHandler(_session, profile is null ? new FakeSettingsStore() : new FakeSettingsStore(profile)).Handle(new ApplyTemperaturePresetCommand(preset), Ct);
 
 		[Fact]
 		public async Task Heats_hotend_and_bed()
@@ -73,6 +73,18 @@ public class TemperatureHandlerTests
 		{
 			await Apply("ABS", new PrinterProfile { HasHeatedBed = false });
 			Assert.Equal(["M104 T0 S250"], _session.Enqueued);
+		}
+
+		[Fact]
+		public async Task Uses_the_active_profile()
+		{
+			HostSettings settings = new()
+			{
+				Profiles = [new PrinterProfile { Id = "a" }, new PrinterProfile { Id = "b", Name = "IDEX", ExtruderCount = 2, HasHeatedBed = false }],
+				ActiveProfileId = "b"
+			};
+			await new ApplyTemperaturePresetHandler(_session, new FakeSettingsStore(settings)).Handle(new ApplyTemperaturePresetCommand("PLA"), Ct);
+			Assert.Equal(["M104 T0 S205", "M104 T1 S205"], _session.Enqueued);
 		}
 
 		[Fact]

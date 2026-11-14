@@ -28,6 +28,15 @@
 			</select>
 			<button class="icon-btn" title="Rescan ports" @onclick="LoadPortsAsync"><Icon Name="refresh" Size="16" /></button>
 		</div>
+		@if (_settings is { Profiles.Count: > 1 })
+		{
+			<select class="input" value="@_settings.ActiveProfileId" aria-label="Printer profile" title="Printer profile" @onchange="SelectProfileAsync">
+				@foreach (PrinterProfile p in _settings.Profiles)
+				{
+					<option value="@p.Id">@p.Name</option>
+				}
+			</select>
+		}
 		<select class="input" @bind="_baud" aria-label="Baud rate">
 			@foreach (int b in ConnectPrinterHandler.SupportedBaudRates)
 			{
@@ -45,6 +54,7 @@
 	else
 	{
 		<dl class="conn-meta">
+			<dt>Profile</dt><dd title="@_settings?.ActiveProfile.Name">@_settings?.ActiveProfile.Name</dd>
 			<dt>Firmware</dt><dd>@(_status.Firmware ?? "Unknown")</dd>
 			<dt>Baud</dt><dd>@_status.BaudRate</dd>
 		</dl>
@@ -63,20 +73,30 @@
 	private IReadOnlyList<string> _ports = [];
 	private string? _port;
 	private int _baud = 115200;
+	private HostSettings? _settings;
 	private bool _busy;
 
-	protected override PrinterChange Interests => PrinterChange.State;
+	protected override PrinterChange Interests => PrinterChange.State | PrinterChange.Settings;
 
 	protected override async Task OnInitializedAsync()
 	{
-		PrinterProfile profile = await Mediator.Send(new GetPrinterProfileQuery());
-		_baud = profile.DefaultBaudRate;
+		HostSettings settings = await Mediator.Send(new GetSettingsQuery());
+		_baud = settings.DefaultBaudRate;
 		await LoadPortsAsync();
-		if (profile.LastPort is { } last && _ports.Contains(last)) _port = last;
+		if (settings.LastPort is { } last && _ports.Contains(last)) _port = last;
 		await base.OnInitializedAsync();
 	}
 
-	protected override async Task RefreshAsync() => _status = await Mediator.Send(new GetPrinterStatusQuery());
+	protected override async Task RefreshAsync()
+	{
+		_status = await Mediator.Send(new GetPrinterStatusQuery());
+		_settings = await Mediator.Send(new GetSettingsQuery());
+	}
+
+	private async Task SelectProfileAsync(ChangeEventArgs e)
+	{
+		if (e.Value?.ToString() is { Length: > 0 } id) await Run(new SelectPrinterProfileCommand(id));
+	}
 
 	private async Task LoadPortsAsync()
 	{

@@ -7,84 +7,127 @@
 
 <header class="page-head"><h1>Settings</h1></header>
 
-@if (_form is not null)
+@if (_settings is not null && _profile is not null && _host is not null)
 {
-	<form class="settings" @onsubmit="SaveAsync" @onsubmit:preventDefault>
-		<section class="card">
-			<header class="card-head"><h2>Printer</h2></header>
-			<div class="form-grid">
-				<label class="field span-2"><span>Name</span><input class="input" @bind="_form.Name" /></label>
-				<label class="field"><span>Bed width (mm)</span><input class="input" type="number" @bind="_form.BedWidth" /></label>
-				<label class="field"><span>Bed depth (mm)</span><input class="input" type="number" @bind="_form.BedDepth" /></label>
-				<label class="field"><span>Max height (mm)</span><input class="input" type="number" @bind="_form.MaxHeight" /></label>
-				<label class="field"><span>Extruders</span><input class="input" type="number" min="1" max="8" @bind="_form.ExtruderCount" /></label>
-				<label class="toggle span-2"><input type="checkbox" @bind="_form.HasHeatedBed" /><span>Heated bed</span></label>
-			</div>
-		</section>
-
-		<section class="card">
-			<header class="card-head"><h2>Motion</h2></header>
-			<div class="form-grid">
-				<label class="field"><span>Jog XY (mm/min)</span><input class="input" type="number" @bind="_form.JogFeedrateXY" /></label>
-				<label class="field"><span>Jog Z (mm/min)</span><input class="input" type="number" @bind="_form.JogFeedrateZ" /></label>
-				<label class="field"><span>Extrude (mm/min)</span><input class="input" type="number" @bind="_form.ExtrudeFeedrate" /></label>
-			</div>
-		</section>
-
+	<div class="settings">
 		<section class="card">
 			<header class="card-head">
-				<h2>Temperature presets</h2>
-				<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _form.Presets.Add(new PresetRow())">Add preset</button>
+				<h2>Printer profiles</h2>
+				<button type="button" class="btn btn-sm btn-ghost" @onclick="NewProfile">New profile</button>
 			</header>
-			<div class="preset-rows">
-				@foreach (PresetRow p in _form.Presets)
+			<ul class="profile-list">
+				@foreach (PrinterProfile p in _settings.Profiles)
 				{
-					<div class="preset-row">
-						<input class="input" placeholder="Name" aria-label="Preset name" @bind="p.Name" />
-						<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="Hotend" @bind="p.Hotend" />°</label>
-						<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="Bed" @bind="p.Bed" />°</label>
-						<button type="button" class="icon-btn icon-btn-danger" title="Remove" @onclick="() => _form.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
-					</div>
+					bool active = p.Id == _settings.ActiveProfileId;
+					<li class="profile-row @(p.Id == _profile.Id ? "is-editing" : "")">
+						<button type="button" class="profile-name" @onclick="() => Edit(p)">
+							<span class="profile-title">
+								<strong>@p.Name</strong>
+								@if (active)
+								{
+									<span class="chip chip-printing">Active</span>
+								}
+							</span>
+							<small>@Summary(p)</small>
+						</button>
+						@if (!active)
+						{
+							<button type="button" class="btn btn-sm btn-ghost" disabled="@_busy"
+									title="@(_busy ? "Finish the print first" : null)" @onclick="() => SelectAsync(p)">Use</button>
+						}
+						<button type="button" class="icon-btn" title="Duplicate" @onclick="() => Duplicate(p)"><Icon Name="copy" Size="16" /></button>
+						<button type="button" class="icon-btn icon-btn-danger @(_confirmDelete == p.Id ? "is-armed" : "")" disabled="@active"
+								title="@(active ? "The active profile can't be deleted" : _confirmDelete == p.Id ? "Click again to delete" : "Delete")"
+								@onclick="() => DeleteAsync(p)">
+							<Icon Name="@(_confirmDelete == p.Id ? "check" : "trash")" Size="16" />
+						</button>
+					</li>
 				}
+			</ul>
+			<p class="muted small">Build volume, extruders and heated bed belong to a profile. Switch profiles when you move PrintDeck to another printer.</p>
+		</section>
+
+		<form class="card" @onsubmit="SaveProfileAsync" @onsubmit:preventDefault>
+			<header class="card-head">
+				<h2>@(_profile.Id.Length == 0 ? "New profile" : $"Edit {_profileName}")</h2>
+			</header>
+			<div class="form-grid">
+				<label class="field span-2"><span>Name</span><input class="input" maxlength="64" @bind="_profile.Name" /></label>
+				<label class="field"><span>Bed width (mm)</span><input class="input" type="number" @bind="_profile.BedWidth" /></label>
+				<label class="field"><span>Bed depth (mm)</span><input class="input" type="number" @bind="_profile.BedDepth" /></label>
+				<label class="field"><span>Max height (mm)</span><input class="input" type="number" @bind="_profile.MaxHeight" /></label>
+				<label class="field"><span>Extruders</span><input class="input" type="number" min="1" max="8" @bind="_profile.ExtruderCount" /></label>
+				<label class="toggle span-2"><input type="checkbox" @bind="_profile.HasHeatedBed" /><span>Heated bed</span></label>
+				<label class="field"><span>Jog XY (mm/min)</span><input class="input" type="number" @bind="_profile.JogFeedrateXY" /></label>
+				<label class="field"><span>Jog Z (mm/min)</span><input class="input" type="number" @bind="_profile.JogFeedrateZ" /></label>
+				<label class="field"><span>Extrude (mm/min)</span><input class="input" type="number" @bind="_profile.ExtrudeFeedrate" /></label>
 			</div>
-		</section>
-
-		<section class="card">
-			<header class="card-head"><h2>Cancel script</h2></header>
-			<p class="muted small">Sent after a print is cancelled</p>
-			<textarea class="input mono" rows="6" spellcheck="false" @bind="_form.CancelGcode"></textarea>
-		</section>
-
-		<section class="card">
-			<header class="card-head"><h2>Camera</h2></header>
-			<label class="field"><span>MJPEG stream URL</span>
-				<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_form.WebcamStreamUrl" />
-			</label>
-		</section>
-
-		<section class="card">
-			<header class="card-head"><h2>Slicer upload</h2></header>
-			<p class="muted small">
-				In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type <strong>OctoPrint</strong>,
-				host <code>@Nav.BaseUri.TrimEnd('/')</code> and this API key.
-			</p>
-			<div class="field-row">
-				<input class="input mono" readonly value="@_apiKey" aria-label="API key" />
-				<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> New key</button>
+			<div class="form-actions">
+				@if (_profile.Id.Length == 0)
+				{
+					<button type="button" class="btn btn-ghost" @onclick="() => Edit(_settings.ActiveProfile)">Cancel</button>
+				}
+				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @(_profile.Id.Length == 0 ? "Add profile" : "Save profile")</button>
 			</div>
-		</section>
+		</form>
 
-		<div class="save-bar">
-			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
-		</div>
-	</form>
+		<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
+			<section class="card">
+				<header class="card-head">
+					<h2>Temperature presets</h2>
+					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _host.Presets.Add(new PresetRow())">Add preset</button>
+				</header>
+				<div class="preset-rows">
+					@foreach (PresetRow p in _host.Presets)
+					{
+						<div class="preset-row">
+							<input class="input" placeholder="Name" aria-label="Preset name" @bind="p.Name" />
+							<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="Hotend" @bind="p.Hotend" />°</label>
+							<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="Bed" @bind="p.Bed" />°</label>
+							<button type="button" class="icon-btn icon-btn-danger" title="Remove" @onclick="() => _host.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
+						</div>
+					}
+				</div>
+			</section>
+
+			<section class="card">
+				<header class="card-head"><h2>Cancel script</h2></header>
+				<p class="muted small">Sent after a print is cancelled</p>
+				<textarea class="input mono" rows="6" spellcheck="false" @bind="_host.CancelGcode"></textarea>
+			</section>
+
+			<section class="card">
+				<header class="card-head"><h2>Camera</h2></header>
+				<label class="field"><span>MJPEG stream URL</span>
+					<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
+				</label>
+			</section>
+
+			<section class="card">
+				<header class="card-head"><h2>Slicer upload</h2></header>
+				<p class="muted small">
+					In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type <strong>OctoPrint</strong>,
+					host <code>@Nav.BaseUri.TrimEnd('/')</code> and this API key.
+				</p>
+				<div class="field-row">
+					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="API key" />
+					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> New key</button>
+				</div>
+			</section>
+
+			<div class="save-bar">
+				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
+			</div>
+		</form>
+	</div>
 }
 
 @code {
 	private sealed class PresetRow { public string Name { get; set; } = ""; public int Hotend { get; set; } = 200; public int Bed { get; set; } = 60; }
 
-	private sealed class Form
+	private sealed class ProfileForm
 	{
+		public string Id { get; set; } = "";
 		public string Name { get; set; } = "";
 		public double BedWidth { get; set; }
 		public double BedDepth { get; set; }
@@ -94,49 +137,125 @@
 		public int JogFeedrateXY { get; set; }
 		public int JogFeedrateZ { get; set; }
 		public int ExtrudeFeedrate { get; set; }
+
+		public static ProfileForm From(PrinterProfile p) => new()
+		{
+			Id = p.Id, Name = p.Name, BedWidth = p.BedWidth, BedDepth = p.BedDepth, MaxHeight = p.MaxHeight,
+			ExtruderCount = p.ExtruderCount, HasHeatedBed = p.HasHeatedBed,
+			JogFeedrateXY = p.JogFeedrateXY, JogFeedrateZ = p.JogFeedrateZ, ExtrudeFeedrate = p.ExtrudeFeedrate
+		};
+
+		public PrinterProfile ToProfile() => new()
+		{
+			Id = Id, Name = Name.Trim(), BedWidth = BedWidth, BedDepth = BedDepth, MaxHeight = MaxHeight,
+			ExtruderCount = ExtruderCount, HasHeatedBed = HasHeatedBed,
+			JogFeedrateXY = JogFeedrateXY, JogFeedrateZ = JogFeedrateZ, ExtrudeFeedrate = ExtrudeFeedrate
+		};
+	}
+
+	private sealed class HostForm
+	{
 		public string? WebcamStreamUrl { get; set; }
 		public string CancelGcode { get; set; } = "";
 		public List<PresetRow> Presets { get; set; } = [];
+
+		public static HostForm From(HostSettings s) => new()
+		{
+			WebcamStreamUrl = s.WebcamStreamUrl, CancelGcode = s.CancelGcode,
+			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
+		};
 	}
 
-	private Form? _form;
-	private PrinterProfile? _loaded;
-	private string _apiKey = "";
+	private HostSettings? _settings;
+	private ProfileForm? _profile;
+	private string _profileName = "";
+	private HostForm? _host;
+	private bool _busy;
+	private string? _confirmDelete;
 
-	protected override PrinterChange Interests => PrinterChange.None;
+	// Other tabs and the connection panel can switch or edit profiles; the list follows, the open forms stay as typed.
+	protected override PrinterChange Interests => PrinterChange.Settings | PrinterChange.State;
 
 	protected override async Task RefreshAsync()
 	{
-		PrinterProfile p = _loaded = await Mediator.Send(new GetPrinterProfileQuery());
-		_apiKey = p.ApiKey;
-		_form = new Form
-		{
-			Name = p.Name, BedWidth = p.BedWidth, BedDepth = p.BedDepth, MaxHeight = p.MaxHeight,
-			ExtruderCount = p.ExtruderCount, HasHeatedBed = p.HasHeatedBed,
-			JogFeedrateXY = p.JogFeedrateXY, JogFeedrateZ = p.JogFeedrateZ, ExtrudeFeedrate = p.ExtrudeFeedrate,
-			WebcamStreamUrl = p.WebcamStreamUrl, CancelGcode = p.CancelGcode,
-			Presets = p.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
-		};
+		_settings = await Mediator.Send(new GetSettingsQuery());
+		_busy = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsBusy();
+		if (_profile is null) Edit(_settings.ActiveProfile);
+		_host ??= HostForm.From(_settings);
 	}
 
-	private async Task SaveAsync()
+	private static string Summary(PrinterProfile p) =>
+		$"{p.BedWidth:0.#} × {p.BedDepth:0.#} × {p.MaxHeight:0.#} mm · {p.ExtruderCount} extruder{(p.ExtruderCount == 1 ? "" : "s")}" +
+		(p.HasHeatedBed ? " · heated bed" : "");
+
+	private void Edit(PrinterProfile p)
 	{
-		Form f = _form!;
-		PrinterProfile profile = _loaded! with
+		_profile = ProfileForm.From(p);
+		_profileName = p.Name;
+		_confirmDelete = null;
+	}
+
+	private void NewProfile()
+	{
+		Edit(new PrinterProfile { Id = "", Name = "" });
+		_profileName = "";
+	}
+
+	private void Duplicate(PrinterProfile p)
+	{
+		Edit(p with { Id = "", Name = $"{p.Name} copy" });
+	}
+
+	private async Task SaveProfileAsync()
+	{
+		bool adding = _profile!.Id.Length == 0;
+		Result<string> result = await Mediator.Send(new SavePrinterProfileCommand(_profile.ToProfile()));
+		if (!result.IsSuccess)
 		{
-			Name = f.Name.Trim(), BedWidth = f.BedWidth, BedDepth = f.BedDepth, MaxHeight = f.MaxHeight,
-			ExtruderCount = f.ExtruderCount, HasHeatedBed = f.HasHeatedBed,
-			JogFeedrateXY = f.JogFeedrateXY, JogFeedrateZ = f.JogFeedrateZ, ExtrudeFeedrate = f.ExtrudeFeedrate,
-			WebcamStreamUrl = string.IsNullOrWhiteSpace(f.WebcamStreamUrl) ? null : f.WebcamStreamUrl.Trim(),
-			CancelGcode = f.CancelGcode.Replace("\r", ""),
-			Presets = f.Presets.Select(x => new TemperaturePreset(x.Name.Trim(), x.Hotend, x.Bed)).ToList()
-		};
-		if (await Run(new UpdatePrinterProfileCommand(profile), "Settings saved")) _loaded = profile;
+			Toasts.Error(result.Error ?? "Something went wrong.");
+			return;
+		}
+		_settings = await Mediator.Send(new GetSettingsQuery());
+		if (_settings.FindProfile(result.Value!) is { } saved) Edit(saved);
+		Toasts.Success(adding ? $"Added {_profileName}" : $"Saved {_profileName}");
+	}
+
+	private async Task SelectAsync(PrinterProfile p)
+	{
+		if (await Run(new SelectPrinterProfileCommand(p.Id), $"Now using {p.Name}"))
+			_settings = await Mediator.Send(new GetSettingsQuery());
+	}
+
+	private async Task DeleteAsync(PrinterProfile p)
+	{
+		if (_confirmDelete != p.Id)
+		{
+			_confirmDelete = p.Id;
+			return;
+		}
+		_confirmDelete = null;
+		if (!await Run(new DeletePrinterProfileCommand(p.Id), $"Deleted {p.Name}")) return;
+		_settings = await Mediator.Send(new GetSettingsQuery());
+		if (_profile?.Id == p.Id) Edit(_settings.ActiveProfile);
+	}
+
+	private async Task SaveHostAsync()
+	{
+		HostForm f = _host!;
+		UpdateSettingsCommand command = new(
+			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl);
+		if (await Run(command, "Settings saved"))
+		{
+			_settings = await Mediator.Send(new GetSettingsQuery());
+			_host = HostForm.From(_settings);
+		}
 	}
 
 	private async Task RegenerateAsync()
 	{
 		Result<string> result = await Mediator.Send(new RegenerateApiKeyCommand());
-		if (result.IsSuccess) { _apiKey = result.Value!; Toasts.Success("New API key — update it in your slicer."); }
+		if (!result.IsSuccess) return;
+		_settings = await Mediator.Send(new GetSettingsQuery());
+		Toasts.Success("New API key — update it in your slicer.");
 	}
 }

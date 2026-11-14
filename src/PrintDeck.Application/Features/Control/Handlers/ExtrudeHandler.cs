@@ -29,7 +29,7 @@ public sealed class ExtrudeHandler(IPrinterSession session, ISettingsStore setti
 		if (hotend is null || hotend.Actual < MinExtrudeTemp)
 			return Result.Failure($"Hotend below {MinExtrudeTemp:0}°C — heat it first.");
 
-		PrinterProfile p = await settings.GetAsync(ct);
+		PrinterProfile p = (await settings.GetAsync(ct)).ActiveProfile;
 		return session.Enqueue([$"T{c.Tool}", "M83", $"G1 E{Guard.F(c.Millimeters)} F{p.ExtrudeFeedrate}", "M82"]);
 	}
 }

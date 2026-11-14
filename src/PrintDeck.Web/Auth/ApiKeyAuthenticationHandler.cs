@@ -30,8 +30,8 @@ public sealed class ApiKeyAuthenticationHandler(
 		string? supplied = SuppliedKey(Request);
 		if (string.IsNullOrEmpty(supplied)) return AuthenticateResult.NoResult();
 
-		PrinterProfile profile = await settings.GetAsync(Context.RequestAborted);
-		if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(profile.ApiKey)))
+		HostSettings s = await settings.GetAsync(Context.RequestAborted);
+		if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(s.ApiKey)))
 			return AuthenticateResult.Fail("Invalid API key");
 
 		ClaimsIdentity identity = new(
