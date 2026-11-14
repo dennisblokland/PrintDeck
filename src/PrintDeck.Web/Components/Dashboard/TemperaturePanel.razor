@@ -32,23 +32,29 @@
 							<b style="left:@Pct(h.Target, scale)%"></b>
 						}
 					</div>
-					<form class="heater-set" @onsubmit="() => SetAsync(h.Heater)" @onsubmit:preventDefault>
-						<input class="input input-num" type="number" min="0" max="320" step="1" placeholder="Target"
-							   aria-label="@($"{h.DisplayName} target")" @bind="_inputs[h.Heater]" />
-						<button class="btn btn-sm" type="submit">Set</button>
-						<button class="btn btn-sm btn-ghost" type="button" title="Turn off" @onclick="() => OffAsync(h.Heater)"><Icon Name="power" Size="14" /></button>
-					</form>
+					@if (CanControl)
+					{
+						<form class="heater-set" @onsubmit="() => SetAsync(h.Heater)" @onsubmit:preventDefault>
+							<input class="input input-num" type="number" min="0" max="320" step="1" placeholder="Target"
+								   aria-label="@($"{h.DisplayName} target")" @bind="_inputs[h.Heater]" />
+							<button class="btn btn-sm" type="submit">Set</button>
+							<button class="btn btn-sm btn-ghost" type="button" title="Turn off" @onclick="() => OffAsync(h.Heater)"><Icon Name="power" Size="14" /></button>
+						</form>
+					}
 				</div>
 			}
 		</div>
 
-		<div class="presets">
-			@foreach (TemperaturePreset p in _presets)
-			{
-				<button class="btn btn-sm btn-ghost" title="@($"{p.Hotend}° / {p.Bed}°")" @onclick='() => Run(new ApplyTemperaturePresetCommand(p.Name), p.Name + " preheat")'>@p.Name</button>
-			}
-			<button class="btn btn-sm btn-ghost" @onclick='() => Run(new ApplyTemperaturePresetCommand("Off"), "Heaters off")'>Cool down</button>
-		</div>
+		@if (CanControl)
+		{
+			<div class="presets">
+				@foreach (TemperaturePreset p in _presets)
+				{
+					<button class="btn btn-sm btn-ghost" title="@($"{p.Hotend}° / {p.Bed}°")" @onclick='() => Run(new ApplyTemperaturePresetCommand(p.Name), p.Name + " preheat")'>@p.Name</button>
+				}
+				<button class="btn btn-sm btn-ghost" @onclick='() => Run(new ApplyTemperaturePresetCommand("Off"), "Heaters off")'>Cool down</button>
+			</div>
+		}
 	}
 </section>
 

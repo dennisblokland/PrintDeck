@@ -8,20 +8,23 @@
 	<p class="muted">@_files.Count file@(_files.Count == 1 ? "" : "s") · @Format.Bytes(_files.Sum(f => f.SizeBytes))</p>
 </header>
 
-<label class="dropzone @(_uploading ? "is-busy" : "")">
-	<InputFile OnChange="UploadAsync" multiple accept=".gcode,.gco,.g" disabled="@_uploading" />
-	<Icon Name="upload" Size="26" />
-	@if (_uploading)
-	{
-		<strong>Uploading @_uploadName…</strong>
-		<span class="muted">Large files take a moment while they are analysed.</span>
-	}
-	else
-	{
-		<strong>Drop G-code here or click to browse</strong>
-		<span class="muted">Or send straight from your slicer — see Settings → Slicer upload.</span>
-	}
-</label>
+@if (CanControl)
+{
+	<label class="dropzone @(_uploading ? "is-busy" : "")">
+		<InputFile OnChange="UploadAsync" multiple accept=".gcode,.gco,.g" disabled="@_uploading" />
+		<Icon Name="upload" Size="26" />
+		@if (_uploading)
+		{
+			<strong>Uploading @_uploadName…</strong>
+			<span class="muted">Large files take a moment while they are analysed.</span>
+		}
+		else
+		{
+			<strong>Drop G-code here or click to browse</strong>
+			<span class="muted">Or send straight from your slicer — see Settings → Slicer upload.</span>
+		}
+	</label>
+}
 
 @if (_files.Count == 0)
 {
@@ -52,7 +55,7 @@ else
 					{
 						<span class="chip chip-printing">Printing</span>
 					}
-					else
+					else if (CanControl)
 					{
 						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
 								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Start print")"

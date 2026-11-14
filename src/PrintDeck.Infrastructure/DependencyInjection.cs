@@ -4,6 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
 using PrintDeck.Application.Abstractions.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+using PrintDeck.Infrastructure.Identity;
 using PrintDeck.Infrastructure.Serial;
 using PrintDeck.Infrastructure.Storage;
 
@@ -18,6 +22,9 @@ public static class DependencyInjection
 		services.AddSingleton<IPortDiscovery, PortDiscovery>();
 		services.AddSingleton<IGcodeFileStore, FileSystemGcodeStore>();
 		services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+		services.AddDbContext<PrintDeckDbContext>((sp, o) =>
+			o.UseSqlite($"Data Source={sp.GetRequiredService<IOptions<StorageOptions>>().Value.DatabaseFile}"));
+		services.AddScoped<IUserAccounts, IdentityUserAccounts>();
 		return services;
 	}
 }

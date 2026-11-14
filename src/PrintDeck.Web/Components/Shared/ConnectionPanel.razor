@@ -9,7 +9,11 @@
 		}
 	</div>
 
-	@if (_status.State is PrinterState.Offline or PrinterState.Error)
+	@if (!CanControl && _status.State is PrinterState.Offline or PrinterState.Error)
+	{
+		<p class="muted small">Not connected. An admin can connect the printer.</p>
+	}
+	else if (_status.State is PrinterState.Offline or PrinterState.Error)
 	{
 		@if (_status.Error is { } error)
 		{
@@ -44,10 +48,13 @@
 			<dt>Firmware</dt><dd>@(_status.Firmware ?? "Unknown")</dd>
 			<dt>Baud</dt><dd>@_status.BaudRate</dd>
 		</dl>
-		<button class="btn btn-ghost btn-block" disabled="@(_busy || _status.State.IsBusy())"
-				title="@(_status.State.IsBusy() ? "Stop the print first" : null)" @onclick="DisconnectAsync">
-			<Icon Name="power" Size="16" /> Disconnect
-		</button>
+		@if (CanControl)
+		{
+			<button class="btn btn-ghost btn-block" disabled="@(_busy || _status.State.IsBusy())"
+					title="@(_status.State.IsBusy() ? "Stop the print first" : null)" @onclick="DisconnectAsync">
+				<Icon Name="power" Size="16" /> Disconnect
+			</button>
+		}
 	}
 </div>
 

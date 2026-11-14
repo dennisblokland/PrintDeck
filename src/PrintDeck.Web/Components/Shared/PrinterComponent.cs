@@ -1,11 +1,13 @@
 using Mediator;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 
 using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
 using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Domain.Common;
+using PrintDeck.Domain.Users.Enums;
 using PrintDeck.Web.Services;
 using PrintDeck.Web.Services.Enums;
 
@@ -22,6 +24,14 @@ public abstract class PrinterComponent : ComponentBase, IDisposable
 	[Inject] protected ToastService Toasts { get; set; } = default!;
 	[Inject] protected TimeProvider Time { get; set; } = default!;
 
+	[CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+	/// <summary>
+	/// True for admins. Viewers see the printer but get no controls; the server refuses their commands anyway
+	/// (AuthorizationBehavior), this only keeps buttons they can't use off the screen.
+	/// </summary>
+	protected bool CanControl { get; private set; }
+
 	private int _scheduled;
 	private bool _disposed;
 
@@ -32,6 +42,8 @@ public abstract class PrinterComponent : ComponentBase, IDisposable
 
 	protected override async Task OnInitializedAsync()
 	{
+		if (AuthenticationState is not null)
+			CanControl = (await AuthenticationState).User.IsInRole(nameof(UserRole.Admin));
 		Events.Changed += OnPrinterChanged;
 		await RefreshAsync();
 	}

@@ -10,4 +10,7 @@ public sealed class StorageOptions
 
 	public string UploadsDirectory => Path.Combine(DataDirectory, "uploads");
 	public string SettingsFile => Path.Combine(DataDirectory, "settings.json");
+	public string DatabaseFile => Path.Combine(DataDirectory, "printdeck.db");
+	/// <summary>Data Protection keys: they sign login cookies, so keeping them means a restart doesn't log everyone out.</summary>
+	public string KeysDirectory => Path.Combine(DataDirectory, "keys");
 }

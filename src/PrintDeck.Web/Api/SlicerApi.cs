@@ -14,6 +14,7 @@ using PrintDeck.Application.Features.Settings.Queries;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
 using PrintDeck.Domain.Settings;
+using PrintDeck.Web.Auth;
 
 namespace PrintDeck.Web.Api;
 
@@ -26,7 +27,8 @@ public static class SlicerApi
 {
 	public static void MapSlicerApi(this WebApplication app)
 	{
-		RouteGroupBuilder api = app.MapGroup("/api").AddEndpointFilter(RequireApiKey);
+		// Only the API key opens this group (see ApiKeyAuthenticationHandler); a missing or wrong key gets OctoPrint's 403.
+		RouteGroupBuilder api = app.MapGroup("/api").RequireAuthorization(AuthSchemes.ApiKeyPolicy);
 
 		// Slicers check that "text" starts with "OctoPrint" before uploading.
 		api.MapGet("/version", () => Results.Ok(new { api = "0.1", server = "1.10.0", text = "OctoPrint 1.10.0 (PrintDeck)" }));
@@ -56,18 +58,4 @@ public static class SlicerApi
 	}
 
 	private static bool IsTrue(string? value) => value is "true" or "True" or "1";
-
-	private static async ValueTask<object?> RequireApiKey(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
-	{
-		HttpContext http = ctx.HttpContext;
-		IMediator mediator = http.RequestServices.GetRequiredService<IMediator>();
-		PrinterProfile profile = await mediator.Send(new GetPrinterProfileQuery(), http.RequestAborted);
-
-		string? supplied = http.Request.Headers["X-Api-Key"].FirstOrDefault() ?? http.Request.Query["apikey"].FirstOrDefault();
-		if (string.IsNullOrEmpty(supplied) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
-				System.Text.Encoding.UTF8.GetBytes(supplied), System.Text.Encoding.UTF8.GetBytes(profile.ApiKey)))
-			return Results.Json(new { error = "Invalid API key" }, statusCode: StatusCodes.Status403Forbidden);
-
-		return await next(ctx);
-	}
 }
