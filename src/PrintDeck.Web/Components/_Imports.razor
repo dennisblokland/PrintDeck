@@ -1,4 +1,7 @@
 @using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
@@ -53,3 +56,10 @@
 @using PrintDeck.Domain.Printer.Enums
 @using PrintDeck.Domain.Terminal.Enums
 @using PrintDeck.Web.Services.Enums
+@using PrintDeck.Application.Features.Users.Commands
+@using PrintDeck.Application.Features.Users.Queries
+@using PrintDeck.Domain.Users
+@using PrintDeck.Domain.Users.Enums
+@using PrintDeck.Infrastructure.Identity
+@using PrintDeck.Web.Auth
+@using PrintDeck.Web.Components.Account

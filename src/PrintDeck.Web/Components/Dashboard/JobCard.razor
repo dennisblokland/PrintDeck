@@ -53,7 +53,7 @@
 			<div><dt>Lines</dt><dd>@job.LinesSent.ToString("N0")</dd></div>
 		</dl>
 
-		@if (job.Status is JobStatus.Printing or JobStatus.Paused)
+		@if (CanControl && job.Status is JobStatus.Printing or JobStatus.Paused)
 		{
 			<div class="actions">
 				@if (job.Status == JobStatus.Printing)

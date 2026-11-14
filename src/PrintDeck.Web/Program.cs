@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Http.Features;
 using PrintDeck.Application;
 using PrintDeck.Application.Behaviors;
 using PrintDeck.Infrastructure;
+using PrintDeck.Infrastructure.Identity;
 using PrintDeck.Web.Api;
+using PrintDeck.Web.Auth;
 using PrintDeck.Web.Components;
 using PrintDeck.Web.Services;
 using PrintDeck.Web.Services.Enums;
@@ -20,9 +22,10 @@ builder.Services.AddMediator(options =>
 {
 	options.ServiceLifetime = ServiceLifetime.Scoped;
 	options.Assemblies = [typeof(PrintDeck.Application.DependencyInjection)];
-	options.PipelineBehaviors = [typeof(LoggingBehavior<,>)];
+	options.PipelineBehaviors = [typeof(LoggingBehavior<,>), typeof(AuthorizationBehavior<,>)];
 });
 
+builder.Services.AddPrintDeckAuthentication();
 builder.Services.AddScoped<ToastService>();
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = MaxUploadBytes);
 builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = MaxUploadBytes);
@@ -32,16 +35,21 @@ builder.Services.AddRazorComponents()
 
 WebApplication app = builder.Build();
 
+await app.Services.InitializeDatabaseAsync();
+
 if (!app.Environment.IsDevelopment())
 {
 	app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapStaticAssets();
+app.MapStaticAssets().AllowAnonymous();
 app.MapSlicerApi();
 app.MapToolpathApi();
+app.MapAccountEndpoints();
 app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode();
 

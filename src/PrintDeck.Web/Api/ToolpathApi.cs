@@ -17,7 +17,7 @@ namespace PrintDeck.Web.Api;
 /// offsets  points × u32   file byte offset at which the move is read
 /// kinds    points × u8    ToolpathKind (0 = travel to this point)
 /// </code>
-/// Same-origin UI endpoint, so it sits outside the API-key protected slicer API like the rest of the UI.
+/// Same-origin UI endpoint: needs the login cookie (or the API key), like the rest of the UI.
 /// </summary>
 public static class ToolpathApi
 {

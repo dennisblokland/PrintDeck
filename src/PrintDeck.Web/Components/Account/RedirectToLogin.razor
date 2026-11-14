@@ -1,0 +1,7 @@
+@inject NavigationManager Nav
+
+@code {
+	// A full page load, so the login page renders without an interactive circuit and can set the cookie.
+	protected override void OnInitialized() =>
+		Nav.NavigateTo($"login?returnUrl={Uri.EscapeDataString(new Uri(Nav.Uri).PathAndQuery)}", forceLoad: true);
+}

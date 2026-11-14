@@ -13,6 +13,12 @@
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="11.0.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Identity and data">
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Hardware">
     <PackageVersion Include="System.IO.Ports" Version="11.0.0" />
   </ItemGroup>

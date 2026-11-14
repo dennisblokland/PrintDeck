@@ -12,6 +12,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - G-code viewer: 2D layer view and 3D view (three.js, vendored in `wwwroot/lib/three`), coloured by feature (walls, infill, support…), move scrubber, and live follow of the running print
 - Terminal with command history and temperature-noise filter
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
+- **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
 - Dark and light themes, mobile layout
 
 ## Architecture
@@ -23,7 +24,8 @@ src/
   PrintDeck.Domain          entities & rules: PrintJob, PrinterState, temperatures, G-code protocol helpers. No dependencies.
   PrintDeck.Application     Features/<Slice>/{Commands,Queries,Handlers,Dtos} — one type per file;
                             PrinterSession (protocol engine), GcodeAnalyzer, ports (IPrinterTransport, IGcodeFileStore, ISettingsStore)
-  PrintDeck.Infrastructure  serial transport, virtual printer, file-system store, JSON settings
+  PrintDeck.Infrastructure  serial transport, virtual printer, file-system store, JSON settings,
+                            Identity on SQLite (Identity/, EF Core migrations in Identity/Migrations)
   PrintDeck.Web             Blazor UI + slicer API; registers Mediator (generator runs here); Scripts/ = TypeScript (G-code viewer)
 tests/                      one test project per layer; folders mirror the project under test
   PrintDeck.Domain.Tests          entities and protocol helpers (pure, no I/O)
@@ -34,6 +36,8 @@ tests/                      one test project per layer; folders mirror the proje
 ```
 
 UI components read through queries and write through commands. `IPrinterEvents` tells components *what* changed (state, temperature, job, …); they re-query, throttled.
+
+Every command and query passes `AuthorizationBehavior`: queries need a signed-in user, commands need an admin unless the message is marked `IAllowAnonymous` (setup), `IAllowAnyUser` (own password) or `IAccountAdministration` (user management: a real admin account, not the slicer API key). The slicer API key is its own authentication scheme and acts as an admin for uploads.
 
 ## Run
 
@@ -50,7 +54,16 @@ Ports below 1024 (e.g. 80) need root on Linux and fail with `SocketException (13
 sudo setcap 'cap_net_bind_service=+ep' src/PrintDeck.Web/bin/Release/net11.0/PrintDeck.Web
 ```
 
-Pick **VIRTUAL** as port to try it without a printer. Data (uploads, settings) lives in `~/.printdeck` (`Storage:DataDirectory` to change; `.dev-data/` in Development).
+On first start PrintDeck asks you to create the admin account at `/setup`. Pick **VIRTUAL** as port to try it without a printer. Data lives in `~/.printdeck` (`Storage:DataDirectory` to change; `.dev-data/` in Development): uploads, `settings.json`, `printdeck.db` (accounts) and `keys/` (signs login cookies, so restarts keep you signed in).
+
+Locked out of the only admin account? Stop PrintDeck and delete `printdeck.db`; the next start asks for a new admin (other accounts are lost, settings and files stay).
+
+After changing the Identity model, add a migration (the database upgrades itself on start):
+
+```bash
+dotnet tool restore
+dotnet ef migrations add <Name> --project src/PrintDeck.Infrastructure --startup-project src/PrintDeck.Web --output-dir Identity/Migrations
+```
 
 On Linux your user needs serial access: `sudo usermod -aG uucp $USER` (Arch/CachyOS) or `dialout` (Debian/Ubuntu), then log in again.
 

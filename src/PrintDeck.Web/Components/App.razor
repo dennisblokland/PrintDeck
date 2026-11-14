@@ -14,11 +14,11 @@
 	<link rel="stylesheet" href="@Assets["PrintDeck.Web.styles.css"]" />
 	<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 	<ImportMap ImportMapDefinition="ImportMap" />
-	<HeadOutlet @rendermode="InteractiveServer" />
+	<HeadOutlet @rendermode="PageRenderMode" />
 </head>
 
 <body>
-	<Routes @rendermode="InteractiveServer" />
+	<Routes @rendermode="PageRenderMode" />
 	<ReconnectModal />
 	<script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
@@ -26,6 +26,11 @@
 </html>
 
 @code {
+	[CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+	/// <summary>Interactive everywhere except the account pages (login, setup, password), which need the HTTP response to set the cookie.</summary>
+	private IComponentRenderMode? PageRenderMode => HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+
 	/// <summary>Static assets plus bare specifiers for the vendored three.js (used by the 3D G-code viewer).</summary>
 	private ImportMapDefinition ImportMap => ImportMapDefinition.Combine(
 		ImportMapDefinition.FromResourceCollection(Assets),

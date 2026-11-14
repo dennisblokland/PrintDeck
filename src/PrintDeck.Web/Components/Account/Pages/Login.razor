@@ -1,0 +1,68 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@layout Layout.AuthLayout
+@using System.ComponentModel.DataAnnotations
+@inject SignInManager<PrintDeckUser> SignInManager
+@inject IMediator Mediator
+@inject NavigationManager Nav
+
+<PageTitle>Sign in · PrintDeck</PageTitle>
+
+<h1 class="auth-title">Sign in</h1>
+
+@if (_error is not null)
+{
+	<p class="auth-error" role="alert">@_error</p>
+}
+
+<EditForm Model="Input" method="post" OnValidSubmit="SignInAsync" FormName="login" class="auth-form">
+	<DataAnnotationsValidator />
+	<label class="field">
+		<span>Username</span>
+		<InputText class="input" @bind-Value="Input!.UserName" autocomplete="username" autofocus />
+		<ValidationMessage For="() => Input!.UserName" />
+	</label>
+	<label class="field">
+		<span>Password</span>
+		<InputText class="input" type="password" @bind-Value="Input!.Password" autocomplete="current-password" />
+		<ValidationMessage For="() => Input!.Password" />
+	</label>
+	<label class="toggle"><InputCheckbox @bind-Value="Input!.RememberMe" /><span>Keep me signed in on this device</span></label>
+	<button class="btn btn-primary btn-block" type="submit">Sign in</button>
+</EditForm>
+
+<p class="muted small">Forgot your password? Ask an admin to reset it under Users.</p>
+
+@code {
+	[SupplyParameterFromForm] private LoginInput? Input { get; set; }
+	[SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+	private string? _error;
+
+	protected override async Task OnInitializedAsync()
+	{
+		Input ??= new();
+		if (await Mediator.Send(new IsSetupRequiredQuery())) Nav.NavigateTo("setup");
+	}
+
+	private async Task SignInAsync()
+	{
+		Microsoft.AspNetCore.Identity.SignInResult result =
+			await SignInManager.PasswordSignInAsync(Input!.UserName.Trim(), Input!.Password, Input!.RememberMe, lockoutOnFailure: true);
+		if (result.Succeeded)
+		{
+			Nav.NavigateTo(LocalUrl.OrHome(ReturnUrl));
+			return;
+		}
+		_error = result.IsLockedOut
+			? "Too many wrong passwords. Try again in 5 minutes, or ask an admin to reset yours."
+			: "Wrong username or password.";
+	}
+
+	private sealed class LoginInput
+	{
+		[Required(ErrorMessage = "Enter your username.")] public string UserName { get; set; } = "";
+		[Required(ErrorMessage = "Enter your password.")] public string Password { get; set; } = "";
+		public bool RememberMe { get; set; }
+	}
+}

@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="System.IO.Ports" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
 
   <PropertyGroup>
