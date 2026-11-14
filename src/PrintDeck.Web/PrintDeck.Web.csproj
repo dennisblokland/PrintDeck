@@ -37,6 +37,7 @@
   <Target Name="CompileTypeScript" DependsOnTargets="NpmInstall" BeforeTargets="BeforeBuild"
           Inputs="@(TypeScriptSource);tsconfig.json;package-lock.json" Outputs="$(IntermediateOutputPath)tsc.stamp">
     <Exec Command="npx --no-install tsc -p tsconfig.json" />
+    <MakeDir Directories="$(IntermediateOutputPath)" />
     <Touch Files="$(IntermediateOutputPath)tsc.stamp" AlwaysCreate="true" />
   </Target>
 
