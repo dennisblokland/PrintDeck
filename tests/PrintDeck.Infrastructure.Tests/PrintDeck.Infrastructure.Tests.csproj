@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PrintDeck.Infrastructure\PrintDeck.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

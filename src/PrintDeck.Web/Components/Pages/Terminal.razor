@@ -1,0 +1,97 @@
+@page "/terminal"
+@inherits PrinterComponent
+
+<PageTitle>Terminal · PrintDeck</PageTitle>
+
+<header class="page-head page-head-row">
+	<h1>Terminal</h1>
+	<div class="toolbar">
+		<label class="toggle">
+			<input type="checkbox" @bind="_hideTemps" @bind:after="ReloadAsync" />
+			<span>Hide temperature polling</span>
+		</label>
+		<button class="btn btn-sm btn-ghost" @onclick="() => Run(new ClearTerminalCommand())"><Icon Name="trash" Size="14" /> Clear</button>
+	</div>
+</header>
+
+<section class="card terminal-card">
+	<div class="terminal" role="log" aria-live="off">
+		@* column-reverse keeps the view pinned to the newest line without JS *@
+		<div class="terminal-inner">
+			@foreach (TerminalEntry e in _entries)
+			{
+				<div class="tl tl-@e.Direction.ToString().ToLowerInvariant()" @key="e.Id">
+					<time>@e.At.ToLocalTime().ToString("HH:mm:ss")</time>
+					<span class="tl-dir">@(e.Direction switch { TerminalDirection.Sent => "›", TerminalDirection.Received => "‹", TerminalDirection.Error => "!", _ => "·" })</span>
+					<span class="tl-text">@e.Text</span>
+				</div>
+			}
+		</div>
+	</div>
+
+	<form class="terminal-input" @onsubmit="SendAsync" @onsubmit:preventDefault>
+		<span class="prompt">›</span>
+		<input class="input mono" placeholder="@(_connected ? "G-code, e.g. M114 — ↑/↓ for history" : "Connect to send commands")"
+			   disabled="@(!_connected)" @bind="_command" @bind:event="oninput" @onkeydown="OnKey" autocomplete="off" spellcheck="false" />
+		<button class="btn btn-primary" type="submit" disabled="@(!_connected || string.IsNullOrWhiteSpace(_command))"><Icon Name="send" Size="16" /> Send</button>
+	</form>
+
+	<div class="quick">
+		@foreach ((string cmd, string label) in _quick)
+		{
+			<button class="btn btn-sm btn-ghost mono" disabled="@(!_connected)" title="@label" @onclick="() => Send(cmd)">@cmd</button>
+		}
+	</div>
+</section>
+
+@code {
+	private static readonly (string, string)[] _quick =
+	[
+		("M114", "Report position"), ("M105", "Report temperatures"), ("M503", "Report settings"),
+		("M119", "Endstop states"), ("M115", "Firmware info"), ("G28", "Home all axes")
+	];
+
+	private IReadOnlyList<TerminalEntry> _entries = [];
+	private readonly List<string> _history = [];
+	private int _historyIndex = -1;
+	private bool _hideTemps = true;
+	private bool _connected;
+	private string _command = "";
+
+	protected override PrinterChange Interests => PrinterChange.Terminal | PrinterChange.State;
+	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(250);
+
+	protected override async Task RefreshAsync()
+	{
+		_entries = await Mediator.Send(new GetTerminalLogQuery(400, _hideTemps));
+		_connected = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsConnected();
+	}
+
+	private async Task SendAsync()
+	{
+		string text = _command.Trim();
+		if (text.Length == 0) return;
+		if (_history.LastOrDefault() != text) _history.Add(text);
+		_historyIndex = -1;
+		_command = "";
+		await Send(text);
+	}
+
+	private Task Send(string text) => Run(new SendGcodeCommand(text));
+
+	private void OnKey(KeyboardEventArgs e)
+	{
+		if (_history.Count == 0) return;
+		if (e.Key == "ArrowUp")
+		{
+			_historyIndex = _historyIndex < 0 ? _history.Count - 1 : Math.Max(0, _historyIndex - 1);
+			_command = _history[_historyIndex];
+		}
+		else if (e.Key == "ArrowDown" && _historyIndex >= 0)
+		{
+			_historyIndex++;
+			if (_historyIndex >= _history.Count) { _historyIndex = -1; _command = ""; }
+			else _command = _history[_historyIndex];
+		}
+	}
+}

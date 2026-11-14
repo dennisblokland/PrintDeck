@@ -1,0 +1,365 @@
+@page "/viewer"
+@page "/viewer/{FileName}"
+@inherits PrinterComponent
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Viewer · PrintDeck</PageTitle>
+
+<header class="page-head page-head-row">
+    <h1>Viewer</h1>
+    @if (_files.Count > 0)
+    {
+        <select class="input viewer-file" value="@_selected" @onchange="e => Select(e.Value as string)" aria-label="File">
+            @if (_selected is null) { <option value="">Pick a file…</option> }
+            @foreach (GcodeFile f in _files)
+            {
+                <option value="@f.Name">@f.Name@(f.Name == _jobFile ? " — printing" : "")</option>
+            }
+        </select>
+    }
+</header>
+
+@if (_files.Count == 0 && _loadedFiles)
+{
+    <div class="card empty">
+        <Icon Name="cube" Size="28" />
+        <p>Upload a file to see its toolpath</p>
+        <a class="btn btn-ghost" href="files"><Icon Name="folder" Size="16" /> Files</a>
+    </div>
+}
+else
+{
+    <div class="viewer">
+        <section class="card viewer-stage">
+            <div class="viewer-canvas-wrap">
+                <canvas class="viewer-canvas" @ref="_canvas" hidden="@(_mode == "3d")" aria-label="Toolpath of the selected layer"></canvas>
+                <canvas class="viewer-canvas" @ref="_canvas3d" hidden="@(_mode != "3d")" aria-label="3D toolpath up to the selected layer"></canvas>
+
+                @if (_loading)
+                {
+                    <div class="viewer-overlay"><span class="spinner"></span> Reading toolpath…</div>
+                }
+                else if (_error is not null)
+                {
+                    <div class="viewer-overlay is-error">@_error</div>
+                }
+                else if (_info is { Layers: 0 })
+                {
+                    <div class="viewer-overlay">No extrusion moves in this file</div>
+                }
+
+                <div class="viewer-tools">
+                    <div class="seg" role="group" aria-label="View">
+                        <button class="seg-btn @(_mode == "2d" ? "is-active" : "")" @onclick='() => SetMode("2d")'>2D</button>
+                        <button class="seg-btn @(_mode == "3d" ? "is-active" : "")" @onclick='() => SetMode("3d")'>3D</button>
+                    </div>
+                    <button class="icon-btn" title="Fit model" @onclick='() => Call("fit", "model")'><Icon Name="scan" Size="16" /></button>
+                    <button class="icon-btn" title="Whole bed" @onclick='() => Call("fit", "bed")'><Icon Name="maximize" Size="16" /></button>
+                </div>
+
+                @if (_info is { Layers: > 0 } info)
+                {
+                    <input class="range viewer-layer-range" type="range" min="0" max="@(info.Layers - 1)" step="1"
+                           value="@_layer" @oninput="OnLayerInput" aria-label="Layer" orient="vertical" />
+                }
+            </div>
+
+            @if (_info is { Layers: > 0 })
+            {
+                <div class="viewer-moves">
+                    <Icon Name="play" Size="14" />
+                    <input class="range" type="range" min="0" max="1000" step="1" value="@_moves" @oninput="OnMovesInput" aria-label="Moves within layer" />
+                </div>
+            }
+        </section>
+
+        <aside class="viewer-side">
+            <section class="card">
+                <header class="card-head">
+                    <h2>Layer</h2>
+                    @if (_progressLayer >= 0)
+                    {
+                        <button class="btn btn-sm @(_follow ? "btn-primary" : "btn-ghost")" @onclick="ToggleFollow"
+                                title="Jump to the layer that is printing">
+                            <Icon Name="crosshair" Size="14" /> Follow print
+                        </button>
+                    }
+                </header>
+                @if (_info is { Layers: > 0 } li)
+                {
+                    <div class="viewer-layer">
+                        <span class="viewer-layer-num">@(_layer + 1)<small> / @li.Layers</small></span>
+                        <span class="muted mono">Z @li.Zs[_layer].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) mm</span>
+                    </div>
+                    <div class="viewer-steps">
+                        <button class="btn btn-sm" disabled="@(_layer == 0)" @onclick="() => Step(-1)" title="Layer down"><Icon Name="down" Size="14" /></button>
+                        <button class="btn btn-sm" disabled="@(_layer >= li.Layers - 1)" @onclick="() => Step(1)" title="Layer up"><Icon Name="up" Size="14" /></button>
+                        @if (_progressLayer >= 0)
+                        {
+                            <span class="muted small">Printing layer @(_progressLayer + 1)</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="muted small">—</p>
+                }
+            </section>
+
+            <section class="card">
+                <header class="card-head"><h2>Show</h2></header>
+                @if (_info is { } i && i.Kinds.Length > 0)
+                {
+                    <ul class="viewer-legend">
+                        @foreach (int k in i.Kinds)
+                        {
+                            int kind = k;
+                            <li>
+                                <label class="toggle">
+                                    <input type="checkbox" checked="@(!_hidden.Contains(kind))" @onchange="e => ToggleKind(kind, (bool)e.Value!)" />
+                                    <i class="tp-swatch" style="--sw: var(--tp-@kind)"></i>
+                                    @KindName(kind)
+                                </label>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="viewer-opts">
+                    <label class="toggle"><input type="checkbox" checked="@_head" @onchange="e => SetHead((bool)e.Value!)" /> Nozzle</label>
+                    @if (_mode == "2d")
+                    {
+                        <label class="toggle"><input type="checkbox" checked="@_previous" @onchange="e => SetPrevious((bool)e.Value!)" /> Layer below</label>
+                        <label class="toggle"><input type="checkbox" checked="@_travel" @onchange="e => SetTravel((bool)e.Value!)" /> Travel moves</label>
+                    }
+                </div>
+                @if (_mode == "2d")
+                {
+                    <p class="muted small">Drag to pan, scroll or pinch to zoom, double-click to fit.</p>
+                }
+                else
+                {
+                    <p class="muted small">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom, double-click to fit.</p>
+                }
+            </section>
+        </aside>
+    </div>
+}
+
+@code {
+    [Parameter] public string? FileName { get; set; }
+
+    private ElementReference _canvas, _canvas3d;
+    private string _mode = "2d";
+    private IJSObjectReference? _module, _viewer;
+    private IReadOnlyList<GcodeFile> _files = [];
+    private bool _loadedFiles;
+    private PrinterProfile? _profile;
+    private string? _selected, _shown, _jobFile;
+    private double _jobProgress;
+    private ToolpathInfo? _info;
+    private bool _loading, _creating;
+    private string? _error;
+    private int _layer, _moves = 1000, _progressLayer = -1;
+    private bool _follow = true, _previous = true, _travel, _head = true;
+    private readonly HashSet<int> _hidden = [];
+    private Timer? _ticker;
+
+    public sealed record ToolpathInfo(int Layers, double[] Zs, int[] Kinds);
+
+    protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.Job | PrinterChange.State;
+    protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(500);
+
+    protected override void OnInitialized() =>
+        _ticker = new Timer(_ => { if (_jobFile is not null && _jobFile == _shown) _ = ReloadAsync(); }, null, 1000, 1000);
+
+    protected override async Task RefreshAsync()
+    {
+        _files = await Mediator.Send(new ListGcodeFilesQuery());
+        _loadedFiles = true;
+        _profile ??= await Mediator.Send(new GetPrinterProfileQuery());
+        PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
+        _jobFile = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j.FileName : null;
+        _jobProgress = status.Job?.Progress ?? 0;
+
+        _selected = FileName is { Length: > 0 } ? FileName : _selected ?? _jobFile ?? _files.FirstOrDefault()?.Name;
+        if (_selected is not null && _files.All(f => f.Name != _selected)) _selected = null;
+        await SyncAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FileName is { Length: > 0 } && FileName != _selected)
+        {
+            _selected = FileName;
+            await SyncAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_viewer is not null || _creating || _files.Count == 0) return;
+        _creating = true;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/viewer/gcode-viewer.js");
+            _viewer = await _module.InvokeAsync<IJSObjectReference>("create", _canvas, _canvas3d, _profile?.BedWidth ?? 220, _profile?.BedDepth ?? 220);
+            if (await _viewer.InvokeAsync<string>("storedMode") == "3d") await SetMode("3d");
+            await SyncAsync();
+        }
+        catch (JSDisconnectedException) { return; }
+        finally { _creating = false; }
+        StateHasChanged();
+    }
+
+    /// <summary>Loads the selected file into the viewer if needed and pushes job progress.</summary>
+    private async Task SyncAsync()
+    {
+        if (_viewer is null) return;
+
+        if (_selected != _shown)
+        {
+            _shown = _selected;
+            _info = null;
+            _error = null;
+            _progressLayer = -1;
+            if (_shown is null) return;
+
+            _loading = true;
+            StateHasChanged();
+            try
+            {
+                _info = await _viewer.InvokeAsync<ToolpathInfo>("load", $"toolpath/{Uri.EscapeDataString(_shown)}");
+                _layer = Math.Max(0, _info.Layers - 1);
+                _moves = 1000;
+                _follow = true;
+                await _viewer.InvokeVoidAsync("setOptions", new { previous = _previous, travel = _travel, head = _head, hidden = _hidden.ToArray() });
+            }
+            catch (JSException ex)
+            {
+                _error = ex.Message.Split('\n')[0];
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+
+        if (_info is null) return;
+        GcodeFile? file = _files.FirstOrDefault(f => f.Name == _shown);
+        double? bytes = _jobFile == _shown && file is not null ? _jobProgress * file.SizeBytes : null;
+        try { _progressLayer = await _viewer.InvokeAsync<int>("setProgress", bytes); }
+        catch (JSDisconnectedException) { return; }
+        if (_progressLayer >= 0 && _follow && _layer != _progressLayer)
+        {
+            _layer = _progressLayer;
+            _moves = 1000;
+            await PushLayerAsync();
+        }
+    }
+
+    private async Task SetMode(string mode)
+    {
+        if (_viewer is null || mode == _mode) return;
+        try
+        {
+            if (await _viewer.InvokeAsync<bool>("setMode", mode)) _mode = mode;
+            else Toasts.Error("3D view needs a browser with WebGL 2.");
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException ex) { Toasts.Error($"3D view failed: {ex.Message.Split('\n')[0]}"); }
+    }
+
+    private void Select(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return;
+        Nav.NavigateTo($"viewer/{Uri.EscapeDataString(name)}");
+    }
+
+    private async Task OnLayerInput(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value as string, out int layer)) return;
+        _layer = layer;
+        _moves = 1000;
+        _follow = _progressLayer == layer && _follow;
+        await PushLayerAsync();
+    }
+
+    private async Task OnMovesInput(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value as string, out int moves)) return;
+        _moves = moves;
+        _follow = false;
+        await PushLayerAsync();
+    }
+
+    private async Task Step(int delta)
+    {
+        if (_info is null) return;
+        _layer = Math.Clamp(_layer + delta, 0, _info.Layers - 1);
+        _moves = 1000;
+        _follow = false;
+        await PushLayerAsync();
+    }
+
+    private async Task ToggleFollow()
+    {
+        _follow = !_follow;
+        if (_follow && _progressLayer >= 0)
+        {
+            _layer = _progressLayer;
+            _moves = 1000;
+            await PushLayerAsync();
+        }
+    }
+
+    private async Task ToggleKind(int kind, bool visible)
+    {
+        if (visible) _hidden.Remove(kind); else _hidden.Add(kind);
+        await Call("setOptions", new { hidden = _hidden.ToArray() });
+    }
+
+    private Task SetPrevious(bool value) { _previous = value; return Call("setOptions", new { previous = value }); }
+
+    private Task SetHead(bool value) { _head = value; return Call("setOptions", new { head = value }); }
+
+    private Task SetTravel(bool value) { _travel = value; return Call("setOptions", new { travel = value }); }
+
+    private Task PushLayerAsync() => Call("setLayer", _layer, _moves / 1000.0);
+
+    private async Task Call(string method, params object?[] args)
+    {
+        if (_viewer is null) return;
+        try { await _viewer.InvokeVoidAsync(method, args); }
+        catch (JSDisconnectedException) { }
+    }
+
+    private static string KindName(int kind) => kind switch
+    {
+        1 => "Outer wall",
+        2 => "Inner wall",
+        3 => "Infill",
+        4 => "Solid infill",
+        5 => "Support",
+        6 => "Skirt / brim",
+        _ => "Other"
+    };
+
+    public override void Dispose()
+    {
+        _ticker?.Dispose();
+        IJSObjectReference? viewer = _viewer, module = _module;
+        _viewer = _module = null;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (viewer is not null) { await viewer.InvokeVoidAsync("dispose"); await viewer.DisposeAsync(); }
+                if (module is not null) await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+            catch (ObjectDisposedException) { }
+        });
+        base.Dispose();
+    }
+}

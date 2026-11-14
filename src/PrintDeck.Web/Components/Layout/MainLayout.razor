@@ -1,0 +1,32 @@
+@inherits LayoutComponentBase
+
+<div class="shell">
+	<aside class="sidebar">
+		<a class="brand" href="">
+			<span class="brand-mark"><Icon Name="logo" Size="22" /></span>
+			<span class="brand-name">PrintDeck</span>
+		</a>
+
+		<nav class="nav" aria-label="Main">
+			<NavLink class="nav-link" href="" Match="NavLinkMatch.All"><Icon Name="gauge" /> <span>Dashboard</span></NavLink>
+			<NavLink class="nav-link" href="control"><Icon Name="move" /> <span>Control</span></NavLink>
+			<NavLink class="nav-link" href="files"><Icon Name="folder" /> <span>Files</span></NavLink>
+            <NavLink class="nav-link" href="viewer"><Icon Name="cube" /> <span>Viewer</span></NavLink>
+			<NavLink class="nav-link" href="terminal"><Icon Name="terminal" /> <span>Terminal</span></NavLink>
+			<NavLink class="nav-link" href="settings"><Icon Name="sliders" /> <span>Settings</span></NavLink>
+		</nav>
+
+		<ConnectionPanel />
+	</aside>
+
+	<main class="main">
+		@Body
+	</main>
+</div>
+
+<Toasts />
+
+<div id="blazor-error-ui" data-nosnippet>
+	Something broke. <a href="." class="reload">Reload</a>
+	<span class="dismiss" title="Dismiss"><Icon Name="x" Size="16" /></span>
+</div>

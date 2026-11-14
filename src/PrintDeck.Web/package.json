@@ -1,0 +1,17 @@
+{
+  "name": "printdeck-web",
+  "private": true,
+  "description": "TypeScript for PrintDeck.Web. Compiled by the CompileTypeScript target in PrintDeck.Web.csproj (dotnet build).",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "test": "tsc -p tsconfig.test.json && vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0"
+  }
+}

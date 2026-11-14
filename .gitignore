@@ -1,0 +1,8 @@
+bin/
+obj/
+.dev-data/
+*.user
+.vs/
+.idea/
+TestResults/
+node_modules/

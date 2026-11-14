@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PrintDeck.Domain/PrintDeck.Domain.csproj" />
+    <Project Path="src/PrintDeck.Application/PrintDeck.Application.csproj" />
+    <Project Path="src/PrintDeck.Infrastructure/PrintDeck.Infrastructure.csproj" />
+    <Project Path="src/PrintDeck.Web/PrintDeck.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/PrintDeck.Domain.Tests/PrintDeck.Domain.Tests.csproj" />
+    <Project Path="tests/PrintDeck.Application.Tests/PrintDeck.Application.Tests.csproj" />
+    <Project Path="tests/PrintDeck.Infrastructure.Tests/PrintDeck.Infrastructure.Tests.csproj" />
+    <Project Path="tests/PrintDeck.Web.Tests/PrintDeck.Web.Tests.csproj" />
+  </Folder>
+</Solution>

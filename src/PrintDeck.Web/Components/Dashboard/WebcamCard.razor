@@ -1,0 +1,17 @@
+@inherits PrinterComponent
+
+@if (!string.IsNullOrWhiteSpace(_url))
+{
+	<section class="card webcam-card">
+		<header class="card-head"><h2>Camera</h2></header>
+		<div class="webcam">
+			<img src="@_url" alt="Printer camera stream" loading="lazy" />
+		</div>
+	</section>
+}
+
+@code {
+	private string? _url;
+	protected override PrinterChange Interests => PrinterChange.Settings;
+	protected override async Task RefreshAsync() => _url = (await Mediator.Send(new GetPrinterProfileQuery())).WebcamStreamUrl;
+}

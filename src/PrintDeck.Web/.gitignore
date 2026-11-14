@@ -1,0 +1,3 @@
+node_modules/
+# compiled from Scripts/ by the CompileTypeScript target
+wwwroot/js/

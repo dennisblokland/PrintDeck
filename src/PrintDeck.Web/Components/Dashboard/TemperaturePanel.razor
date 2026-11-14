@@ -1,0 +1,83 @@
+@inherits PrinterComponent
+
+<section class="card temps-card">
+	<header class="card-head">
+		<h2>Temperatures</h2>
+	</header>
+
+	@if (_heaters.Count == 0)
+	{
+		<div class="empty">
+			<Icon Name="thermo" Size="28" />
+			<p>Connect the printer to see temperatures</p>
+		</div>
+	}
+	else
+	{
+		<div class="heaters">
+			@foreach (HeaterReading h in _heaters)
+			{
+				string kind = h.IsBed ? "bed" : h.IsChamber ? "chamber" : "hotend";
+				double scale = h.IsBed ? 120.0 : h.IsChamber ? 80.0 : 300.0;
+				<div class="heater heater-@kind" @key="h.Heater">
+					<div class="heater-label"><Icon Name="@(h.IsBed ? "bed" : "flame")" Size="16" /> @h.DisplayName</div>
+					<div class="heater-read">
+						<span class="heater-actual">@Format.Temp(h.Actual)<small>°C</small></span>
+						<span class="heater-target @(h.Target > 0 ? "is-on" : "")">@(h.Target > 0 ? $"→ {h.Target:0}°" : "off")</span>
+					</div>
+					<div class="heater-meter" aria-hidden="true">
+						<i style="transform:scaleX(@Frac(h.Actual, scale))"></i>
+						@if (h.Target > 0)
+						{
+							<b style="left:@Pct(h.Target, scale)%"></b>
+						}
+					</div>
+					<form class="heater-set" @onsubmit="() => SetAsync(h.Heater)" @onsubmit:preventDefault>
+						<input class="input input-num" type="number" min="0" max="320" step="1" placeholder="Target"
+							   aria-label="@($"{h.DisplayName} target")" @bind="_inputs[h.Heater]" />
+						<button class="btn btn-sm" type="submit">Set</button>
+						<button class="btn btn-sm btn-ghost" type="button" title="Turn off" @onclick="() => OffAsync(h.Heater)"><Icon Name="power" Size="14" /></button>
+					</form>
+				</div>
+			}
+		</div>
+
+		<div class="presets">
+			@foreach (TemperaturePreset p in _presets)
+			{
+				<button class="btn btn-sm btn-ghost" title="@($"{p.Hotend}° / {p.Bed}°")" @onclick='() => Run(new ApplyTemperaturePresetCommand(p.Name), p.Name + " preheat")'>@p.Name</button>
+			}
+			<button class="btn btn-sm btn-ghost" @onclick='() => Run(new ApplyTemperaturePresetCommand("Off"), "Heaters off")'>Cool down</button>
+		</div>
+	}
+</section>
+
+@code {
+	private IReadOnlyList<HeaterReading> _heaters = [];
+	private IReadOnlyList<TemperaturePreset> _presets = [];
+	private readonly Dictionary<string, int?> _inputs = new();
+
+	protected override PrinterChange Interests => PrinterChange.Temperature | PrinterChange.State | PrinterChange.Settings;
+	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(400);
+
+	protected override async Task RefreshAsync()
+	{
+		_heaters = (await Mediator.Send(new GetPrinterStatusQuery())).Heaters;
+		_presets = (await Mediator.Send(new GetPrinterProfileQuery())).Presets;
+		foreach (HeaterReading h in _heaters) _inputs.TryAdd(h.Heater, null);
+	}
+
+	private async Task SetAsync(string heater)
+	{
+		if (_inputs.GetValueOrDefault(heater) is not { } target) return;
+		if (await Run(new SetTemperatureCommand(heater, target))) _inputs[heater] = null;
+	}
+
+	private static string Frac(double v, double max) =>
+		Math.Clamp(v / max, 0, 1).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+
+	private static string Pct(double v, double max) =>
+		(Math.Clamp(v / max, 0, 1) * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+	private Task OffAsync(string heater) => Run(new SetTemperatureCommand(heater, 0));
+}

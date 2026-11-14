@@ -1,0 +1,130 @@
+@page "/files"
+@inherits PrinterComponent
+
+<PageTitle>Files · PrintDeck</PageTitle>
+
+<header class="page-head">
+	<h1>Files</h1>
+	<p class="muted">@_files.Count file@(_files.Count == 1 ? "" : "s") · @Format.Bytes(_files.Sum(f => f.SizeBytes))</p>
+</header>
+
+<label class="dropzone @(_uploading ? "is-busy" : "")">
+	<InputFile OnChange="UploadAsync" multiple accept=".gcode,.gco,.g" disabled="@_uploading" />
+	<Icon Name="upload" Size="26" />
+	@if (_uploading)
+	{
+		<strong>Uploading @_uploadName…</strong>
+		<span class="muted">Large files take a moment while they are analysed.</span>
+	}
+	else
+	{
+		<strong>Drop G-code here or click to browse</strong>
+		<span class="muted">Or send straight from your slicer — see Settings → Slicer upload.</span>
+	}
+</label>
+
+@if (_files.Count == 0)
+{
+	<div class="card empty"><Icon Name="folder" Size="28" /><p>No files yet</p></div>
+}
+else
+{
+	<ul class="file-list">
+		@foreach (GcodeFile f in _files)
+		{
+			bool printing = _activeFile == f.Name;
+			<li class="file @(printing ? "is-printing" : "")" @key="f.Name">
+				<div class="file-main">
+					<span class="file-name" title="@f.Name">@f.Name</span>
+					<span class="file-sub">
+						@Format.Bytes(f.SizeBytes) · @Format.Ago(f.UploadedAt, Time.GetUtcNow())
+						@if (f.Analysis?.Slicer is { } slicer) { <text> · @slicer</text> }
+					</span>
+				</div>
+				<div class="file-stats">
+					<span title="Estimated print time"><Icon Name="clock" Size="14" /> @Format.Duration(f.Analysis?.EstimatedPrintTime)</span>
+					<span title="Filament"><Icon Name="spool" Size="14" /> @Format.Filament(f.Analysis?.FilamentMillimeters)</span>
+					<span title="Layers"><Icon Name="layers" Size="14" /> @(f.Analysis?.LayerCount?.ToString() ?? "—")</span>
+				</div>
+				<div class="file-actions">
+					<a class="icon-btn" href="viewer/@Uri.EscapeDataString(f.Name)" title="View toolpath"><Icon Name="eye" Size="16" /></a>
+					@if (printing)
+					{
+						<span class="chip chip-printing">Printing</span>
+					}
+					else
+					{
+						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
+								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Start print")"
+								@onclick='() => Run(new StartPrintCommand(f.Name), $"Printing {f.Name}")'>
+							<Icon Name="play" Size="14" /> Print
+						</button>
+						<button class="icon-btn icon-btn-danger @(_confirmDelete == f.Name ? "is-armed" : "")"
+								title="@(_confirmDelete == f.Name ? "Click again to delete" : "Delete")" @onclick="() => DeleteAsync(f.Name)">
+							<Icon Name="@(_confirmDelete == f.Name ? "check" : "trash")" Size="16" />
+						</button>
+					}
+				</div>
+			</li>
+		}
+	</ul>
+}
+
+@code {
+	private const long _maxUpload = 1L << 30;
+	private IReadOnlyList<GcodeFile> _files = [];
+	private PrinterState _state;
+	private string? _activeFile;
+	private bool _uploading;
+	private string? _uploadName;
+	private string? _confirmDelete;
+
+	protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.State | PrinterChange.Job;
+	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(500);
+
+	protected override async Task RefreshAsync()
+	{
+		_files = await Mediator.Send(new ListGcodeFilesQuery());
+		PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
+		_state = status.State;
+		_activeFile = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j.FileName : null;
+	}
+
+	private async Task UploadAsync(InputFileChangeEventArgs e)
+	{
+		IReadOnlyList<IBrowserFile> files = e.GetMultipleFiles(20);
+		_uploading = true;
+		_uploadName = files.Count == 1 ? files[0].Name : $"{files.Count} files";
+		try
+		{
+			foreach (IBrowserFile file in files)
+			{
+				await using Stream stream = file.OpenReadStream(_maxUpload);
+				Result<GcodeFile> result = await Mediator.Send(new UploadGcodeCommand(file.Name, stream));
+				if (result.IsSuccess) Toasts.Success($"Uploaded {result.Value!.Name}");
+				else Toasts.Error(result.Error!);
+			}
+		}
+		catch (IOException ex)
+		{
+			Toasts.Error($"Upload failed: {ex.Message}");
+		}
+		finally
+		{
+			_uploading = false;
+			await RefreshAsync();
+		}
+	}
+
+	private async Task DeleteAsync(string name)
+	{
+		if (_confirmDelete != name)
+		{
+			_confirmDelete = name;
+			_ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { if (_confirmDelete == name) _confirmDelete = null; StateHasChanged(); }));
+			return;
+		}
+		_confirmDelete = null;
+		await Run(new DeleteGcodeCommand(name), $"Deleted {name}");
+	}
+}

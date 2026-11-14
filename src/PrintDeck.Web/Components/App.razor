@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="theme-color" content="#0d0f12" />
+	<BasePath />
+	<ResourcePreloader />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+	<link rel="stylesheet" href="@Assets["app.css"]" />
+	<link rel="stylesheet" href="@Assets["PrintDeck.Web.styles.css"]" />
+	<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+	<ImportMap ImportMapDefinition="ImportMap" />
+	<HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+	<Routes @rendermode="InteractiveServer" />
+	<ReconnectModal />
+	<script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
+
+@code {
+	/// <summary>Static assets plus bare specifiers for the vendored three.js (used by the 3D G-code viewer).</summary>
+	private ImportMapDefinition ImportMap => ImportMapDefinition.Combine(
+		ImportMapDefinition.FromResourceCollection(Assets),
+		new ImportMapDefinition(
+			new Dictionary<string, string>
+			{
+				["three"] = "./" + Assets["lib/three/three.module.min.js"],
+				["three/addons/"] = "./lib/three/addons/",
+			},
+			null, null));
+}

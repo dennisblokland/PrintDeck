@@ -1,0 +1,95 @@
+@inherits PrinterComponent
+
+<div class="conn">
+	<div class="conn-row">
+		<StateBadge State="_status.State" />
+		@if (_status.State.IsConnected())
+		{
+			<span class="conn-port" title="@_status.Port">@ShortPort(_status.Port)</span>
+		}
+	</div>
+
+	@if (_status.State is PrinterState.Offline or PrinterState.Error)
+	{
+		@if (_status.Error is { } error)
+		{
+			<p class="conn-error">@error</p>
+		}
+		<div class="field-row">
+			<select class="input" @bind="_port" aria-label="Serial port">
+				@foreach (string p in _ports)
+				{
+					<option value="@p">@ShortPort(p)</option>
+				}
+			</select>
+			<button class="icon-btn" title="Rescan ports" @onclick="LoadPortsAsync"><Icon Name="refresh" Size="16" /></button>
+		</div>
+		<select class="input" @bind="_baud" aria-label="Baud rate">
+			@foreach (int b in ConnectPrinterHandler.SupportedBaudRates)
+			{
+				<option value="@b">@b baud</option>
+			}
+		</select>
+		<button class="btn btn-primary btn-block" disabled="@(_busy || string.IsNullOrEmpty(_port))" @onclick="ConnectAsync">
+			<Icon Name="plug" Size="16" /> Connect
+		</button>
+	}
+	else if (_status.State == PrinterState.Connecting)
+	{
+		<p class="muted small">Waiting for the printer to answer…</p>
+	}
+	else
+	{
+		<dl class="conn-meta">
+			<dt>Firmware</dt><dd>@(_status.Firmware ?? "Unknown")</dd>
+			<dt>Baud</dt><dd>@_status.BaudRate</dd>
+		</dl>
+		<button class="btn btn-ghost btn-block" disabled="@(_busy || _status.State.IsBusy())"
+				title="@(_status.State.IsBusy() ? "Stop the print first" : null)" @onclick="DisconnectAsync">
+			<Icon Name="power" Size="16" /> Disconnect
+		</button>
+	}
+</div>
+
+@code {
+	private PrinterStatusDto _status = new(PrinterState.Offline, null, 0, null, null, null, []);
+	private IReadOnlyList<string> _ports = [];
+	private string? _port;
+	private int _baud = 115200;
+	private bool _busy;
+
+	protected override PrinterChange Interests => PrinterChange.State;
+
+	protected override async Task OnInitializedAsync()
+	{
+		PrinterProfile profile = await Mediator.Send(new GetPrinterProfileQuery());
+		_baud = profile.DefaultBaudRate;
+		await LoadPortsAsync();
+		if (profile.LastPort is { } last && _ports.Contains(last)) _port = last;
+		await base.OnInitializedAsync();
+	}
+
+	protected override async Task RefreshAsync() => _status = await Mediator.Send(new GetPrinterStatusQuery());
+
+	private async Task LoadPortsAsync()
+	{
+		_ports = await Mediator.Send(new ListPortsQuery());
+		if (_port is null || !_ports.Contains(_port)) _port = _ports.FirstOrDefault();
+	}
+
+	private async Task ConnectAsync()
+	{
+		_busy = true;
+		try { await Run(new ConnectPrinterCommand(_port!, _baud)); }
+		finally { _busy = false; }
+	}
+
+	private async Task DisconnectAsync()
+	{
+		_busy = true;
+		try { await Run(new DisconnectPrinterCommand()); }
+		finally { _busy = false; }
+	}
+
+	private static string ShortPort(string? p) => p is null ? "" : p.Replace("/dev/serial/by-id/", "").Replace("/dev/", "");
+}

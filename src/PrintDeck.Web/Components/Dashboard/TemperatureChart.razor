@@ -1,0 +1,115 @@
+@using System.Globalization
+@using System.Text
+@inherits PrinterComponent
+
+<section class="card chart-card">
+	<header class="card-head">
+		<h2>Temperature history</h2>
+		<div class="seg" role="group" aria-label="Time window">
+			@foreach (int m in new[] { 5, 10, 30 })
+			{
+				<button class="seg-btn @(_minutes == m ? "is-active" : "")" @onclick="() => SetWindow(m)">@(m)m</button>
+			}
+		</div>
+	</header>
+
+	@if (_series.Count == 0)
+	{
+		<div class="empty chart-empty"><p>Temperatures appear here once connected</p></div>
+	}
+	else
+	{
+		<div class="chart-wrap">
+			<div class="chart-plot">
+				<svg class="chart" viewBox="0 0 @_w @_h" preserveAspectRatio="none" role="img" aria-label="Temperature chart">
+					@foreach (int tick in _ticks)
+					{
+						<line class="grid" x1="0" x2="@_w" y1="@P(Y(tick))" y2="@P(Y(tick))" />
+					}
+					@foreach (Series s in _series)
+					{
+						<polyline class="target target-@s.Kind" points="@s.Target" />
+						<polyline class="line line-@s.Kind" points="@s.Actual" />
+					}
+				</svg>
+				@foreach (int tick in _ticks)
+				{
+					<span class="chart-y" style="top:@P(Y(tick) / _h * 100)%">@(tick)°</span>
+				}
+				@for (int i = 0; i <= _xTicks; i++)
+				{
+					double ago = _minutes - _minutes * i / (double)_xTicks;
+					<span class="chart-x @(i == 0 ? "is-first" : i == _xTicks ? "is-last" : "")" style="left:@P(100.0 * i / _xTicks)%">@(ago == 0 ? "now" : $"−{ago:0.#}m")</span>
+				}
+				@foreach (Series s in _series)
+				{
+					<span class="chart-dot chart-dot-@s.Kind" style="left:@P(s.LastX / _w * 100)%;top:@P(s.LastY / _h * 100)%"></span>
+				}
+			</div>
+		</div>
+		<div class="legend">
+			@foreach (Series s in _series)
+			{
+				<span class="legend-item"><i class="swatch swatch-@s.Kind"></i>@s.Name <b>@Format.Temp(s.Last)°</b></span>
+			}
+			<span class="legend-item muted"><i class="swatch swatch-dashed"></i>Target</span>
+		</div>
+	}
+</section>
+
+@code {
+	private const double _w = 1000, _h = 300;
+	private const int _xTicks = 5;
+	private record Series(string Name, string Kind, string Actual, string Target, double Last, double LastX, double LastY);
+
+	private int _minutes = 10;
+	private double _max = 100;
+	private List<Series> _series = [];
+	private List<int> _ticks = [];
+
+	protected override PrinterChange Interests => PrinterChange.Temperature | PrinterChange.State;
+	protected override TimeSpan Throttle => TimeSpan.FromSeconds(1);
+
+	private async Task SetWindow(int minutes)
+	{
+		_minutes = minutes;
+		await RefreshAsync();
+	}
+
+	protected override async Task RefreshAsync()
+	{
+		TimeSpan window = TimeSpan.FromMinutes(_minutes);
+		IReadOnlyList<TemperatureSample> samples = await Mediator.Send(new GetTemperatureHistoryQuery(window));
+		if (samples.Count == 0) { _series = []; return; }
+
+		DateTimeOffset now = Time.GetUtcNow();
+		double peak = samples.SelectMany(s => s.Heaters).Max(h => Math.Max(h.Actual, h.Target));
+		_max = Math.Max(50, Math.Ceiling((peak + 10) / 50) * 50);
+		int step = _max > 200 ? 100 : 50;
+		_ticks = Enumerable.Range(0, (int)(_max / step) + 1).Select(i => i * step).ToList();
+
+		double X(DateTimeOffset at) => _w * (1 - (now - at).TotalSeconds / window.TotalSeconds);
+
+		_series = samples.SelectMany(s => s.Heaters).Select(h => h.Heater).Distinct().Select(heater =>
+		{
+			StringBuilder actual = new();
+			StringBuilder target = new();
+			HeaterReading? any = null;
+			double lastX = 0.0;
+			foreach (TemperatureSample s in samples)
+			{
+				if (s.Heaters.FirstOrDefault(h => h.Heater == heater) is not { } h) continue;
+				any = h;
+				lastX = X(s.At);
+				string x = P(lastX);
+				actual.Append(x).Append(',').Append(P(Y(h.Actual))).Append(' ');
+				target.Append(x).Append(',').Append(P(Y(h.Target))).Append(' ');
+			}
+			string kind = any!.IsBed ? "bed" : any.IsChamber ? "chamber" : "hotend";
+			return new Series(any.DisplayName, kind, actual.ToString(), target.ToString(), any.Actual, lastX, Y(any.Actual));
+		}).ToList();
+	}
+
+	private double Y(double temp) => _h * (1 - temp / _max);
+	private static string P(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+}
