@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.x
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/PrintDeck.Web/package-lock.json
+
+      - name: Install npm packages
+        working-directory: src/PrintDeck.Web
+        run: npm ci
+
+      - name: TypeScript tests
+        working-directory: src/PrintDeck.Web
+        run: npm test
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: .NET tests
+        run: dotnet test -c Release --no-build
