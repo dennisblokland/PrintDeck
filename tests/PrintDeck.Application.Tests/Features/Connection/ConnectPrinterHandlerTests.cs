@@ -43,8 +43,8 @@ public class ConnectPrinterHandlerTests
 
 		Assert.True(r.IsSuccess);
 		Assert.Equal(("/dev/ttyACM0", 250000), _session.ConnectedWith);
-		Assert.Equal("/dev/ttyACM0", _settings.Profile.LastPort);
-		Assert.Equal(250000, _settings.Profile.DefaultBaudRate);
+		Assert.Equal("/dev/ttyACM0", _settings.Settings.LastPort);
+		Assert.Equal(250000, _settings.Settings.DefaultBaudRate);
 		Assert.Contains(PrinterChange.Settings, _events.Published);
 	}
 

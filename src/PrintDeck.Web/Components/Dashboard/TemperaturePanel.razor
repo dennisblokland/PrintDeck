@@ -69,7 +69,7 @@
 	protected override async Task RefreshAsync()
 	{
 		_heaters = (await Mediator.Send(new GetPrinterStatusQuery())).Heaters;
-		_presets = (await Mediator.Send(new GetPrinterProfileQuery())).Presets;
+		_presets = (await Mediator.Send(new GetSettingsQuery())).Presets;
 		foreach (HeaterReading h in _heaters) _inputs.TryAdd(h.Heater, null);
 	}
 

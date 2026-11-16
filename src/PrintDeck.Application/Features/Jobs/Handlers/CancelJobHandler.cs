@@ -15,7 +15,7 @@ public sealed class CancelJobHandler(IPrinterSession session, ISettingsStore set
 {
 	public async ValueTask<Result> Handle(CancelJobCommand c, CancellationToken ct)
 	{
-		PrinterProfile profile = await settings.GetAsync(ct);
-		return session.CancelJob(profile.CancelGcode.Split('\n'));
+		HostSettings s = await settings.GetAsync(ct);
+		return session.CancelJob(s.CancelGcode.Split('\n'));
 	}
 }

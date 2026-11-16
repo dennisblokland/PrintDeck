@@ -3,17 +3,20 @@ using PrintDeck.Domain.Settings;
 
 namespace PrintDeck.Application.Tests.TestDoubles;
 
-internal sealed class FakeSettingsStore(PrinterProfile? profile = null) : ISettingsStore
+internal sealed class FakeSettingsStore(HostSettings? settings = null) : ISettingsStore
 {
-	public PrinterProfile Profile { get; private set; } = profile ?? new PrinterProfile { ApiKey = "KEY" };
+	/// <summary>Settings whose only (and active) profile is <paramref name="profile"/>.</summary>
+	public FakeSettingsStore(PrinterProfile profile) : this(new HostSettings { ApiKey = "KEY", Profiles = [profile], ActiveProfileId = profile.Id }) { }
+
+	public HostSettings Settings { get; private set; } = settings ?? new HostSettings { ApiKey = "KEY" };
 	public int Saves { get; private set; }
 
-	public Task<PrinterProfile> GetAsync(CancellationToken ct) => Task.FromResult(Profile);
+	public Task<HostSettings> GetAsync(CancellationToken ct) => Task.FromResult(Settings);
 
-	public Task SaveAsync(PrinterProfile profile, CancellationToken ct)
+	public Task<HostSettings> UpdateAsync(Func<HostSettings, HostSettings> change, CancellationToken ct)
 	{
-		Profile = profile;
+		Settings = change(Settings).Normalized();
 		Saves++;
-		return Task.CompletedTask;
+		return Task.FromResult(Settings);
 	}
 }

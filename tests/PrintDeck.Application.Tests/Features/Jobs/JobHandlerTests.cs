@@ -56,9 +56,9 @@ public class JobHandlerTests
 	}
 
 	[Fact]
-	public async Task Cancel_runs_the_profile_cancel_gcode()
+	public async Task Cancel_runs_the_cancel_gcode()
 	{
-		FakeSettingsStore settings = new(new PrinterProfile { CancelGcode = "M104 S0\nM140 S0\nG28 X" });
+		FakeSettingsStore settings = new(new HostSettings { CancelGcode = "M104 S0\nM140 S0\nG28 X" });
 
 		Assert.True((await new CancelJobHandler(_session, settings).Handle(new CancelJobCommand(), Ct)).IsSuccess);
 		Assert.Equal(["M104 S0", "M140 S0", "G28 X"], _session.CancelCommands);
