@@ -4,6 +4,7 @@ using PrintDeck.Application.Printer;
 using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
+using PrintDeck.Domain.Printer.Enums;
 using PrintDeck.Domain.Settings;
 
 namespace PrintDeck.Application.Tests.Features.Jobs;
@@ -15,7 +16,8 @@ public class JobHandlerTests
 	private readonly FakeSettingsStore _settings = new();
 	private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-	private ValueTask<Result> Start(string name) => new StartPrintHandler(_session, _files, _settings).Handle(new StartPrintCommand(name), Ct);
+	private ValueTask<Result> Start(string name, bool ignoreProblems = false) =>
+		new StartPrintHandler(_session, _files, _settings).Handle(new StartPrintCommand(name, ignoreProblems), Ct);
 
 	[Fact]
 	public async Task Start_streams_the_file_with_its_slicer_estimate()
@@ -37,6 +39,40 @@ public class JobHandlerTests
 		await _settings.UpdateAsync(s => s with { ShowProgressOnPrinter = false }, Ct);
 		await Start("cube.gcode");
 		Assert.False(_session.StartedWith!.ShowProgressOnPrinter);
+	}
+
+	[Fact]
+	public async Task Start_refuses_a_file_with_an_error()
+	{
+		_files.Add("bad.gcode", "G28\nM104 S{material_print_temperature}\n");
+
+		Assert.Equal("Not printing bad.gcode: The slicer left {material_print_temperature} unfilled; the printer reads it as 0.",
+			(await Start("bad.gcode")).Error);
+		Assert.Null(_session.StartedJob);
+	}
+
+	[Fact]
+	public async Task Start_prints_a_file_with_only_warnings()
+	{
+		_files.Add("warm.gcode", "G28\nG1 X10 Y10 E1\n"); // extrudes without a temperature: a warning
+		Assert.True((await Start("warm.gcode")).IsSuccess);
+	}
+
+	[Fact]
+	public async Task Start_prints_anyway_when_told_to()
+	{
+		_files.Add("bad.gcode", "G28\nM112\n");
+		Assert.True((await Start("bad.gcode", ignoreProblems: true)).IsSuccess);
+		Assert.NotNull(_session.StartedJob);
+	}
+
+	[Fact]
+	public async Task Start_leaves_the_refusal_to_a_busy_printer()
+	{
+		_files.Add("bad.gcode", "G28\nM112\n");
+		_session.State = PrinterState.Printing;
+		_session.JobResult = Result.Failure("A print is already running.");
+		Assert.Equal("A print is already running.", (await Start("bad.gcode")).Error);
 	}
 
 	[Fact]

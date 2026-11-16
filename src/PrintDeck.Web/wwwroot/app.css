@@ -495,6 +495,13 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ───────────────────────── files: problem check ───────────────────────── */
+.check-dialog { margin-bottom: 16px; border-color: rgb(242 184 75 / .4); }
+.check-dialog.has-errors { border-color: rgb(229 72 77 / .4); }
+.check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.check-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 12px; }
+.check-message { line-height: 1.4; }
+
 /* ───────────────────────── terminal: log files ───────────────────────── */
 .logs-card { margin-top: 16px; }
 .log-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

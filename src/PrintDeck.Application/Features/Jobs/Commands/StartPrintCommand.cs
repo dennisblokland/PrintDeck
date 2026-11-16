@@ -10,4 +10,8 @@ using PrintDeck.Domain.Common;
 
 namespace PrintDeck.Application.Features.Jobs.Commands;
 
-public sealed record StartPrintCommand(string FileName) : ICommand<Result>;
+/// <summary>
+/// Streams a stored file to the printer. Unless <paramref name="IgnoreProblems"/> is set, a file with a known
+/// error (see <c>GcodeProblemCheck</c>) is refused; warnings never block.
+/// </summary>
+public sealed record StartPrintCommand(string FileName, bool IgnoreProblems = false) : ICommand<Result>;

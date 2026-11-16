@@ -26,6 +26,33 @@
 	</label>
 }
 
+@if (_review is { } review)
+{
+	bool errors = review.Problems.Any(p => p.Severity == GcodeProblemSeverity.Error);
+	<section class="card check-dialog @(errors ? "has-errors" : "")" role="alertdialog" aria-labelledby="check-title">
+		<header class="card-head">
+			<h2 id="check-title">@review.Problems.Count problem@(review.Problems.Count == 1 ? "" : "s") in <span class="mono">@review.FileName</span></h2>
+		</header>
+		<ul class="check-list">
+			@foreach (GcodeProblem p in review.Problems)
+			{
+				<li>
+					<span class="chip @(p.Severity == GcodeProblemSeverity.Error ? "chip-failed" : "chip-paused")">@(p.Severity == GcodeProblemSeverity.Error ? "Error" : "Warning")</span>
+					<span class="check-message">@p.Message</span>
+					<span class="muted small mono">@Where(p)</span>
+				</li>
+			}
+		</ul>
+		<div class="actions">
+			<button class="btn" @onclick="() => _review = null">Cancel</button>
+			<button class="btn @(errors ? "btn-danger" : "btn-primary")" disabled="@(_state != PrinterState.Operational)"
+					@onclick="() => StartAsync(review.FileName)">
+				<Icon Name="play" Size="14" /> Print anyway
+			</button>
+		</div>
+	</section>
+}
+
 @if (_files.Count == 0)
 {
 	<div class="card empty"><Icon Name="folder" Size="28" /><p>No files yet</p></div>
@@ -70,10 +97,10 @@ else
 								<Icon Name="sdcard" Size="16" />
 							</button>
 						}
-						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
-								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Start print")"
-								@onclick='() => Run(new StartPrintCommand(f.Name), $"Printing {f.Name}")'>
-							<Icon Name="play" Size="14" /> Print
+						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational || _checking is not null)"
+								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Check the file, then print")"
+								@onclick="() => PrintAsync(f.Name)">
+							<Icon Name="play" Size="14" /> @(_checking == f.Name ? "Checking…" : "Print")
 						</button>
 						<button class="icon-btn icon-btn-danger @(_confirmDelete == f.Name ? "is-armed" : "")"
 								title="@(_confirmDelete == f.Name ? "Click again to delete" : "Delete")" @onclick="() => DeleteAsync(f.Name)">
@@ -168,6 +195,8 @@ else
 	private bool _uploading;
 	private string? _uploadName;
 	private string? _confirmDelete;
+	private string? _checking;
+	private (string FileName, IReadOnlyList<GcodeProblem> Problems)? _review;
 
 	protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.State | PrinterChange.Job;
 	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(500);
@@ -239,6 +268,38 @@ else
 		_confirmDelete = null;
 		await Run(new DeleteSdFileCommand(f.Path), $"Deleted {f.DisplayName} from the SD card");
 	}
+
+	/// <summary>Checks the file first; a clean file starts at once, otherwise the problems are shown.</summary>
+	private async Task PrintAsync(string name)
+	{
+		_review = null;
+		_checking = name;
+		try
+		{
+			IReadOnlyList<GcodeProblem>? problems = await Mediator.Send(new CheckGcodeFileQuery(name));
+			if (problems is null) Toasts.Error($"File {name} not found.");
+			else if (problems.Count == 0) await StartAsync(name);
+			else _review = (name, problems);
+		}
+		finally
+		{
+			_checking = null;
+		}
+	}
+
+	private async Task StartAsync(string name)
+	{
+		_review = null;
+		await Run(new StartPrintCommand(name, IgnoreProblems: true), $"Printing {name}");
+	}
+
+	private static string Where(GcodeProblem p) =>
+		(p.FirstLine, p.Count) switch
+		{
+			(null, _) => "",
+			({ } line, 1) => $"line {line:N0}",
+			({ } line, int n) => $"line {line:N0} and {n - 1:N0} more"
+		};
 
 	private async Task DeleteAsync(string name)
 	{
