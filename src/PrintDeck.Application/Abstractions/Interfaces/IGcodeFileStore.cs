@@ -14,4 +14,7 @@ public interface IGcodeFileStore
 
 	/// <summary>Adds a finished print to the file's history; ignored when the file is gone.</summary>
 	Task RecordPrintAsync(string name, PrintRecord print, CancellationToken ct);
+
+	/// <summary>Every recorded print of every stored file, in no particular order.</summary>
+	Task<IReadOnlyList<PrintHistoryEntry>> ListPrintsAsync(CancellationToken ct);
 }

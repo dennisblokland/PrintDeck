@@ -38,19 +38,24 @@ public sealed class PrintHistoryRecorder(
 		if ((change & PrinterChange.Job) == 0) return;
 		if (session.CurrentJob is not { Kind: JobKind.Print, IsActive: false, EndedAt: { } ended } job) return;
 
-		PrintRecord record = new(job.StartedAt, ended, job.Status);
+		// Read now: the job object is replaced when the next print starts.
+		PrintRecord record = new(job.StartedAt, ended, job.Status, job.Elapsed(ended));
+		double share = job.Status == JobStatus.Completed ? 1 : job.Progress;
 		lock (_gate)
 		{
 			if (ReferenceEquals(job, _recorded)) return;
 			_recorded = job;
-			_pending = _pending.ContinueWith(_ => SaveAsync(job.FileName, record), TaskScheduler.Default).Unwrap();
+			_pending = _pending.ContinueWith(_ => SaveAsync(job.FileName, record, share), TaskScheduler.Default).Unwrap();
 		}
 	}
 
-	private async Task SaveAsync(string name, PrintRecord record)
+	private async Task SaveAsync(string name, PrintRecord record, double share)
 	{
 		try
 		{
+			// Filament: the analysed total, or the printed share of it for a print that stopped early.
+			if ((await files.GetAsync(name, CancellationToken.None))?.Analysis?.FilamentMillimeters is { } total)
+				record = record with { FilamentMm = Math.Round(total * share, 1) };
 			await files.RecordPrintAsync(name, record, CancellationToken.None);
 			events.Publish(PrinterChange.Files); // the list shows "printed …" now
 		}

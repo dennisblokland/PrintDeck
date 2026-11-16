@@ -61,6 +61,10 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 		return Task.CompletedTask;
 	}
 
+	public Task<IReadOnlyList<PrintHistoryEntry>> ListPrintsAsync(CancellationToken ct) =>
+		Task.FromResult<IReadOnlyList<PrintHistoryEntry>>(
+			_prints.SelectMany(f => f.Value.Select(p => new PrintHistoryEntry(f.Key, p))).ToList());
+
 	public IReadOnlyList<PrintRecord> PrintsOf(string name) => _prints.TryGetValue(name, out List<PrintRecord>? list) ? list : [];
 
 	private GcodeFile ToFile(string name)

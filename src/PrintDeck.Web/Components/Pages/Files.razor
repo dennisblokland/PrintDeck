@@ -292,7 +292,10 @@ else
 	}
 
 	private static string PrintSummary(PrintStats p) =>
-		$"{p.Completed} successful print{(p.Completed == 1 ? "" : "s")}" + (p.Unsuccessful > 0 ? $", {p.Unsuccessful} cancelled or failed" : "");
+		$"{p.Completed} successful print{(p.Completed == 1 ? "" : "s")}"
+		+ (p.Unsuccessful > 0 ? $", {p.Unsuccessful} cancelled or failed" : "")
+		+ (p.TotalPrintTime > TimeSpan.Zero ? $" · {Format.Duration(p.TotalPrintTime)} printing" : "")
+		+ (p.TotalFilamentMm > 0 ? $" · {Format.Filament(p.TotalFilamentMm)} filament" : "");
 	private (string FileName, IReadOnlyList<GcodeProblem> Problems)? _review;
 
 	protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.State | PrinterChange.Job;

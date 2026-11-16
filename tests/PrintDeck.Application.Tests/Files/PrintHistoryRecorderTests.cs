@@ -21,7 +21,8 @@ public sealed class PrintHistoryRecorderTests : IDisposable
 
 	public PrintHistoryRecorderTests()
 	{
-		_files.Add("cube.gcode", "G28\n");
+		_files.Add("cube.gcode", "G28\n", analysis: new GcodeAnalysis(null, 2000, null, 1, null));
+		_files.Add("plain.gcode", "G28\n");
 		_events.Changed += c => { lock (_published) _published.Add(c); };
 		_recorder = new PrintHistoryRecorder(_session, _events, _files, NullLogger<PrintHistoryRecorder>.Instance);
 		_recorder.Start();
@@ -45,8 +46,31 @@ public sealed class PrintHistoryRecorderTests : IDisposable
 		await Finish(new PrintJob("cube.gcode", 10, null, _t0), j => j.Complete(_t0.AddMinutes(42)));
 
 		PrintRecord record = Assert.Single(_files.PrintsOf("cube.gcode"));
-		Assert.Equal(new PrintRecord(_t0, _t0.AddMinutes(42), JobStatus.Completed), record);
+		Assert.Equal(new PrintRecord(_t0, _t0.AddMinutes(42), JobStatus.Completed, TimeSpan.FromMinutes(42), 2000), record);
 		Assert.Contains(PrinterChange.Files, _published); // so the file list shows it
+	}
+
+	[Fact]
+	public async Task Print_time_leaves_out_pauses_and_a_stopped_print_counts_its_share_of_filament()
+	{
+		await Finish(new PrintJob("cube.gcode", 1000, null, _t0), j =>
+		{
+			j.Advance(250);
+			j.Pause(_t0.AddMinutes(10));
+			j.Resume(_t0.AddMinutes(40));
+			j.Cancel(_t0.AddMinutes(50));
+		});
+
+		PrintRecord record = Assert.Single(_files.PrintsOf("cube.gcode"));
+		Assert.Equal(TimeSpan.FromMinutes(20), record.PrintTime);
+		Assert.Equal(500, record.FilamentMm); // a quarter of 2000 mm
+	}
+
+	[Fact]
+	public async Task Filament_stays_unknown_without_an_analysis()
+	{
+		await Finish(new PrintJob("plain.gcode", 10, null, _t0), j => j.Complete(_t0.AddMinutes(1)));
+		Assert.Null(Assert.Single(_files.PrintsOf("plain.gcode")).FilamentMm);
 	}
 
 	[Fact]
