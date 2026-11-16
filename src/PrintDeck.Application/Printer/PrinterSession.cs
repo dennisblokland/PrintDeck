@@ -32,7 +32,8 @@ public sealed class PrinterSession(
 	PrinterEventHub events,
 	TimeProvider time,
 	ILogger<PrinterSession> logger,
-	ISettingsStore? settings = null) : IPrinterSession, IAsyncDisposable
+	ISettingsStore? settings = null,
+	ISerialLog? serialLog = null) : IPrinterSession, IAsyncDisposable
 {
 	private static readonly TimeSpan _idleTimeout = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan _longCommandTimeout = TimeSpan.FromMinutes(10);
@@ -913,7 +914,9 @@ public sealed class PrinterSession(
 
 	private void Log(TerminalDirection direction, string text)
 	{
-		_terminal.Add(new TerminalEntry(Interlocked.Increment(ref _terminalId), Now, direction, text));
+		TerminalEntry entry = new(Interlocked.Increment(ref _terminalId), Now, direction, text);
+		_terminal.Add(entry);
+		serialLog?.Write(entry);
 		events.Publish(PrinterChange.Terminal);
 	}
 

@@ -15,6 +15,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - G-code viewer: 2D layer view and 3D view (three.js, vendored in `wwwroot/lib/three`), coloured by feature (walls, infill, support…), move scrubber, and live follow of the running print
 - **Printer profiles**: save several printers (build volume, extruders, heated bed, jog speeds) and switch in Settings or the connection panel; presets, camera and cancel script stay shared
 - Terminal with command history and temperature-noise filter
+- **Logs**: switch on a full serial log (every line to and from the printer, timestamped, in `logs/serial.log`); PrintDeck's own log goes to `logs/printdeck.log`. Both roll over by size and download from the Terminal page (admin accounts only)
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
 - **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
@@ -59,7 +60,7 @@ Ports below 1024 (e.g. 80) need root on Linux and fail with `SocketException (13
 sudo setcap 'cap_net_bind_service=+ep' src/PrintDeck.Web/bin/Release/net11.0/PrintDeck.Web
 ```
 
-On first start PrintDeck asks you to create the admin account at `/setup`. Pick **VIRTUAL** as port to try it without a printer. Data lives in `~/.printdeck` (`Storage:DataDirectory` to change; `.dev-data/` in Development): uploads, `settings.json`, `printdeck.db` (accounts) and `keys/` (signs login cookies, so restarts keep you signed in).
+On first start PrintDeck asks you to create the admin account at `/setup`. Pick **VIRTUAL** as port to try it without a printer. Data lives in `~/.printdeck` (`Storage:DataDirectory` to change; `.dev-data/` in Development): uploads, `settings.json`, `printdeck.db` (accounts), `keys/` (signs login cookies, so restarts keep you signed in) and `logs/`.
 
 Locked out of the only admin account? Stop PrintDeck and delete `printdeck.db`; the next start asks for a new admin (other accounts are lost, settings and files stay).
 

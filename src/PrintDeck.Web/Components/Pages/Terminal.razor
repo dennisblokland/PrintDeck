@@ -11,6 +11,10 @@
 			<input type="checkbox" @bind="_hideTemps" @bind:after="ReloadAsync" />
 			<span>Hide temperature polling</span>
 		</label>
+		<label class="toggle" title="Write every line to and from the printer to logs/serial.log">
+			<input type="checkbox" checked="@_logs.SerialLogEnabled" @onchange="SetSerialLogAsync" />
+			<span>Serial log to file</span>
+		</label>
 		<button class="btn btn-sm btn-ghost" @onclick="() => Run(new ClearTerminalCommand())"><Icon Name="trash" Size="14" /> Clear</button>
 	</div>
 </header>
@@ -45,6 +49,30 @@
 	</div>
 </section>
 
+<section class="card logs-card" aria-labelledby="logs-title">
+	<header class="card-head">
+		<h2 id="logs-title">Log files</h2>
+		<button class="icon-btn" title="Refresh list" @onclick="LoadLogsAsync"><Icon Name="refresh" Size="16" /></button>
+	</header>
+	@if (_logs.Files.Count == 0)
+	{
+		<p class="muted small">No log files yet.</p>
+	}
+	else
+	{
+		<ul class="log-list">
+			@foreach (LogFile f in _logs.Files)
+			{
+				<li @key="f.Name">
+					<span class="mono">@f.Name</span>
+					<span class="muted small">@Format.Bytes(f.SizeBytes) · @Format.Ago(f.ModifiedAt, Time.GetUtcNow())</span>
+					<a class="btn btn-sm btn-ghost" href="logs/@Uri.EscapeDataString(f.Name)" download="@f.Name"><Icon Name="down" Size="14" /> Download</a>
+				</li>
+			}
+		</ul>
+	}
+</section>
+
 @code {
 	private static readonly (string, string)[] _quick =
 	[
@@ -58,6 +86,8 @@
 	private bool _hideTemps = true;
 	private bool _connected;
 	private string _command = "";
+	private LogsDto _logs = new(false, []);
+	private bool _logsLoaded;
 
 	protected override PrinterChange Interests => PrinterChange.Terminal | PrinterChange.State;
 	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(250);
@@ -66,6 +96,20 @@
 	{
 		_entries = await Mediator.Send(new GetTerminalLogQuery(400, _hideTemps));
 		_connected = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsConnected();
+		if (!_logsLoaded) await LoadLogsAsync();
+	}
+
+	private async Task LoadLogsAsync()
+	{
+		_logs = await Mediator.Send(new GetLogsQuery());
+		_logsLoaded = true;
+	}
+
+	private async Task SetSerialLogAsync(ChangeEventArgs e)
+	{
+		bool on = e.Value is true;
+		await Run(new SetSerialLogCommand(on), on ? "Serial log on: logs/serial.log" : "Serial log off");
+		await LoadLogsAsync();
 	}
 
 	private async Task SendAsync()
