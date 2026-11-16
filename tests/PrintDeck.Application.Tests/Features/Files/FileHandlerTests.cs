@@ -7,6 +7,8 @@ using PrintDeck.Application.Files;
 using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
+using PrintDeck.Domain.Jobs.Enums;
+using PrintDeck.Domain.Files.Enums;
 using PrintDeck.Domain.Jobs;
 
 namespace PrintDeck.Application.Tests.Features.Files;
@@ -36,6 +38,20 @@ public class FileHandlerTests
 		IReadOnlyList<GcodeFile> list = await new ListGcodeFilesHandler(_files).Handle(new ListGcodeFilesQuery(), Ct);
 
 		Assert.Equal(["new.gcode", "mid.gcode", "old.gcode"], list.Select(f => f.Name));
+	}
+
+	[Fact]
+	public async Task List_searches_sorts_and_filters()
+	{
+		_files.Add("benchy.gcode", "G28", _t0);
+		_files.Add("benchy-old.gcode", "G28\nG1 X1", _t0.AddHours(1));
+		_files.Add("cube.gcode", "G28", _t0.AddHours(2));
+		await _files.RecordPrintAsync("benchy-old.gcode", new PrintRecord(_t0, _t0.AddHours(1), JobStatus.Completed), Ct);
+
+		IReadOnlyList<GcodeFile> list = await new ListGcodeFilesHandler(_files)
+			.Handle(new ListGcodeFilesQuery("BEN", FileSort.Name, HidePrinted: true), Ct);
+
+		Assert.Equal(["benchy.gcode"], list.Select(f => f.Name));
 	}
 
 	[Fact]

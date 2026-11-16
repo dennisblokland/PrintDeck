@@ -21,6 +21,11 @@ public static class DependencyInjection
 		services.AddSingleton<ToolpathCache>();
 		services.AddSingleton<PrinterSession>();
 		services.AddSingleton<IPrinterSession>(sp => sp.GetRequiredService<PrinterSession>());
+		services.AddSingleton<PrintHistoryRecorder>();
 		return services;
 	}
+
+	/// <summary>Starts recording finished prints into each file's history.</summary>
+	public static void StartPrintHistory(this IServiceProvider services) =>
+		services.GetRequiredService<PrintHistoryRecorder>().Start();
 }

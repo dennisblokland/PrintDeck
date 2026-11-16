@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 
 using PrintDeck.Domain.Files;
+using PrintDeck.Domain.Jobs.Enums;
 using PrintDeck.Infrastructure.Storage;
 using PrintDeck.Infrastructure.Tests.TestSupport;
 
@@ -123,5 +124,42 @@ public sealed class FileSystemGcodeStoreTests : IDisposable
 		await Assert.ThrowsAsync<ArgumentException>(() => _store.GetAsync(name, Ct));
 		await Assert.ThrowsAsync<ArgumentException>(() => Save(name));
 		Assert.Throws<ArgumentException>(() => _store.OpenRead(name));
+	}
+
+	[Fact]
+	public async Task Records_prints_next_to_the_file_and_counts_them()
+	{
+		DateTimeOffset t0 = new(2026, 11, 16, 10, 0, 0, TimeSpan.Zero);
+		await Save("cube.gcode");
+		Assert.Equal(PrintStats.None, (await _store.GetAsync("cube.gcode", Ct))!.Prints);
+
+		await _store.RecordPrintAsync("cube.gcode", new PrintRecord(t0, t0.AddHours(1), JobStatus.Completed), Ct);
+		await _store.RecordPrintAsync("cube.gcode", new PrintRecord(t0.AddHours(2), t0.AddHours(2.5), JobStatus.Cancelled), Ct);
+
+		GcodeFile file = Assert.Single(await _store.ListAsync(Ct)); // the .prints.json sidecar is not a file of its own
+		Assert.Equal((1, 1), (file.Prints!.Completed, file.Prints.Unsuccessful));
+		Assert.Equal(JobStatus.Cancelled, file.Prints.Last!.Status);
+		Assert.Contains("\"Completed\"", await File.ReadAllTextAsync(Path.Combine(Uploads, "cube.gcode.prints.json"), Ct));
+	}
+
+	[Fact]
+	public async Task History_survives_a_new_upload_and_goes_with_delete()
+	{
+		DateTimeOffset t0 = new(2026, 11, 16, 10, 0, 0, TimeSpan.Zero);
+		await Save("cube.gcode");
+		await _store.RecordPrintAsync("cube.gcode", new PrintRecord(t0, t0.AddHours(1), JobStatus.Completed), Ct);
+
+		await Save("cube.gcode", "G28\nG1 X5\n");
+		Assert.Equal(1, (await _store.GetAsync("cube.gcode", Ct))!.Prints!.Completed);
+
+		await _store.DeleteAsync("cube.gcode", Ct);
+		Assert.False(File.Exists(Path.Combine(Uploads, "cube.gcode.prints.json")));
+	}
+
+	[Fact]
+	public async Task A_print_of_a_deleted_file_is_dropped()
+	{
+		await _store.RecordPrintAsync("gone.gcode", new PrintRecord(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, JobStatus.Completed), Ct);
+		Assert.Empty(Directory.EnumerateFiles(Uploads));
 	}
 }
