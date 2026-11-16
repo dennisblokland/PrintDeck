@@ -9,6 +9,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - Dashboard: job progress with elapsed / remaining / finish time, pause / resume / cancel, live temperatures, presets, history chart, MJPEG camera
 - Control: XY/Z jog with step sizes, homing, extrude/retract (cold-extrusion guard), fan, motors off
 - Files: drag-and-drop upload with analysis (print time, filament, layers) from OrcaSlicer, PrusaSlicer and Cura metadata
+- **SD card**: list the printer's card (long names with `M20 L`), print from it with progress (`M23`/`M24`, `M27`), pause/resume/cancel (`M25`/`M24`/`M524`), copy uploaded files onto it (`M28`/`M29`, 8.3 names), delete, initialise and release. The virtual printer has a card too
 - G-code viewer: 2D layer view and 3D view (three.js, vendored in `wwwroot/lib/three`), coloured by feature (walls, infill, support…), move scrubber, and live follow of the running print
 - **Printer profiles**: save several printers (build volume, extruders, heated bed, jog speeds) and switch in Settings or the connection panel; presets, camera and cancel script stay shared
 - Terminal with command history and temperature-noise filter

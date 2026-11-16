@@ -12,6 +12,7 @@ public class PrinterStateExtensionsTests
 	[InlineData(PrinterState.Printing, true, true)]
 	[InlineData(PrinterState.Paused, true, true)]
 	[InlineData(PrinterState.Cancelling, true, true)]
+	[InlineData(PrinterState.Transferring, true, true)]
 	[InlineData(PrinterState.Error, false, false)]
 	public void Classifies_states(PrinterState state, bool connected, bool busy)
 	{

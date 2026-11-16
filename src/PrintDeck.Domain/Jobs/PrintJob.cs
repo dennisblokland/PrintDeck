@@ -8,16 +8,18 @@ public sealed class PrintJob
 	private DateTimeOffset? _pausedAt;
 	private TimeSpan _pausedTotal;
 
-	public PrintJob(string fileName, long totalBytes, TimeSpan? slicerEstimate, DateTimeOffset now)
+	public PrintJob(string fileName, long totalBytes, TimeSpan? slicerEstimate, DateTimeOffset now, JobKind kind = JobKind.Print)
 	{
 		if (totalBytes <= 0) throw new ArgumentOutOfRangeException(nameof(totalBytes), "File is empty.");
 		FileName = fileName;
 		TotalBytes = totalBytes;
 		SlicerEstimate = slicerEstimate;
 		StartedAt = now;
+		Kind = kind;
 	}
 
 	public string FileName { get; }
+	public JobKind Kind { get; }
 	public long TotalBytes { get; }
 	public TimeSpan? SlicerEstimate { get; }
 	public DateTimeOffset StartedAt { get; }
@@ -59,6 +61,9 @@ public sealed class PrintJob
 		BytesProcessed = Math.Min(TotalBytes, BytesProcessed + bytes);
 		LinesSent++;
 	}
+
+	/// <summary>Sets the position the printer reports (SD prints), never past the end.</summary>
+	public void ReportPosition(long bytes) => BytesProcessed = Math.Clamp(bytes, 0, TotalBytes);
 
 	public void Pause(DateTimeOffset now)
 	{

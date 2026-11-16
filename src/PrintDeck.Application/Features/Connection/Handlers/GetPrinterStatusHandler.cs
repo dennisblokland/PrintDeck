@@ -20,7 +20,7 @@ public sealed class GetPrinterStatusHandler(IPrinterSession session, TimeProvide
 	{
 		DateTimeOffset now = time.GetUtcNow();
 		JobDto? job = session.CurrentJob is { } j
-			? new JobDto(j.FileName, j.Status, j.Progress, j.Elapsed(now), j.EstimatedRemaining(now), j.LinesSent, j.StartedAt)
+			? new JobDto(j.FileName, j.Status, j.Progress, j.Elapsed(now), j.EstimatedRemaining(now), j.LinesSent, j.StartedAt, j.Kind)
 			: null;
 
 		return ValueTask.FromResult(new PrinterStatusDto(
