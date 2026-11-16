@@ -1,3 +1,4 @@
+using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Jobs;
@@ -33,6 +34,7 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public List<string> Enqueued { get; } = [];
 	public List<string> CancelCommands { get; } = [];
 	public (string FileName, long Size, TimeSpan? Estimate)? StartedJob { get; private set; }
+	public PrintOptions? StartedWith { get; private set; }
 	public (string Port, int BaudRate)? ConnectedWith { get; private set; }
 	public bool Disconnected { get; private set; }
 	public bool TerminalCleared { get; private set; }
@@ -61,10 +63,11 @@ internal sealed class FakePrinterSession : IPrinterSession
 		return Result.Success();
 	}
 
-	public Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate)
+	public Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate, PrintOptions? options = null)
 	{
 		content.Dispose();
 		StartedJob = (fileName, size, estimate);
+		StartedWith = options;
 		return JobResult;
 	}
 

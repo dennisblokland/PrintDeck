@@ -195,6 +195,17 @@ public class SettingsHandlerTests
 
 	public class Host : SettingsHandlerTests
 	{
+		[Fact]
+		public async Task Saves_the_printer_screen_switch()
+		{
+			Assert.True(_settings.Settings.ShowProgressOnPrinter); // on by default
+
+			await new UpdateSettingsHandler(_settings, _events.Hub).Handle(
+				new UpdateSettingsCommand([new("PLA", 205, 60)], "M84", null, ShowProgressOnPrinter: false), Ct);
+
+			Assert.False(_settings.Settings.ShowProgressOnPrinter);
+		}
+
 		public static TheoryData<string, string> InvalidSettings => new()
 		{
 			{ "nameless preset", "Presets need a name, hotend 0–320 °C and bed 0–130 °C." },

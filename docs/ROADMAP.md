@@ -2,7 +2,7 @@
 
 Features PrintDeck still lacks compared to an OctoPrint 1.11 setup (Prusa MK3S over USB, with PSU Control, OctoLight, MQTT, Home Assistant, Slicer Thumbnails, Camera Settings, Firmware Updater and Connect And Print plugins). Picked 2026-11-14.
 
-Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands.
+Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands; progress on the printer screen.
 
 ## Wanted
 
@@ -12,7 +12,7 @@ Mostly in `PrinterSession` and the Control page.
 
 - [ ] **Auto-connect on startup.** Connect to the last port and baud rate when PrintDeck starts; retry when the port appears.
 - [x] **Firmware dialogs and action commands.** Handle `// action:pause`, `resume`, `cancel`, `M876` host prompts, filament runout and `M600` filament change dialogs, so host and printer agree on job state when you pause from the LCD.
-- [ ] **Progress on the printer screen.** Send `M73` progress and `M117` messages during a job.
+- [x] **Progress on the printer screen.** Send `M73` progress and `M117` messages during a job.
 - [ ] **Feed-rate and flow sliders.** `M220` / `M221` during a print.
 - [ ] **G-code scripts.** Before/after print, on pause, on resume, plus reusable snippets (`disable_hotends`, `disable_bed`). Replaces the single `CancelGcode` setting.
 - [ ] **Keyboard jogging.** Arrow keys and Page Up/Down on the Control page.

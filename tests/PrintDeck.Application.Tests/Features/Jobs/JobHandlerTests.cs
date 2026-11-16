@@ -1,5 +1,6 @@
 using PrintDeck.Application.Features.Jobs.Commands;
 using PrintDeck.Application.Features.Jobs.Handlers;
+using PrintDeck.Application.Printer;
 using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
@@ -11,9 +12,10 @@ public class JobHandlerTests
 {
 	private readonly FakePrinterSession _session = new();
 	private readonly InMemoryGcodeFileStore _files = new();
+	private readonly FakeSettingsStore _settings = new();
 	private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-	private ValueTask<Result> Start(string name) => new StartPrintHandler(_session, _files).Handle(new StartPrintCommand(name), Ct);
+	private ValueTask<Result> Start(string name) => new StartPrintHandler(_session, _files, _settings).Handle(new StartPrintCommand(name), Ct);
 
 	[Fact]
 	public async Task Start_streams_the_file_with_its_slicer_estimate()
@@ -22,6 +24,19 @@ public class JobHandlerTests
 
 		Assert.True((await Start("cube.gcode")).IsSuccess);
 		Assert.Equal(("cube.gcode", 4L, (TimeSpan?) TimeSpan.FromMinutes(42)), _session.StartedJob);
+	}
+
+	[Fact]
+	public async Task Start_passes_the_printer_screen_setting_and_layer_count()
+	{
+		_files.Add("cube.gcode", "G28\n", analysis: new GcodeAnalysis(null, null, 80, 1, null));
+
+		await Start("cube.gcode");
+		Assert.Equal(new PrintOptions(true, 80), _session.StartedWith);
+
+		await _settings.UpdateAsync(s => s with { ShowProgressOnPrinter = false }, Ct);
+		await Start("cube.gcode");
+		Assert.False(_session.StartedWith!.ShowProgressOnPrinter);
 	}
 
 	[Fact]
