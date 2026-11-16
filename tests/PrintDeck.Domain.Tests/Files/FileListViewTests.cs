@@ -52,6 +52,23 @@ public class FileListViewTests
 		Assert.Equal(["vase PETG.gcode", "bracket.gcode", "Cube.gcode"], Names(hidePrinted: true));
 
 	[Fact]
+	public void Stats_add_up_print_time_filament_and_success_rate()
+	{
+		PrintStats stats = PrintStats.From(
+		[
+			new PrintRecord(_t0, _t0.AddHours(2), JobStatus.Completed, TimeSpan.FromHours(1.5), 4200),
+			new PrintRecord(_t0, _t0.AddHours(3), JobStatus.Completed, TimeSpan.FromHours(2), 5000.5),
+			new PrintRecord(_t0, _t0.AddHours(4), JobStatus.Cancelled, TimeSpan.FromMinutes(30), null),
+			new PrintRecord(_t0, _t0.AddHours(5), JobStatus.Failed) // older record: no time, no filament
+		]);
+
+		Assert.Equal(TimeSpan.FromHours(4), stats.TotalPrintTime);
+		Assert.Equal(9200.5, stats.TotalFilamentMm);
+		Assert.Equal(0.5, stats.SuccessRate);
+		Assert.Null(PrintStats.None.SuccessRate);
+	}
+
+	[Fact]
 	public void Stats_count_outcomes_and_keep_the_latest()
 	{
 		PrintStats stats = PrintStats.From(
@@ -61,7 +78,7 @@ public class FileListViewTests
 			new PrintRecord(_t0.AddHours(-5), _t0.AddHours(-4), JobStatus.Failed)
 		]);
 
-		Assert.Equal((1, 2), (stats.Completed, stats.Unsuccessful));
+		Assert.Equal((1, 2, 3), (stats.Completed, stats.Unsuccessful, stats.Total));
 		Assert.Equal(JobStatus.Cancelled, stats.Last!.Status);
 		Assert.Same(PrintStats.None.Last, PrintStats.From([]).Last);
 	}

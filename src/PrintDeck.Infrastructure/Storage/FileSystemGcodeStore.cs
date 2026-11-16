@@ -94,6 +94,20 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		}
 	}
 
+	public async Task<IReadOnlyList<PrintHistoryEntry>> ListPrintsAsync(CancellationToken ct)
+	{
+		List<PrintHistoryEntry> result = [];
+		foreach (string sidecar in Directory.EnumerateFiles(_root, "*" + _printsSuffix))
+		{
+			string path = sidecar[..^_printsSuffix.Length];
+			if (!File.Exists(path)) continue; // left behind by a file deleted outside PrintDeck
+			string name = Path.GetFileName(path);
+			foreach (PrintRecord print in await ReadPrintsAsync(path, ct))
+				result.Add(new PrintHistoryEntry(name, print));
+		}
+		return result;
+	}
+
 	private static bool IsGcode(string path) =>
 		!path.EndsWith(_metaSuffix, StringComparison.Ordinal)
 		&& !path.EndsWith(_printsSuffix, StringComparison.Ordinal)

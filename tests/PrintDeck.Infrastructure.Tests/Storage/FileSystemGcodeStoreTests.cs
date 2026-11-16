@@ -162,4 +162,33 @@ public sealed class FileSystemGcodeStoreTests : IDisposable
 		await _store.RecordPrintAsync("gone.gcode", new PrintRecord(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, JobStatus.Completed), Ct);
 		Assert.Empty(Directory.EnumerateFiles(Uploads));
 	}
+
+	[Fact]
+	public async Task Lists_the_prints_of_every_file_and_skips_orphaned_history()
+	{
+		DateTimeOffset t0 = new(2026, 11, 16, 10, 0, 0, TimeSpan.Zero);
+		await Save("cube.gcode");
+		await Save("benchy.gcode");
+		await _store.RecordPrintAsync("cube.gcode", new PrintRecord(t0, t0.AddHours(1), JobStatus.Completed, TimeSpan.FromHours(1), 1234.5), Ct);
+		await _store.RecordPrintAsync("benchy.gcode", new PrintRecord(t0, t0.AddHours(2), JobStatus.Failed), Ct);
+		await File.WriteAllTextAsync(Path.Combine(Uploads, "gone.gcode.prints.json"), "[]", Ct);
+
+		IReadOnlyList<PrintHistoryEntry> prints = await _store.ListPrintsAsync(Ct);
+
+		Assert.Equal(["benchy.gcode", "cube.gcode"], prints.Select(p => p.FileName).Order());
+		PrintRecord cube = prints.Single(p => p.FileName == "cube.gcode").Print;
+		Assert.Equal((TimeSpan.FromHours(1), (double?) 1234.5), (cube.PrintTime, cube.FilamentMm));
+	}
+
+	[Fact]
+	public async Task Reads_history_written_before_time_and_filament_were_kept()
+	{
+		await Save("cube.gcode");
+		await File.WriteAllTextAsync(Path.Combine(Uploads, "cube.gcode.prints.json"),
+			"""[{"startedAt":"2026-11-16T19:14:28+00:00","endedAt":"2026-11-16T19:14:30+00:00","status":"Completed","succeeded":true}]""", Ct);
+
+		PrintRecord print = Assert.Single(await _store.ListPrintsAsync(Ct)).Print;
+
+		Assert.Equal((JobStatus.Completed, TimeSpan.Zero, (double?) null), (print.Status, print.PrintTime, print.FilamentMm));
+	}
 }

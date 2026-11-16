@@ -1,0 +1,56 @@
+@page "/history"
+@inherits PrinterComponent
+
+<PageTitle>History · PrintDeck</PageTitle>
+
+<header class="page-head">
+	<h1>History</h1>
+	<p class="muted">Prints of the files in PrintDeck. Deleting a file deletes its history.</p>
+</header>
+
+@if (_history is { } h)
+{
+	PrintStats t = h.Totals;
+	<dl class="stats history-totals">
+		<div><dt>Prints</dt><dd>@t.Total.ToString("N0")</dd></div>
+		<div><dt>Successful</dt><dd>@(t.SuccessRate is { } rate ? $"{rate:P0}" : "—")</dd></div>
+		<div><dt>Printing time</dt><dd>@(t.Total > 0 ? Format.Duration(t.TotalPrintTime) : "—")</dd></div>
+		<div><dt>Filament</dt><dd>@(t.TotalFilamentMm > 0 ? Format.Filament(t.TotalFilamentMm) : "—")</dd></div>
+	</dl>
+
+	@if (h.Recent.Count == 0)
+	{
+		<div class="card empty"><Icon Name="clock" Size="28" /><p>No finished prints yet</p></div>
+	}
+	else
+	{
+		<div class="card history-card">
+			<table class="history-table">
+				<thead>
+					<tr><th>File</th><th>Finished</th><th>Time</th><th>Filament</th><th>Result</th></tr>
+				</thead>
+				<tbody>
+					@foreach (PrintHistoryEntry e in h.Recent)
+					{
+						<tr @key="(e.FileName, e.Print.EndedAt)">
+							<td class="history-file" title="@e.FileName">@e.FileName</td>
+							<td title="@e.Print.EndedAt.ToLocalTime().ToString("f")">@Format.Ago(e.Print.EndedAt, Time.GetUtcNow())</td>
+							<td class="mono">@(e.Print.PrintTime > TimeSpan.Zero ? Format.Duration(e.Print.PrintTime) : "—")</td>
+							<td class="mono">@Format.Filament(e.Print.FilamentMm)</td>
+							<td><span class="chip chip-@e.Print.Status.ToString().ToLowerInvariant()">@e.Print.Status</span></td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+@code {
+	private PrintHistoryDto? _history;
+
+	protected override PrinterChange Interests => PrinterChange.Files;
+	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(500);
+
+	protected override async Task RefreshAsync() => _history = await Mediator.Send(new GetPrintHistoryQuery());
+}
