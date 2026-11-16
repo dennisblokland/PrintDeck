@@ -20,7 +20,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>(ICurrentUser curr
 	public const string SignInRequired = "Sign in first.";
 	public const string AdminRequired = "Only admins can do that.";
 	public const string AccountRequired = "Sign in with an admin account to manage users.";
-	public const string HostAccountRequired = "Sign in with an admin account to restart or shut down the host.";
+	public const string HostAccountRequired = "Sign in with an admin account to do that.";
 
 	public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
 	{

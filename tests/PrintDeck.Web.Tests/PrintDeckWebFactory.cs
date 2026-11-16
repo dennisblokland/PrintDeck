@@ -23,6 +23,9 @@ public sealed class PrintDeckWebFactory : WebApplicationFactory<Program>
 
 	public IGcodeFileStore Files => Services.GetRequiredService<IGcodeFileStore>();
 
+	/// <summary>The throw-away data directory (uploads, settings, logs).</summary>
+	public string DataDirectory => _data;
+
 	public override async ValueTask DisposeAsync()
 	{
 		await base.DisposeAsync();

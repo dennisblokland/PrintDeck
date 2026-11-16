@@ -15,6 +15,9 @@ public sealed record HostSettings
 	/// <summary>Send M73 progress and M117 messages to the printer's screen during streamed prints.</summary>
 	public bool ShowProgressOnPrinter { get; init; } = true;
 
+	/// <summary>Record every serial line in logs/serial.log.</summary>
+	public bool SerialLogEnabled { get; init; }
+
 	public string CancelGcode { get; init; } = "M104 S0\nM140 S0\nM107\nG91\nG1 Z10 F600\nG90\nM84";
 	public IReadOnlyList<TemperaturePreset> Presets { get; init; } =
 	[
