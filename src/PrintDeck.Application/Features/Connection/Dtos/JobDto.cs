@@ -20,4 +20,5 @@ public sealed record JobDto(
 	TimeSpan Elapsed,
 	TimeSpan? Remaining,
 	long LinesSent,
-	DateTimeOffset StartedAt);
+	DateTimeOffset StartedAt,
+	JobKind Kind = JobKind.Print);

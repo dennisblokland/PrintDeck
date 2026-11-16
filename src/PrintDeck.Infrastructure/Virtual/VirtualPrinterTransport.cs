@@ -11,7 +11,7 @@ namespace PrintDeck.Infrastructure.Virtual;
 
 /// <summary>
 /// In-process Marlin imitation for development without hardware:
-/// heaters with thermal lag, M109/M190 waits, auto-reporting, checksum validation and moves that take time.
+/// heaters with thermal lag, M109/M190 waits, auto-reporting, checksum validation, moves that take time and an SD card.
 /// </summary>
 public sealed partial class VirtualPrinterTransport(TimeProvider time, double speedFactor = 1) : IPrinterTransport
 {
@@ -60,6 +60,7 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				double rate = h.Target > h.Actual ? 0.06 : 0.02;
 				h.Actual += (goal - h.Actual) * rate + (Random.Shared.NextDouble() - 0.5) * 0.3;
 			}
+			TickSd(TimeSpan.FromMilliseconds(250));
 			if (_autoReport > TimeSpan.Zero && time.GetUtcNow() - lastReport >= _autoReport)
 			{
 				Emit(" " + TempReport);
@@ -100,6 +101,7 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				_expectedLine = n + 1;
 			}
 
+			if (WriteToSd(command)) continue;
 			await ExecuteAsync(command, ct);
 		}
 	}
@@ -111,6 +113,12 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 		double? Arg(char letter) => parts.Skip(1).Where(p => char.ToUpperInvariant(p[0]) == letter)
 			.Select(p => double.TryParse(p.AsSpan(1), CultureInfo.InvariantCulture, out double v) ? v : (double?) null)
 			.FirstOrDefault();
+
+		if (ExecuteSd(code, parts, Arg))
+		{
+			Emit("ok");
+			return;
+		}
 
 		switch (code)
 		{

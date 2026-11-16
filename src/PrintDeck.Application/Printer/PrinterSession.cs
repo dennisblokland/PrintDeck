@@ -13,6 +13,8 @@ using PrintDeck.Domain.Jobs.Enums;
 using PrintDeck.Domain.Printer;
 using PrintDeck.Domain.Printer.Enums;
 using PrintDeck.Domain.Protocol;
+using PrintDeck.Domain.SdCard;
+using PrintDeck.Domain.SdCard.Enums;
 using PrintDeck.Domain.Temperatures;
 using PrintDeck.Domain.Terminal;
 using PrintDeck.Domain.Terminal.Enums;
@@ -22,6 +24,7 @@ namespace PrintDeck.Application.Printer;
 /// <summary>
 /// Marlin-style host protocol: one command in flight, line numbers + checksums,
 /// resend handling, temperature polling and job streaming.
+/// Also drives the printer's SD card: listing, printing from it and copying files onto it.
 /// </summary>
 public sealed class PrinterSession(
 	IPrinterTransportFactory transports,
@@ -32,6 +35,7 @@ public sealed class PrinterSession(
 	private static readonly TimeSpan _idleTimeout = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan _longCommandTimeout = TimeSpan.FromMinutes(10);
 	private static readonly TimeSpan _temperatureInterval = TimeSpan.FromSeconds(2);
+	private static readonly TimeSpan _sdProgressInterval = TimeSpan.FromSeconds(5);
 
 	private readonly Lock _gate = new();
 	private readonly ConcurrentQueue<string> _manual = new();
@@ -53,6 +57,14 @@ public sealed class PrinterSession(
 	private long _lastRxTicks;
 	private long _lastTempTicks;
 	private int _pollPending;
+	private long _lastSdProgressTicks;
+	private List<SdFile>? _sdListing;
+	private string? _uploadTarget;
+	private bool _uploadOpened;
+	private bool _uploadAccepted;
+
+	/// <summary>Original names of files copied to the card, which Marlin only stores as 8.3 names.</summary>
+	private readonly ConcurrentDictionary<string, string> _uploadedNames = new(StringComparer.OrdinalIgnoreCase);
 
 	public PrinterState State { get; private set; } = PrinterState.Offline;
 	public string? Port { get; private set; }
@@ -61,6 +73,8 @@ public sealed class PrinterSession(
 	public string? ErrorMessage { get; private set; }
 	public PrintJob? CurrentJob { get; private set; }
 	public TemperatureHistory Temperatures { get; } = new();
+	public SdCardState SdCard { get; private set; } = SdCardState.Unknown;
+	public IReadOnlyList<SdFile> SdFiles { get; private set; } = [];
 
 	private DateTimeOffset Now => time.GetUtcNow();
 
@@ -88,6 +102,7 @@ public sealed class PrinterSession(
 		ErrorMessage = null;
 		Firmware = null;
 		Temperatures.Clear();
+		ResetSdCard();
 		events.Publish(PrinterChange.State);
 		Log(TerminalDirection.Info, $"Connecting to {port} @ {baudRate}");
 
@@ -113,7 +128,8 @@ public sealed class PrinterSession(
 
 			_sender = Task.Run(() => SendLoopAsync(_cts.Token));
 			_poller = Task.Run(() => PollLoopAsync(_cts.Token));
-			Enqueue(["M115", "M155 S2"]);
+			// M20 rather than M21: re-initialising the card would break a print the printer runs from it.
+			Enqueue(["M115", "M155 S2", "M20 L"]);
 
 			SetState(PrinterState.Operational);
 			Log(TerminalDirection.Info, "Connected");
@@ -133,6 +149,7 @@ public sealed class PrinterSession(
 		await TeardownAsync();
 		lock (_gate) CurrentJob?.Fail(Now);
 		ErrorMessage = null;
+		ResetSdCard();
 		SetState(PrinterState.Offline);
 		Log(TerminalDirection.Info, "Disconnected");
 	}
@@ -202,15 +219,18 @@ public sealed class PrinterSession(
 
 	public Result PauseJob()
 	{
+		JobKind kind;
 		lock (_gate)
 		{
 			if (CurrentJob?.Status != JobStatus.Printing) return Result.Failure("Nothing is printing.");
+			if (CurrentJob.Kind == JobKind.SdUpload) return Result.Failure("An SD card upload cannot be paused.");
 			CurrentJob.Pause(Now);
+			kind = CurrentJob.Kind;
 			State = PrinterState.Paused;
 		}
 		Log(TerminalDirection.Info, "Print paused");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		return Result.Success();
+		return kind == JobKind.SdPrint ? Enqueue(["M25"]) : Result.Success();
 	}
 
 	public Result ResumeJob()
@@ -223,12 +243,15 @@ public sealed class PrinterSession(
 		}
 		Log(TerminalDirection.Info, "Print resumed");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
+		if (CurrentJob.Kind == JobKind.SdPrint) return Enqueue(["M24"]);
 		_work.Release();
 		return Result.Success();
 	}
 
 	public Result CancelJob(IEnumerable<string> cancelCommands)
 	{
+		IEnumerable<string> commands;
+		string message;
 		lock (_gate)
 		{
 			if (CurrentJob is not { IsActive: true }) return Result.Failure("No active print.");
@@ -236,34 +259,244 @@ public sealed class PrinterSession(
 			_job?.Dispose();
 			_job = null;
 			State = PrinterState.Operational;
+			(commands, message) = CurrentJob.Kind switch
+			{
+				// M524 aborts the SD print (Marlin); the printer then runs the usual cancel script.
+				JobKind.SdPrint => (["M524", "M27 S0", .. cancelCommands], "Print cancelled"),
+				// Close the half-written file and delete it; nothing was printing, so no cancel script.
+				JobKind.SdUpload => (_uploadOpened ? ["M29", $"M30 {_uploadTarget}", "M20 L"] : [], "SD card upload cancelled"),
+				_ => (cancelCommands, "Print cancelled")
+			};
 		}
-		Log(TerminalDirection.Info, "Print cancelled");
+		Log(TerminalDirection.Info, message);
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		return Enqueue(cancelCommands);
+		return Enqueue(commands);
+	}
+
+	// ---------------------------------------------------------------- SD card
+
+	public Result RefreshSdFiles() => Enqueue(["M20 L"]);
+
+	public Result InitSdCard()
+	{
+		if (CurrentJob is { Kind: not JobKind.Print, IsActive: true })
+			return Result.Failure("The SD card is in use.");
+		return Enqueue(["M21"]);
+	}
+
+	public Result ReleaseSdCard()
+	{
+		if (!State.IsConnected()) return Result.Failure("Printer is not connected.");
+		if (CurrentJob is { Kind: not JobKind.Print, IsActive: true })
+			return Result.Failure("The SD card is in use.");
+
+		Result sent = Enqueue(["M22"]);
+		SetSdCard(SdCardState.Unavailable, []);
+		Log(TerminalDirection.Info, "SD card released");
+		return sent;
+	}
+
+	public Result DeleteSdFile(string path)
+	{
+		if (!IsValidSdPath(path)) return Result.Failure("Not a file on the SD card.");
+		if (CurrentJob is { Kind: JobKind.SdPrint, IsActive: true } j && SdFiles.Any(f => f.Path == path && f.DisplayName == j.FileName))
+			return Result.Failure("This file is printing.");
+		if (CurrentJob is { Kind: JobKind.SdUpload, IsActive: true })
+			return Result.Failure("Wait for the SD card upload to finish.");
+		return Enqueue([$"M30 {path}", "M20 L"]);
+	}
+
+	public Result StartSdPrint(string path)
+	{
+		SdFile? file = SdFiles.FirstOrDefault(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase));
+		lock (_gate)
+		{
+			if (State != PrinterState.Operational)
+				return Result.Failure(State.IsBusy() ? "A print is already running." : "Printer is not ready.");
+			if (SdCard != SdCardState.Ready) return Result.Failure("No SD card.");
+			if (file is null) return Result.Failure($"{path} is not on the SD card.");
+			if (file.SizeBytes <= 0) return Result.Failure("The printer did not report the file's size.");
+
+			CurrentJob = new PrintJob(file.DisplayName, file.SizeBytes, null, Now, JobKind.SdPrint);
+			State = PrinterState.Printing;
+		}
+		Interlocked.Exchange(ref _lastSdProgressTicks, Now.UtcTicks);
+		Log(TerminalDirection.Info, $"Printing {file.DisplayName} from the SD card");
+		events.Publish(PrinterChange.State | PrinterChange.Job);
+		// M27 S2: report progress every 2 s; firmware without it gets polled with M27.
+		return Enqueue([$"M23 {file.Path}", "M24", "M27 S2"]);
+	}
+
+	public Result<string> StartSdUpload(string fileName, Stream content, long size)
+	{
+		string target;
+		lock (_gate)
+		{
+			string? refusal = State != PrinterState.Operational
+				? State.IsBusy() ? "A print is already running." : "Printer is not ready."
+				: SdCard != SdCardState.Ready ? "No SD card." : size <= 0 ? "File is empty." : null;
+			if (refusal is not null)
+			{
+				content.Dispose();
+				return Result.Failure<string>(refusal);
+			}
+
+			target = SdShortName.For(fileName, SdFiles.Select(f => f.Path));
+			_job = new StreamReader(content, Encoding.UTF8);
+			_uploadTarget = target;
+			_uploadOpened = false;
+			_uploadAccepted = false;
+			CurrentJob = new PrintJob(fileName, size, null, Now, JobKind.SdUpload);
+			State = PrinterState.Transferring;
+		}
+		Log(TerminalDirection.Info, $"Copying {fileName} to the SD card as {target}");
+		events.Publish(PrinterChange.State | PrinterChange.Job);
+		_work.Release();
+		return Result.Success(target);
+	}
+
+	private static bool IsValidSdPath(string path) =>
+		!string.IsNullOrWhiteSpace(path) && !path.Any(c => char.IsWhiteSpace(c) || char.IsControl(c) || c is ';' or '*');
+
+	private void ResetSdCard()
+	{
+		_sdListing = null;
+		SetSdCard(SdCardState.Unknown, []);
+	}
+
+	private void SetSdCard(SdCardState state, IReadOnlyList<SdFile> files)
+	{
+		SdCard = state;
+		SdFiles = files;
+		events.Publish(PrinterChange.Files);
+	}
+
+	/// <summary>SD card replies: file list, progress, end of print, upload acknowledgement.</summary>
+	private void HandleSdLine(string line)
+	{
+		if (_sdListing is { } listing)
+		{
+			if (line.StartsWith(SdCardReportParser.ListEnd, StringComparison.OrdinalIgnoreCase))
+			{
+				_sdListing = null;
+				SetSdCard(SdCardState.Ready, listing
+					.Select(f => f.LongName is null || f.LongName.Equals(f.Path, StringComparison.OrdinalIgnoreCase)
+						? f with { LongName = _uploadedNames.GetValueOrDefault(f.Path, f.LongName!) }
+						: f)
+					.OrderBy(f => f.DisplayName, StringComparer.OrdinalIgnoreCase)
+					.ToList());
+			}
+			else if (SdCardReportParser.TryParseFileEntry(line) is { } file) listing.Add(file);
+			return;
+		}
+
+		if (line.StartsWith(SdCardReportParser.ListBegin, StringComparison.OrdinalIgnoreCase))
+			_sdListing = [];
+		else if (SdCardReportParser.IsCardReady(line))
+		{
+			SetSdCard(SdCardState.Ready, SdFiles);
+			Enqueue(["M20 L"]);
+		}
+		else if (SdCardReportParser.IsCardGone(line))
+		{
+			SetSdCard(SdCardState.Unavailable, []);
+			EndSdPrint(JobStatus.Failed, "SD card removed during the print");
+		}
+		else if (SdCardReportParser.TryParseProgress(line) is { } progress)
+		{
+			Interlocked.Exchange(ref _lastSdProgressTicks, Now.UtcTicks);
+			bool moved;
+			lock (_gate)
+			{
+				moved = CurrentJob is { Kind: JobKind.SdPrint, IsActive: true };
+				if (moved) CurrentJob!.ReportPosition(progress.Done);
+			}
+			if (moved) events.Publish(PrinterChange.Job);
+		}
+		else if (line.Contains(SdCardReportParser.PrintDone, StringComparison.OrdinalIgnoreCase))
+			EndSdPrint(JobStatus.Completed, null);
+		else if (line.Contains("Writing to file", StringComparison.OrdinalIgnoreCase))
+			_uploadAccepted = true;
+		else if (line.Contains("open failed", StringComparison.OrdinalIgnoreCase))
+			EndSdPrint(JobStatus.Failed, "The printer could not open the file on the SD card");
+	}
+
+	private void EndSdPrint(JobStatus status, string? error)
+	{
+		string? name;
+		lock (_gate)
+		{
+			if (CurrentJob is not { Kind: JobKind.SdPrint, IsActive: true }) return;
+			if (status == JobStatus.Completed) CurrentJob.Complete(Now);
+			else CurrentJob.Fail(Now);
+			name = CurrentJob.FileName;
+			State = PrinterState.Operational;
+		}
+		if (error is null) Log(TerminalDirection.Info, $"Print finished: {name}");
+		else Log(TerminalDirection.Error, $"{error}: {name}");
+		events.Publish(PrinterChange.State | PrinterChange.Job);
+		Enqueue(["M27 S0"]);
 	}
 
 	private string? NextCommand()
 	{
-		if (_manual.TryDequeue(out string? manual)) return manual;
+		bool uploading;
+		lock (_gate) uploading = CurrentJob is { Kind: JobKind.SdUpload, IsActive: true };
 
+		// While the printer writes to the SD card every line lands in the file, so other commands wait.
+		if (!uploading && _manual.TryDequeue(out string? manual)) return manual;
+
+		bool refused;
+		string name;
 		lock (_gate)
 		{
 			if (CurrentJob?.Status != JobStatus.Printing || _job is null) return null;
+			PrintJob job = CurrentJob;
+			name = job.FileName;
+			StreamReader reader = _job;
 
-			while (_job.ReadLine() is { } raw)
+			if (uploading && !_uploadOpened)
 			{
-				CurrentJob.Advance(Encoding.UTF8.GetByteCount(raw) + 1);
-				if (GcodeLine.Clean(raw) is { } line) return line;
+				_uploadOpened = true;
+				return $"M28 {_uploadTarget}";
 			}
 
-			CurrentJob.Complete(Now);
-			_job.Dispose();
+			// Without "Writing to file" the printer would run the G-code instead of storing it.
+			refused = uploading && !_uploadAccepted;
+			while (!refused && reader.ReadLine() is { } raw)
+			{
+				job.Advance(Encoding.UTF8.GetByteCount(raw) + 1);
+				if (GcodeLine.Clean(raw) is not { } line) continue;
+				// A stray M28/M29 in the file would end the upload early.
+				if (uploading && GcodeLine.CommandOf(line) is "M28" or "M29") continue;
+				return line;
+			}
+
+			if (refused) job.Fail(Now);
+			else job.Complete(Now);
+			reader.Dispose();
 			_job = null;
 			State = PrinterState.Operational;
 		}
-		Log(TerminalDirection.Info, $"Print finished: {CurrentJob.FileName}");
+
+		if (refused)
+		{
+			Log(TerminalDirection.Error, $"The printer did not accept {_uploadTarget} for writing");
+			events.Publish(PrinterChange.State | PrinterChange.Job);
+			return null;
+		}
+
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		return null;
+		if (!uploading)
+		{
+			Log(TerminalDirection.Info, $"Print finished: {name}");
+			return null;
+		}
+
+		Log(TerminalDirection.Info, $"Copied {name} to the SD card as {_uploadTarget}");
+		_uploadedNames[_uploadTarget!] = name;
+		_manual.Enqueue("M20 L");
+		return "M29";
 	}
 
 	// ---------------------------------------------------------------- loops
@@ -388,6 +621,8 @@ public sealed class PrinterSession(
 			events.Publish(PrinterChange.Temperature);
 		}
 
+		HandleSdLine(line);
+
 		if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase))
 			_started.TrySetResult();
 		else if (line.StartsWith("FIRMWARE_NAME:", StringComparison.Ordinal))
@@ -426,6 +661,14 @@ public sealed class PrinterSession(
 				// Firmware with M155 auto-report needs no polling.
 				if (sinceReport > _temperatureInterval * 1.5 && Interlocked.Exchange(ref _pollPending, 1) == 0)
 					Enqueue(["M105"]);
+
+				// Firmware without M27 auto-report gets asked for SD progress.
+				if (CurrentJob is { Kind: JobKind.SdPrint, Status: JobStatus.Printing }
+					&& Now.UtcTicks - Interlocked.Read(ref _lastSdProgressTicks) > _sdProgressInterval.Ticks)
+				{
+					Interlocked.Exchange(ref _lastSdProgressTicks, Now.UtcTicks);
+					Enqueue(["M27"]);
+				}
 			}
 		}
 		catch (OperationCanceledException) { }

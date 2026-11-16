@@ -122,6 +122,71 @@ public sealed class VirtualPrinterTransportTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task Lists_its_sd_card_with_long_names()
+	{
+		await Send("M20 L");
+		List<string> lines = (await ReadUntil(l => l == "ok")).SkipWhile(l => l != "Begin file list").ToList();
+
+		Assert.NotEmpty(lines);
+		Assert.Contains(lines, l => l.StartsWith("CALCUBE.GCO ", StringComparison.Ordinal) && l.EndsWith(" calibration-cube.gcode", StringComparison.Ordinal));
+		Assert.Equal("End file list", lines[^2]);
+	}
+
+	[Fact]
+	public async Task Stores_lines_between_M28_and_M29()
+	{
+		await SendNumbered(0, "M110 N0");
+		List<string> opened = await SendNumbered(1, "M28 TEST.GCO");
+		await SendNumbered(2, "G28");
+		await SendNumbered(3, "G1 X10");
+		List<string> closed = await SendNumbered(4, "M29");
+
+		Assert.Contains("Writing to file: TEST.GCO", opened);
+		Assert.Contains("Done saving file.", closed);
+		Assert.Equal("G28\nG1 X10\n", _printer.SdFiles["TEST.GCO"]);
+	}
+
+	[Fact]
+	public async Task Prints_from_the_card_and_reports_progress()
+	{
+		await Send("M28 TINY.GCO");
+		await ReadUntil(l => l == "ok");
+		await Send("G1 X1");
+		await ReadUntil(l => l == "ok");
+		await Send("M29");
+		await ReadUntil(l => l == "ok");
+
+		await Send("M23 TINY.GCO");
+		Assert.Contains("File selected", await ReadUntil(l => l == "ok"));
+		await Send("M27 S1");
+		await Send("M24");
+
+		await ReadUntil(l => l == "Done printing file");
+		await Send("M27");
+		Assert.Contains("Not SD printing", await ReadUntil(l => l == "ok"));
+	}
+
+	[Fact]
+	public async Task Refuses_to_open_a_missing_file()
+	{
+		await Send("M23 NOPE.GCO");
+		Assert.Contains("echo:open failed, File: NOPE.GCO.", await ReadUntil(l => l == "ok"));
+	}
+
+	[Fact]
+	public async Task Deletes_files_and_releases_the_card()
+	{
+		await Send("M30 CALCUBE.GCO");
+		Assert.Contains("File deleted:CALCUBE.GCO", await ReadUntil(l => l == "ok"));
+		Assert.DoesNotContain("CALCUBE.GCO", _printer.SdFiles.Keys);
+
+		await Send("M22");
+		await ReadUntil(l => l == "ok");
+		await Send("M20");
+		Assert.Contains("echo:No media", await ReadUntil(l => l == "ok"));
+	}
+
+	[Fact]
 	public async Task Halts_on_emergency_stop()
 	{
 		await Send("M112");

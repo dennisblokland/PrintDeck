@@ -2,6 +2,8 @@ using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Jobs;
 using PrintDeck.Domain.Printer.Enums;
+using PrintDeck.Domain.SdCard;
+using PrintDeck.Domain.SdCard.Enums;
 using PrintDeck.Domain.Temperatures;
 using PrintDeck.Domain.Terminal;
 
@@ -17,6 +19,10 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public string? ErrorMessage { get; set; }
 	public PrintJob? CurrentJob { get; set; }
 	public TemperatureHistory Temperatures { get; } = new();
+	public SdCardState SdCard { get; set; } = SdCardState.Ready;
+	public IReadOnlyList<SdFile> SdFiles { get; set; } = [];
+	public List<string> SdCalls { get; } = [];
+	public (string FileName, long Size)? SdUpload { get; private set; }
 	public List<TerminalEntry> TerminalEntries { get; } = [];
 
 	public List<string> Enqueued { get; } = [];
@@ -63,6 +69,25 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public Result CancelJob(IEnumerable<string> cancelCommands)
 	{
 		CancelCommands.AddRange(cancelCommands);
+		return JobResult;
+	}
+
+	public Result RefreshSdFiles() => Sd("refresh");
+	public Result InitSdCard() => Sd("init");
+	public Result ReleaseSdCard() => Sd("release");
+	public Result DeleteSdFile(string path) => Sd("delete " + path);
+	public Result StartSdPrint(string path) => Sd("print " + path);
+
+	public Result<string> StartSdUpload(string fileName, Stream content, long size)
+	{
+		content.Dispose();
+		SdUpload = (fileName, size);
+		return JobResult.IsSuccess ? Result.Success("FILE.GCO") : Result.Failure<string>(JobResult.Error!);
+	}
+
+	private Result Sd(string call)
+	{
+		SdCalls.Add(call);
 		return JobResult;
 	}
 

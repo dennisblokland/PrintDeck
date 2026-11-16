@@ -55,6 +55,23 @@ public class PrintJobTests
 		}
 
 		[Fact]
+		public void Report_position_sets_absolute_progress_within_the_file()
+		{
+			PrintJob job = new("cube.gcode", 1000, null, _t0, JobKind.SdPrint);
+			job.ReportPosition(400);
+			Assert.Equal(0.4, job.Progress);
+			job.ReportPosition(250);
+			Assert.Equal(250, job.BytesProcessed);
+			job.ReportPosition(5000);
+			Assert.Equal(1, job.Progress);
+			Assert.Equal(0, job.LinesSent);
+			Assert.Equal(JobKind.SdPrint, job.Kind);
+		}
+
+		[Fact]
+		public void Kind_defaults_to_a_streamed_print() => Assert.Equal(JobKind.Print, NewJob().Kind);
+
+		[Fact]
 		public void Complete_sets_full_progress()
 		{
 			PrintJob job = NewJob(10);

@@ -22,6 +22,7 @@ internal static class Guard
 	{
 		PrinterState.Operational or PrinterState.Paused => Result.Success(),
 		PrinterState.Printing => Result.Failure("Pause the print before moving the printer."),
+		PrinterState.Transferring => Result.Failure("Wait for the SD card upload to finish."),
 		_ => Result.Failure("Printer is not connected.")
 	};
 

@@ -8,5 +8,9 @@ public enum PrinterState
 	Printing,
 	Paused,
 	Cancelling,
+
+	/// <summary>Copying a file onto the SD card.</summary>
+	Transferring,
+
 	Error
 }

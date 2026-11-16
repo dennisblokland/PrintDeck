@@ -7,6 +7,7 @@ using PrintDeck.Application.Printer;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Jobs.Enums;
 using PrintDeck.Domain.Printer.Enums;
+using PrintDeck.Domain.SdCard.Enums;
 using PrintDeck.Domain.Terminal.Enums;
 using PrintDeck.Infrastructure.Serial;
 using PrintDeck.Infrastructure.Virtual;
@@ -101,6 +102,27 @@ public sealed class PrinterSessionWithVirtualPrinterTests : IAsyncLifetime
 	{
 		Assert.True(Start("a.gcode", "G4 P5000\n").IsSuccess);
 		Assert.False(Start("b.gcode", "G4 P5000\n").IsSuccess);
+	}
+
+	[Fact]
+	public async Task Copies_a_file_to_the_sd_card_and_prints_it_from_there()
+	{
+		await Until(() => _session.SdCard == SdCardState.Ready && _session.SdFiles.Count > 0);
+		byte[] gcode = Encoding.UTF8.GetBytes("; tiny\nG1 X1\nG1 X2\n");
+
+		Result<string> upload = _session.StartSdUpload("tiny part.gcode", new MemoryStream(gcode), gcode.Length);
+		Assert.True(upload.IsSuccess, upload.Error);
+		Assert.Equal("TINYPART.GCO", upload.Value);
+
+		await Until(() => _session.SdFiles.Any(f => f.Path == "TINYPART.GCO"));
+		Assert.Equal(JobStatus.Completed, _session.CurrentJob!.Status);
+		Assert.Equal("tiny part.gcode", _session.SdFiles.Single(f => f.Path == "TINYPART.GCO").DisplayName);
+
+		Result print = _session.StartSdPrint("TINYPART.GCO");
+		Assert.True(print.IsSuccess, print.Error);
+		await Until(() => _session.CurrentJob!.Status == JobStatus.Completed);
+		Assert.Equal(PrinterState.Operational, _session.State);
+		Assert.Equal(1, _session.CurrentJob.Progress);
 	}
 
 	[Fact]

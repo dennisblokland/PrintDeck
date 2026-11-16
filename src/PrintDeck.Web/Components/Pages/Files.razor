@@ -36,6 +36,7 @@ else
 		@foreach (GcodeFile f in _files)
 		{
 			bool printing = _activeFile == f.Name;
+			bool copying = _copyingFile == f.Name;
 			<li class="file @(printing ? "is-printing" : "")" @key="f.Name">
 				<div class="file-main">
 					<span class="file-name" title="@f.Name">@f.Name</span>
@@ -55,8 +56,20 @@ else
 					{
 						<span class="chip chip-printing">Printing</span>
 					}
+					else if (copying)
+					{
+						<span class="chip chip-printing">Copying to SD</span>
+					}
 					else if (CanControl)
 					{
+						@if (_sd.State == SdCardState.Ready)
+						{
+							<button class="icon-btn" disabled="@(_state != PrinterState.Operational)"
+									title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Copy to SD card")"
+									@onclick='() => CopyToSdAsync(f.Name)'>
+								<Icon Name="sdcard" Size="16" />
+							</button>
+						}
 						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
 								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Start print")"
 								@onclick='() => Run(new StartPrintCommand(f.Name), $"Printing {f.Name}")'>
@@ -73,11 +86,85 @@ else
 	</ul>
 }
 
+@if (_state.IsConnected())
+{
+	<section class="sd-section" aria-labelledby="sd-title">
+		<div class="sd-head">
+			<h2 id="sd-title"><Icon Name="sdcard" Size="16" /> SD card
+				<span class="muted">· @SdSummary</span>
+			</h2>
+			@if (CanControl)
+			{
+				<div class="sd-head-actions">
+					@if (_sd.State == SdCardState.Ready)
+					{
+						<button class="icon-btn" title="Refresh list" @onclick="() => Run(new RefreshSdCardCommand())"><Icon Name="refresh" Size="16" /></button>
+						<button class="btn btn-sm btn-ghost" disabled="@_sdBusy" title="@(_sdBusy ? "The SD card is in use" : "Unmount the card so you can remove it")"
+								@onclick='() => Run(new ReleaseSdCardCommand(), "SD card released")'>Release</button>
+					}
+					else
+					{
+						<button class="btn btn-sm" disabled="@_sdBusy" @onclick="() => Run(new InitSdCardCommand())">Initialise card</button>
+					}
+				</div>
+			}
+		</div>
+
+		@if (_sd.State != SdCardState.Ready)
+		{
+			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>@(_sd.State == SdCardState.Unknown ? "Checking for an SD card…" : "No SD card. Insert one and initialise it.")</p></div>
+		}
+		else if (_sd.Files.Count == 0)
+		{
+			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>No G-code on the SD card</p></div>
+		}
+		else
+		{
+			<ul class="file-list">
+				@foreach (SdFile f in _sd.Files)
+				{
+					bool printing = _sdActive == f.DisplayName;
+					<li class="file @(printing ? "is-printing" : "")" @key="f.Path">
+						<div class="file-main">
+							<span class="file-name" title="@f.DisplayName">@f.DisplayName</span>
+							<span class="file-sub"><span class="sd-path">@f.Path</span> · @(f.SizeBytes > 0 ? Format.Bytes(f.SizeBytes) : "size unknown")</span>
+						</div>
+						<div class="file-stats"></div>
+						<div class="file-actions">
+							@if (printing)
+							{
+								<span class="chip chip-printing">Printing</span>
+							}
+							else if (CanControl)
+							{
+								<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
+										title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Print from the SD card")"
+										@onclick='() => Run(new StartSdPrintCommand(f.Path), $"Printing {f.DisplayName} from the SD card")'>
+									<Icon Name="play" Size="14" /> Print
+								</button>
+								<button class="icon-btn icon-btn-danger @(_confirmDelete == SdKey(f) ? "is-armed" : "")" disabled="@_sdBusy"
+										title="@(_confirmDelete == SdKey(f) ? "Click again to delete from the SD card" : "Delete from the SD card")"
+										@onclick="() => DeleteSdAsync(f)">
+									<Icon Name="@(_confirmDelete == SdKey(f) ? "check" : "trash")" Size="16" />
+								</button>
+							}
+						</div>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
 @code {
 	private const long _maxUpload = 1L << 30;
 	private IReadOnlyList<GcodeFile> _files = [];
 	private PrinterState _state;
 	private string? _activeFile;
+	private string? _copyingFile;
+	private string? _sdActive;
+	private bool _sdBusy;
+	private SdCardDto _sd = new(SdCardState.Unknown, []);
 	private bool _uploading;
 	private string? _uploadName;
 	private string? _confirmDelete;
@@ -90,7 +177,12 @@ else
 		_files = await Mediator.Send(new ListGcodeFilesQuery());
 		PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
 		_state = status.State;
-		_activeFile = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j.FileName : null;
+		JobDto? active = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j : null;
+		_activeFile = active is { Kind: JobKind.Print } ? active.FileName : null;
+		_copyingFile = active is { Kind: JobKind.SdUpload } ? active.FileName : null;
+		_sdActive = active is { Kind: JobKind.SdPrint } ? active.FileName : null;
+		_sdBusy = active is { Kind: JobKind.SdPrint or JobKind.SdUpload };
+		_sd = await Mediator.Send(new GetSdCardQuery());
 	}
 
 	private async Task UploadAsync(InputFileChangeEventArgs e)
@@ -117,6 +209,35 @@ else
 			_uploading = false;
 			await RefreshAsync();
 		}
+	}
+
+	private string SdSummary => _sd.State switch
+	{
+		SdCardState.Ready => $"{_sd.Files.Count} file{(_sd.Files.Count == 1 ? "" : "s")}",
+		SdCardState.Unavailable => "not available",
+		_ => "unknown"
+	};
+
+	private static string SdKey(SdFile f) => "sd:" + f.Path;
+
+	private async Task CopyToSdAsync(string name)
+	{
+		Result<string> result = await Mediator.Send(new CopyToSdCardCommand(name));
+		if (result.IsSuccess) Toasts.Success($"Copying {name} to the SD card as {result.Value}");
+		else Toasts.Error(result.Error!);
+	}
+
+	private async Task DeleteSdAsync(SdFile f)
+	{
+		string key = SdKey(f);
+		if (_confirmDelete != key)
+		{
+			_confirmDelete = key;
+			_ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { if (_confirmDelete == key) _confirmDelete = null; StateHasChanged(); }));
+			return;
+		}
+		_confirmDelete = null;
+		await Run(new DeleteSdFileCommand(f.Path), $"Deleted {f.DisplayName} from the SD card");
 	}
 
 	private async Task DeleteAsync(string name)
