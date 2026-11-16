@@ -191,3 +191,10 @@ dotnet_style_qualification_for_event = false:warning
 
 indent_style = space
 indent_size = 2
+
+# Line endings: C# and Razor files are CRLF, everything else LF.
+[*]
+end_of_line = lf
+
+[*.{cs,razor}]
+end_of_line = crlf
