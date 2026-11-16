@@ -12,6 +12,9 @@ public sealed record HostSettings
 	public string? LastPort { get; init; }
 	public string? WebcamStreamUrl { get; init; }
 	public string ApiKey { get; init; } = "";
+	/// <summary>Send M73 progress and M117 messages to the printer's screen during streamed prints.</summary>
+	public bool ShowProgressOnPrinter { get; init; } = true;
+
 	public string CancelGcode { get; init; } = "M104 S0\nM140 S0\nM107\nG91\nG1 Z10 F600\nG90\nM84";
 	public IReadOnlyList<TemperaturePreset> Presets { get; init; } =
 	[

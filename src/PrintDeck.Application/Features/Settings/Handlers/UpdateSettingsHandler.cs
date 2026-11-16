@@ -31,7 +31,8 @@ public sealed class UpdateSettingsHandler(ISettingsStore settings, PrinterEventH
 		{
 			Presets = presets,
 			CancelGcode = c.CancelGcode.Replace("\r", ""),
-			WebcamStreamUrl = webcam
+			WebcamStreamUrl = webcam,
+			ShowProgressOnPrinter = c.ShowProgressOnPrinter
 		}, ct);
 		events.Publish(PrinterChange.Settings);
 		return Result.Success();

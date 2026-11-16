@@ -220,6 +220,16 @@ public sealed class VirtualPrinterTransportTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task G4_dwells_before_answering()
+	{
+		// speedFactor 100: P20000 is 200 ms.
+		System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+		await Send("G4 P20000");
+		await ReadUntil(l => l == "ok");
+		Assert.True(watch.ElapsedMilliseconds >= 150, $"answered after {watch.ElapsedMilliseconds} ms");
+	}
+
+	[Fact]
 	public async Task Halts_on_emergency_stop()
 	{
 		await Send("M112");

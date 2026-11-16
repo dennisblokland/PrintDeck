@@ -1,3 +1,4 @@
+using PrintDeck.Application.Printer;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Jobs;
 using PrintDeck.Domain.Jobs.Enums;
@@ -40,7 +41,7 @@ public interface IPrinterSession
 	Task DisconnectAsync();
 
 	Result Enqueue(IEnumerable<string> commands);
-	Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate);
+	Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate, PrintOptions? options = null);
 	Result PauseJob();
 	Result ResumeJob();
 	Result CancelJob(IEnumerable<string> cancelCommands);

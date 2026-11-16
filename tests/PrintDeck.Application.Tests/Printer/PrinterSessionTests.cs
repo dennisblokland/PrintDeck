@@ -38,6 +38,8 @@ public class PrinterSessionTests : IAsyncDisposable
 		Assert.True(r.IsSuccess, r.Error);
 	}
 
+	private int IndexOf(string command) => _printer.Commands.ToList().IndexOf(command);
+
 	private static MemoryStream Gcode(string text, out long size)
 	{
 		byte[] bytes = Encoding.UTF8.GetBytes(text);
@@ -216,6 +218,52 @@ public class PrinterSessionTests : IAsyncDisposable
 			Assert.Equal(TimeSpan.FromMinutes(1), _session.CurrentJob.SlicerEstimate);
 			Assert.Equal(["G28", "G1 X10", "G1 X20"], _printer.Commands.Where(c => c is "G28" || c.StartsWith("G1")));
 			Assert.Contains(PrinterChange.Job | PrinterChange.State, _events.Published);
+		}
+
+		[Fact]
+		public async Task Shows_progress_and_layers_on_the_printer_screen()
+		{
+			await ConnectAsync();
+			string gcode = ";LAYER:0\nG1 X1\n;LAYER:1\nG1 X2\n";
+
+			_session.StartJob("cube.gcode", Gcode(gcode, out long size), size, TimeSpan.FromMinutes(10), new PrintOptions(true, 2));
+
+			await Until(() => _session.CurrentJob!.Status == JobStatus.Completed);
+			await Until(() => _printer.Commands.Contains("M117 Print done"));
+			string[] sent = _printer.Commands.SkipWhile(c => c != "M73 P0").ToArray();
+			Assert.Equal("M117 cube", sent[1]);
+			Assert.True(Array.IndexOf(sent, "M117 Layer 1/2") < Array.IndexOf(sent, "G1 X1"));
+			Assert.True(Array.IndexOf(sent, "M117 Layer 2/2") < Array.IndexOf(sent, "G1 X2"));
+			Assert.Contains(sent, c => c.StartsWith("M73 P", StringComparison.Ordinal) && c.Contains(" R", StringComparison.Ordinal));
+			Assert.True(Array.IndexOf(sent, "M73 P100 R0") < Array.IndexOf(sent, "M117 Print done"));
+		}
+
+		[Fact]
+		public async Task Sends_nothing_to_the_screen_unless_asked()
+		{
+			await ConnectAsync();
+			_session.StartJob("cube.gcode", Gcode(";LAYER:0\nG1 X1\n", out long size), size, null);
+
+			await Until(() => _session.CurrentJob!.Status == JobStatus.Completed);
+			await Task.Delay(100, Ct);
+			Assert.DoesNotContain(_printer.Commands, c => c.StartsWith("M73", StringComparison.Ordinal) || c.StartsWith("M117", StringComparison.Ordinal));
+		}
+
+		[Fact]
+		public async Task Pause_and_cancel_show_on_the_printer_screen()
+		{
+			await ConnectAsync();
+			_printer.Respond = _ => [];
+			_session.StartJob("a.gcode", Gcode("G1 X1\nG1 X2\n", out long size), size, null, new PrintOptions(true));
+			_printer.Respond = _ => ["ok"];
+			_printer.Emit("ok");
+
+			_session.PauseJob();
+			await Until(() => _printer.Commands.Contains("M117 Paused"));
+			_session.CancelJob(["M104 S0"]);
+
+			await Until(() => _printer.Commands.Contains("M117 Print cancelled"));
+			Assert.True(IndexOf("M104 S0") < IndexOf("M117 Print cancelled"));
 		}
 
 		[Fact]

@@ -54,6 +54,7 @@ public sealed class PrinterSession(
 	private TaskCompletionSource _ok = new();
 	private TaskCompletionSource _started = new();
 	private StreamReader? _job;
+	private PrinterScreenReporter? _screen;
 	private long _nextLine;
 	private long? _resendFrom;
 	private long _terminalId;
@@ -216,7 +217,7 @@ public sealed class PrinterSession(
 		return Result.Success();
 	}
 
-	public Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate)
+	public Result StartJob(string fileName, Stream content, long size, TimeSpan? estimate, PrintOptions? options = null)
 	{
 		lock (_gate)
 		{
@@ -227,8 +228,10 @@ public sealed class PrinterSession(
 			}
 			_job = new StreamReader(content, Encoding.UTF8);
 			CurrentJob = new PrintJob(fileName, size, estimate, Now);
+			_screen = options?.ShowProgressOnPrinter == true ? new PrinterScreenReporter(fileName, options.LayerCount) : null;
 			State = PrinterState.Printing;
 		}
+		ShowOnScreen(_screen?.Start());
 		Log(TerminalDirection.Info, $"Printing {fileName}");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
 		_work.Release();
@@ -251,6 +254,8 @@ public sealed class PrinterSession(
 		}
 		Log(TerminalDirection.Info, "Print paused");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
+		// A printer that paused itself (M600, LCD) shows its own message.
+		if (tellPrinter && kind == JobKind.Print) ShowOnScreen(_screen?.Paused());
 		return kind == JobKind.SdPrint && tellPrinter ? Enqueue(["M25"]) : Result.Success();
 	}
 
@@ -266,6 +271,7 @@ public sealed class PrinterSession(
 		}
 		Log(TerminalDirection.Info, "Print resumed");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
+		if (tellPrinter && CurrentJob.Kind == JobKind.Print) ShowOnScreen(_screen?.Resumed());
 		if (CurrentJob.Kind == JobKind.SdPrint) return tellPrinter ? Enqueue(["M24"]) : Result.Success();
 		_work.Release();
 		return Result.Success();
@@ -282,14 +288,16 @@ public sealed class PrinterSession(
 			_job?.Dispose();
 			_job = null;
 			State = PrinterState.Operational;
+			IReadOnlyList<string> farewell = _screen?.Finish(JobStatus.Cancelled) ?? [];
 			(commands, message) = CurrentJob.Kind switch
 			{
 				// Abort the SD print, then run the usual cancel script.
 				JobKind.SdPrint => ([SdAbortCommand, "M27 S0", .. cancelCommands], "Print cancelled"),
 				// Close the half-written file and delete it; nothing was printing, so no cancel script.
 				JobKind.SdUpload => (_uploadOpened ? ["M29", $"M30 {_uploadTarget}", "M20 L"] : [], "SD card upload cancelled"),
-				_ => (cancelCommands, "Print cancelled")
+				_ => (cancelCommands.Concat(farewell), "Print cancelled")
 			};
+			_screen = null;
 		}
 		Log(TerminalDirection.Info, message);
 		events.Publish(PrinterChange.State | PrinterChange.Job);
@@ -464,6 +472,11 @@ public sealed class PrinterSession(
 		_promptChoices = [];
 		lock (_gate) _okToSkipAfter = -1;
 		events.Publish(PrinterChange.Dialog);
+	}
+
+	private void ShowOnScreen(IReadOnlyList<string>? commands)
+	{
+		if (commands is { Count: > 0 }) Enqueue(commands);
 	}
 
 	// ---------------------------------------------------------------- SD card
@@ -659,6 +672,12 @@ public sealed class PrinterSession(
 			while (!refused && reader.ReadLine() is { } raw)
 			{
 				job.Advance(Encoding.UTF8.GetByteCount(raw) + 1);
+				if (_screen is { } screen)
+				{
+					if (screen.OnProgress(job.Progress, job.EstimatedRemaining(Now), Now) is { } progress) _manual.Enqueue(progress);
+					// Layer markers are comments: the message goes out in their place, before the layer's first move.
+					if (screen.OnLine(raw) is { } message) return message;
+				}
 				if (GcodeLine.Clean(raw) is not { } line) continue;
 				// A stray M28/M29 in the file would end the upload early.
 				if (uploading && GcodeLine.CommandOf(line) is "M28" or "M29") continue;
@@ -683,6 +702,8 @@ public sealed class PrinterSession(
 		if (!uploading)
 		{
 			Log(TerminalDirection.Info, $"Print finished: {name}");
+			ShowOnScreen(_screen?.Finish(JobStatus.Completed));
+			_screen = null;
 			return null;
 		}
 

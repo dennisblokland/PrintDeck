@@ -7,6 +7,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - Connect over serial (auto-discovers `/dev/ttyUSB*`, `/dev/ttyACM*`, `/dev/serial/by-id/*`) or the built-in **virtual printer**
 - Marlin host protocol: line numbers + checksums, resend handling, `busy:` tolerance, `M155` auto-report with `M105` polling fallback
 - Dashboard: job progress with elapsed / remaining / finish time, pause / resume / cancel, live temperatures, presets, history chart, MJPEG camera
+- **Progress on the printer's screen** while PrintDeck streams a print: `M73 P<percent> R<minutes left>` and `M117` messages (file name, `Layer 12/80`, paused, done, cancelled). Files that already contain `M73` (PrusaSlicer, OrcaSlicer) keep theirs. Switch it off in Settings
 - Control: XY/Z jog with step sizes, homing, extrude/retract (cold-extrusion guard), fan, motors off
 - Files: drag-and-drop upload with analysis (print time, filament, layers) from OrcaSlicer, PrusaSlicer and Cura metadata
 - **SD card**: list the printer's card (long names with `M20 L`), print from it with progress (`M23`/`M24`, `M27`), pause/resume/cancel (`M25`/`M24`/`M524`), copy uploaded files onto it (`M28`/`M29`, 8.3 names), delete, initialise and release. The virtual printer has a card too

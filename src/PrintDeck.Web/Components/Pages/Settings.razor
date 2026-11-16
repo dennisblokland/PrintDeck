@@ -97,6 +97,18 @@
 			</section>
 
 			<section class="card">
+				<header class="card-head"><h2>Printer screen</h2></header>
+				<label class="toggle">
+					<input type="checkbox" @bind="_host.ShowProgressOnPrinter" />
+					<span>Show progress, time left and layer on the printer's screen</span>
+				</label>
+				<p class="muted small">
+					Sends <code>M73</code> and <code>M117</code> while PrintDeck streams a print.
+					Files that already contain <code>M73</code> (PrusaSlicer, OrcaSlicer) keep their own.
+				</p>
+			</section>
+
+			<section class="card">
 				<header class="card-head"><h2>Camera</h2></header>
 				<label class="field"><span>MJPEG stream URL</span>
 					<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
@@ -157,11 +169,12 @@
 	{
 		public string? WebcamStreamUrl { get; set; }
 		public string CancelGcode { get; set; } = "";
+		public bool ShowProgressOnPrinter { get; set; } = true;
 		public List<PresetRow> Presets { get; set; } = [];
 
 		public static HostForm From(HostSettings s) => new()
 		{
-			WebcamStreamUrl = s.WebcamStreamUrl, CancelGcode = s.CancelGcode,
+			WebcamStreamUrl = s.WebcamStreamUrl, CancelGcode = s.CancelGcode, ShowProgressOnPrinter = s.ShowProgressOnPrinter,
 			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
 		};
 	}
@@ -243,7 +256,7 @@
 	{
 		HostForm f = _host!;
 		UpdateSettingsCommand command = new(
-			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl);
+			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl, f.ShowProgressOnPrinter);
 		if (await Run(command, "Settings saved"))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
