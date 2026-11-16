@@ -48,8 +48,21 @@ public class GcodeLineTests
 	[InlineData("G4 P1000", true)]
 	[InlineData("M400", true)]
 	[InlineData("M303 E0 S200 C8", true)]
+	[InlineData("M600", true)]
+	[InlineData("M0 Remove the support", true)]
+	[InlineData("M1", true)]
+	[InlineData("M10", false)]
 	[InlineData("G1 X1", false)]
 	[InlineData("M104 S200", false)]
 	[InlineData("G280", false)]
 	public void Detects_long_running(string cmd, bool expected) => Assert.Equal(expected, GcodeLine.IsLongRunning(cmd));
+
+	[Theory]
+	[InlineData("M108", true)]
+	[InlineData("M876 S0", true)]
+	[InlineData("M112", true)]
+	[InlineData("M410", true)]
+	[InlineData("M87", false)]
+	[InlineData("G28", false)]
+	public void Detects_emergency_commands(string cmd, bool expected) => Assert.Equal(expected, GcodeLine.IsEmergency(cmd));
 }

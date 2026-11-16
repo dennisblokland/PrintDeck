@@ -12,5 +12,8 @@ public enum PrinterChange
 	Job = 8,
 	Files = 16,
 	Settings = 32,
-	All = State | Temperature | Terminal | Job | Files | Settings
+
+	/// <summary>Firmware prompt, notification or wait-for-user changed.</summary>
+	Dialog = 64,
+	All = State | Temperature | Terminal | Job | Files | Settings | Dialog
 }

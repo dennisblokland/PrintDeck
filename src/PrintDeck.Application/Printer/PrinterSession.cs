@@ -24,18 +24,21 @@ namespace PrintDeck.Application.Printer;
 /// <summary>
 /// Marlin-style host protocol: one command in flight, line numbers + checksums,
 /// resend handling, temperature polling and job streaming.
-/// Also drives the printer's SD card: listing, printing from it and copying files onto it.
+/// Also drives the printer's SD card: listing, printing from it and copying files onto it,
+/// and follows the firmware's host action commands (pause/cancel from the LCD, prompts, notifications).
 /// </summary>
 public sealed class PrinterSession(
 	IPrinterTransportFactory transports,
 	PrinterEventHub events,
 	TimeProvider time,
-	ILogger<PrinterSession> logger) : IPrinterSession, IAsyncDisposable
+	ILogger<PrinterSession> logger,
+	ISettingsStore? settings = null) : IPrinterSession, IAsyncDisposable
 {
 	private static readonly TimeSpan _idleTimeout = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan _longCommandTimeout = TimeSpan.FromMinutes(10);
 	private static readonly TimeSpan _temperatureInterval = TimeSpan.FromSeconds(2);
 	private static readonly TimeSpan _sdProgressInterval = TimeSpan.FromSeconds(5);
+	private static readonly TimeSpan _outOfBandOkWindow = TimeSpan.FromSeconds(30);
 
 	private readonly Lock _gate = new();
 	private readonly ConcurrentQueue<string> _manual = new();
@@ -66,6 +69,16 @@ public sealed class PrinterSession(
 	/// <summary>Original names of files copied to the card, which Marlin only stores as 8.3 names.</summary>
 	private readonly ConcurrentDictionary<string, string> _uploadedNames = new(StringComparer.OrdinalIgnoreCase);
 
+	private string? _promptMessage;
+	private List<string> _promptChoices = [];
+
+	/// <summary>
+	/// An out-of-band line (M876, M108) still gets its own "ok" once the firmware's queue reaches it.
+	/// This many "ok"s pass first (the command that was in flight), then one is swallowed; -1 when none is owed.
+	/// </summary>
+	private int _okToSkipAfter = -1;
+	private long _okSkipDeadlineTicks;
+
 	public PrinterState State { get; private set; } = PrinterState.Offline;
 	public string? Port { get; private set; }
 	public int BaudRate { get; private set; }
@@ -75,6 +88,9 @@ public sealed class PrinterSession(
 	public TemperatureHistory Temperatures { get; } = new();
 	public SdCardState SdCard { get; private set; } = SdCardState.Unknown;
 	public IReadOnlyList<SdFile> SdFiles { get; private set; } = [];
+	public HostPrompt? Prompt { get; private set; }
+	public PrinterNotification? Notification { get; private set; }
+	public bool WaitingForUser { get; private set; }
 
 	private DateTimeOffset Now => time.GetUtcNow();
 
@@ -103,6 +119,7 @@ public sealed class PrinterSession(
 		Firmware = null;
 		Temperatures.Clear();
 		ResetSdCard();
+		ResetDialogs();
 		events.Publish(PrinterChange.State);
 		Log(TerminalDirection.Info, $"Connecting to {port} @ {baudRate}");
 
@@ -150,6 +167,7 @@ public sealed class PrinterSession(
 		lock (_gate) CurrentJob?.Fail(Now);
 		ErrorMessage = null;
 		ResetSdCard();
+		ResetDialogs();
 		SetState(PrinterState.Offline);
 		Log(TerminalDirection.Info, "Disconnected");
 	}
@@ -217,7 +235,10 @@ public sealed class PrinterSession(
 		return Result.Success();
 	}
 
-	public Result PauseJob()
+	public Result PauseJob() => Pause(tellPrinter: true);
+
+	/// <param name="tellPrinter">False when the printer paused itself and only reports it.</param>
+	private Result Pause(bool tellPrinter)
 	{
 		JobKind kind;
 		lock (_gate)
@@ -230,10 +251,12 @@ public sealed class PrinterSession(
 		}
 		Log(TerminalDirection.Info, "Print paused");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		return kind == JobKind.SdPrint ? Enqueue(["M25"]) : Result.Success();
+		return kind == JobKind.SdPrint && tellPrinter ? Enqueue(["M25"]) : Result.Success();
 	}
 
-	public Result ResumeJob()
+	public Result ResumeJob() => Resume(tellPrinter: true);
+
+	private Result Resume(bool tellPrinter)
 	{
 		lock (_gate)
 		{
@@ -243,7 +266,7 @@ public sealed class PrinterSession(
 		}
 		Log(TerminalDirection.Info, "Print resumed");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		if (CurrentJob.Kind == JobKind.SdPrint) return Enqueue(["M24"]);
+		if (CurrentJob.Kind == JobKind.SdPrint) return tellPrinter ? Enqueue(["M24"]) : Result.Success();
 		_work.Release();
 		return Result.Success();
 	}
@@ -261,8 +284,8 @@ public sealed class PrinterSession(
 			State = PrinterState.Operational;
 			(commands, message) = CurrentJob.Kind switch
 			{
-				// M524 aborts the SD print (Marlin); the printer then runs the usual cancel script.
-				JobKind.SdPrint => (["M524", "M27 S0", .. cancelCommands], "Print cancelled"),
+				// Abort the SD print, then run the usual cancel script.
+				JobKind.SdPrint => ([SdAbortCommand, "M27 S0", .. cancelCommands], "Print cancelled"),
 				// Close the half-written file and delete it; nothing was printing, so no cancel script.
 				JobKind.SdUpload => (_uploadOpened ? ["M29", $"M30 {_uploadTarget}", "M20 L"] : [], "SD card upload cancelled"),
 				_ => (cancelCommands, "Print cancelled")
@@ -271,6 +294,176 @@ public sealed class PrinterSession(
 		Log(TerminalDirection.Info, message);
 		events.Publish(PrinterChange.State | PrinterChange.Job);
 		return Enqueue(commands);
+	}
+
+	/// <summary>Marlin aborts an SD print with M524; Prusa firmware has no M524 and stops a print with M603.</summary>
+	private string SdAbortCommand =>
+		Firmware?.StartsWith("Prusa", StringComparison.OrdinalIgnoreCase) == true ? "M603" : "M524";
+
+	// ---------------------------------------------------------------- firmware dialogs
+
+	public Result AnswerPrompt(int choice)
+	{
+		HostPrompt? prompt = Prompt;
+		if (prompt is null) return Result.Failure("The printer is not asking anything.");
+		if (choice < 0 || choice >= prompt.Choices.Count) return Result.Failure("Not one of the choices.");
+
+		Prompt = null;
+		Log(TerminalDirection.Info, $"Answered \"{prompt.Message}\": {prompt.Choices[choice]}");
+		events.Publish(PrinterChange.Dialog);
+		return SendOutOfBand($"M876 S{choice}");
+	}
+
+	public Result ContinueFromUser()
+	{
+		if (!WaitingForUser) return Result.Failure("The printer is not waiting.");
+		return SendOutOfBand("M108");
+	}
+
+	public void DismissNotification()
+	{
+		Notification = null;
+		events.Publish(PrinterChange.Dialog);
+	}
+
+	/// <summary>
+	/// Writes an emergency-parser command straight away, past the one-command-in-flight queue:
+	/// the printer is blocked on M600/M0 and would never get to it otherwise.
+	/// </summary>
+	private Result SendOutOfBand(string command)
+	{
+		IPrinterTransport? transport = _transport;
+		if (transport is null || !State.IsConnected()) return Result.Failure("Printer is not connected.");
+
+		lock (_gate)
+		{
+			bool inFlight = !_ok.Task.IsCompleted;
+			_okToSkipAfter = inFlight ? 1 : 0;
+			_okSkipDeadlineTicks = Now.UtcTicks + _outOfBandOkWindow.Ticks;
+		}
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await transport.WriteLineAsync(command, CancellationToken.None);
+				Log(TerminalDirection.Sent, command);
+			}
+			catch (Exception ex)
+			{
+				logger.LogWarning(ex, "Out-of-band {Command} failed", command);
+			}
+		});
+		return Result.Success();
+	}
+
+	/// <summary>True when this "ok" answers an out-of-band line and must not release the command in flight.</summary>
+	private bool TakeOutOfBandOk()
+	{
+		lock (_gate)
+		{
+			if (_okToSkipAfter < 0) return false;
+			if (Now.UtcTicks > _okSkipDeadlineTicks)
+			{
+				_okToSkipAfter = -1;
+				return false;
+			}
+			if (_okToSkipAfter > 0)
+			{
+				_okToSkipAfter--;
+				return false;
+			}
+			_okToSkipAfter = -1;
+			return true;
+		}
+	}
+
+	private void HandleAction(ActionCommand action)
+	{
+		switch (action.Name)
+		{
+			case "pause":
+				if (Pause(tellPrinter: true).IsSuccess) Notify("Paused from the printer");
+				break;
+			case "paused":
+				if (Pause(tellPrinter: false).IsSuccess) Notify("The printer paused the print");
+				break;
+			case "resume":
+				Resume(tellPrinter: true);
+				break;
+			case "resumed":
+				Resume(tellPrinter: false);
+				break;
+			case "cancel":
+				if (CurrentJob is { IsActive: true }) _ = Task.Run(CancelFromPrinterAsync);
+				break;
+			case "disconnect":
+				_ = Task.Run(DisconnectAsync);
+				break;
+			case "notification":
+				if (action.Argument.Length > 0) Notify(action.Argument);
+				break;
+			case "out_of_filament":
+				Notify(action.Argument.Length > 0 ? $"Filament runout ({action.Argument})" : "Filament runout");
+				break;
+			case "prompt_begin":
+				_promptMessage = action.Argument;
+				_promptChoices = [];
+				break;
+			case "prompt_choice" or "prompt_button":
+				if (_promptMessage is not null && action.Argument.Length > 0) _promptChoices.Add(action.Argument);
+				break;
+			case "prompt_show":
+				if (_promptMessage is null) break;
+				// A prompt without buttons still needs an answer; Marlin's default is a single "Continue".
+				Prompt = new HostPrompt(_promptMessage, _promptChoices.Count > 0 ? [.. _promptChoices] : ["Continue"]);
+				events.Publish(PrinterChange.Dialog);
+				break;
+			case "prompt_end":
+				_promptMessage = null;
+				_promptChoices = [];
+				if (Prompt is not null)
+				{
+					Prompt = null;
+					events.Publish(PrinterChange.Dialog);
+				}
+				break;
+		}
+	}
+
+	private async Task CancelFromPrinterAsync()
+	{
+		string[] script = [];
+		if (settings is not null)
+		{
+			try { script = (await settings.GetAsync(CancellationToken.None)).CancelGcode.Split('\n'); }
+			catch (Exception ex) { logger.LogWarning(ex, "Could not read the cancel script"); }
+		}
+		if (CancelJob(script).IsSuccess) Notify("Cancelled from the printer");
+	}
+
+	private void Notify(string text)
+	{
+		Notification = new PrinterNotification(Now, text);
+		Log(TerminalDirection.Info, text);
+		events.Publish(PrinterChange.Dialog);
+	}
+
+	private void SetWaitingForUser(bool waiting)
+	{
+		if (WaitingForUser == waiting) return;
+		WaitingForUser = waiting;
+		events.Publish(PrinterChange.Dialog);
+	}
+
+	private void ResetDialogs()
+	{
+		Prompt = null;
+		Notification = null;
+		WaitingForUser = false;
+		_promptMessage = null;
+		_promptChoices = [];
+		lock (_gate) _okToSkipAfter = -1;
+		events.Publish(PrinterChange.Dialog);
 	}
 
 	// ---------------------------------------------------------------- SD card
@@ -623,6 +816,18 @@ public sealed class PrinterSession(
 
 		HandleSdLine(line);
 
+		if (ActionCommand.TryParse(line) is { } action)
+		{
+			HandleAction(action);
+			return;
+		}
+
+		// Marlin's host keepalive while M0/M1/M600 wait for the user.
+		if (line.Contains("busy: paused for", StringComparison.OrdinalIgnoreCase))
+			SetWaitingForUser(true);
+		else if (line.StartsWith("Cap:PROMPT_SUPPORT:1", StringComparison.Ordinal))
+			Enqueue(["M876 P1"]); // tell the firmware this host shows its prompts
+
 		if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase))
 			_started.TrySetResult();
 		else if (line.StartsWith("FIRMWARE_NAME:", StringComparison.Ordinal))
@@ -647,7 +852,10 @@ public sealed class PrinterSession(
 		}
 
 		if (line.StartsWith("ok", StringComparison.Ordinal))
-			_ok.TrySetResult();
+		{
+			SetWaitingForUser(false);
+			if (!TakeOutOfBandOk()) _ok.TrySetResult();
+		}
 	}
 
 	private async Task PollLoopAsync(CancellationToken ct)

@@ -187,6 +187,39 @@ public sealed class VirtualPrinterTransportTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task M600_waits_for_a_prompt_answer_that_skips_the_queue()
+	{
+		await Send("M600");
+		List<string> shown = await ReadUntil(l => l == "//action:prompt_show");
+		Assert.Contains("//action:paused", shown);
+		Assert.Contains("//action:prompt_button Continue", shown);
+		await ReadUntil(l => l == "echo:busy: paused for user");
+
+		await Send("M876 S0");
+
+		List<string> after = await ReadUntil(l => l == "//action:resumed");
+		Assert.Contains("//action:prompt_end", after);
+		await ReadUntil(l => l == "ok"); // M600
+		await ReadUntil(l => l == "ok"); // the queued M876 itself
+	}
+
+	[Fact]
+	public async Task M108_releases_M0()
+	{
+		await Send("M0 Remove supports");
+		Assert.Contains("//action:prompt_begin Remove supports", await ReadUntil(l => l == "//action:prompt_show"));
+		await Send("M108");
+		await ReadUntil(l => l == "ok");
+	}
+
+	[Fact]
+	public async Task M118_echoes_action_commands()
+	{
+		await Send("M118 //action:notification Hello");
+		Assert.Contains("//action:notification Hello", await ReadUntil(l => l == "ok"));
+	}
+
+	[Fact]
 	public async Task Halts_on_emergency_stop()
 	{
 		await Send("M112");

@@ -24,6 +24,15 @@ public interface IPrinterSession
 	SdCardState SdCard { get; }
 	IReadOnlyList<SdFile> SdFiles { get; }
 
+	/// <summary>Question the firmware is asking (<c>//action:prompt_*</c>), if any.</summary>
+	HostPrompt? Prompt { get; }
+
+	/// <summary>Latest message from the printer, until dismissed.</summary>
+	PrinterNotification? Notification { get; }
+
+	/// <summary>The printer reports "busy: paused for user" (M0/M1/M600 waiting).</summary>
+	bool WaitingForUser { get; }
+
 	IReadOnlyList<TerminalEntry> Terminal(int last);
 	void ClearTerminal();
 
@@ -42,6 +51,14 @@ public interface IPrinterSession
 	Result ReleaseSdCard();
 	Result DeleteSdFile(string path);
 	Result StartSdPrint(string path);
+
+	/// <summary>Answers <see cref="Prompt"/> with <c>M876 S&lt;choice&gt;</c>, sent past the command queue.</summary>
+	Result AnswerPrompt(int choice);
+
+	/// <summary>Releases an M0/M1/M600 wait with <c>M108</c>, sent past the command queue.</summary>
+	Result ContinueFromUser();
+
+	void DismissNotification();
 
 	/// <summary>Copies a file onto the SD card; returns the 8.3 name it gets there.</summary>
 	Result<string> StartSdUpload(string fileName, Stream content, long size);

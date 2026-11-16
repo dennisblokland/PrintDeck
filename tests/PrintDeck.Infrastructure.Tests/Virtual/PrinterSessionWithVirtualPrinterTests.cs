@@ -126,6 +126,31 @@ public sealed class PrinterSessionWithVirtualPrinterTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task A_filament_change_mid_print_is_answered_from_the_host()
+	{
+		Assert.True(Start("change.gcode", "G1 X1\nM600\nG1 X2\nG1 X3\n").IsSuccess);
+
+		await Until(() => _session.Prompt is not null);
+		Assert.Equal("Load new filament", _session.Prompt!.Message);
+		Assert.Equal(PrinterState.Paused, _session.State); // the printer said "paused"
+		await Until(() => _session.WaitingForUser);
+
+		Assert.True(_session.AnswerPrompt(0).IsSuccess);
+
+		await Until(() => _session.CurrentJob!.Status == JobStatus.Completed);
+		Assert.Null(_session.Prompt);
+		Assert.False(_session.WaitingForUser);
+		Assert.Equal(PrinterState.Operational, _session.State);
+	}
+
+	[Fact]
+	public async Task Notifications_from_gcode_reach_the_session()
+	{
+		_session.Enqueue(["M118 //action:notification Bed is level"]);
+		await Until(() => _session.Notification?.Text == "Bed is level");
+	}
+
+	[Fact]
 	public async Task Emergency_stop_puts_the_session_in_error()
 	{
 		_session.Enqueue(["M112"]);

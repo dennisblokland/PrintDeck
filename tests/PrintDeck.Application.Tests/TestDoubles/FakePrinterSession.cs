@@ -1,6 +1,7 @@
 using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Jobs;
+using PrintDeck.Domain.Printer;
 using PrintDeck.Domain.Printer.Enums;
 using PrintDeck.Domain.SdCard;
 using PrintDeck.Domain.SdCard.Enums;
@@ -22,6 +23,10 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public SdCardState SdCard { get; set; } = SdCardState.Ready;
 	public IReadOnlyList<SdFile> SdFiles { get; set; } = [];
 	public List<string> SdCalls { get; } = [];
+	public HostPrompt? Prompt { get; set; }
+	public PrinterNotification? Notification { get; set; }
+	public bool WaitingForUser { get; set; }
+	public List<string> DialogCalls { get; } = [];
 	public (string FileName, long Size)? SdUpload { get; private set; }
 	public List<TerminalEntry> TerminalEntries { get; } = [];
 
@@ -84,6 +89,20 @@ internal sealed class FakePrinterSession : IPrinterSession
 		SdUpload = (fileName, size);
 		return JobResult.IsSuccess ? Result.Success("FILE.GCO") : Result.Failure<string>(JobResult.Error!);
 	}
+
+	public Result AnswerPrompt(int choice)
+	{
+		DialogCalls.Add($"answer {choice}");
+		return JobResult;
+	}
+
+	public Result ContinueFromUser()
+	{
+		DialogCalls.Add("continue");
+		return JobResult;
+	}
+
+	public void DismissNotification() => DialogCalls.Add("dismiss");
 
 	private Result Sd(string call)
 	{

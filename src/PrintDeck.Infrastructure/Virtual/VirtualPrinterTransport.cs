@@ -11,7 +11,7 @@ namespace PrintDeck.Infrastructure.Virtual;
 
 /// <summary>
 /// In-process Marlin imitation for development without hardware:
-/// heaters with thermal lag, M109/M190 waits, auto-reporting, checksum validation, moves that take time and an SD card.
+/// heaters with thermal lag, M109/M190 waits, auto-reporting, checksum validation, moves that take time, an SD card, and M0/M600 waits answered through host prompts.
 /// </summary>
 public sealed partial class VirtualPrinterTransport(TimeProvider time, double speedFactor = 1) : IPrinterTransport
 {
@@ -38,7 +38,11 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 		return Task.CompletedTask;
 	}
 
-	public Task WriteLineAsync(string line, CancellationToken ct) => _in.Writer.WriteAsync(line, ct).AsTask();
+	public Task WriteLineAsync(string line, CancellationToken ct)
+	{
+		ParseEmergency(line);
+		return _in.Writer.WriteAsync(line, ct).AsTask();
+	}
 
 	public async IAsyncEnumerable<string> ReadLinesAsync([EnumeratorCancellation] CancellationToken ct)
 	{
@@ -128,6 +132,8 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 			case "M115":
 				Emit("FIRMWARE_NAME:Marlin 2.1.2 (PrintDeck Virtual) SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:Virtual EXTRUDER_COUNT:1");
 				Emit("Cap:AUTOREPORT_TEMP:1");
+				Emit("Cap:EMERGENCY_PARSER:1");
+				Emit("Cap:PROMPT_SUPPORT:1");
 				break;
 			case "M155":
 				_autoReport = TimeSpan.FromSeconds(Arg('S') ?? 0);
@@ -159,6 +165,18 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				double seconds = dist / (_feed / 60.0) / speedFactor;
 				if (seconds > 0.001) await Task.Delay(TimeSpan.FromSeconds(Math.Min(seconds, 5)), time, ct);
 				(_x, _y, _z) = (nx, ny, nz);
+				break;
+			case "M0" or "M1":
+				await WaitForUserAsync(parts.Length > 1 ? string.Join(' ', parts.Skip(1)) : "Click to continue", ct);
+				break;
+			case "M600":
+				Emit("//action:paused");
+				await WaitForUserAsync("Load new filament", ct);
+				Emit("//action:resumed");
+				break;
+			case "M118":
+				// Echo: lets G-code (and tests) send action commands, e.g. "M118 //action:notification Hi".
+				Emit(command.Length > 5 ? command[5..].Trim() : "");
 				break;
 			case "M112":
 				Emit("Error:Printer halted. kill() called!");

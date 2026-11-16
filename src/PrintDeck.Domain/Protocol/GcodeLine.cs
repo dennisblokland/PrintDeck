@@ -29,5 +29,9 @@ public static class GcodeLine
 
 	/// <summary>Commands that legitimately block for a long time without an "ok".</summary>
 	public static bool IsLongRunning(string command) =>
-		CommandOf(command) is "G28" or "G29" or "M109" or "M190" or "M191" or "G4" or "M400" or "M303";
+		CommandOf(command) is "G28" or "G29" or "M109" or "M190" or "M191" or "G4" or "M400" or "M303" or "M600" or "M0" or "M1";
+
+	/// <summary>Commands Marlin's emergency parser acts on as soon as they arrive, even while another command blocks.</summary>
+	public static bool IsEmergency(string command) =>
+		CommandOf(command) is "M108" or "M112" or "M410" or "M876";
 }
