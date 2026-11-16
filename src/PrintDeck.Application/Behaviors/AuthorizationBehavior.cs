@@ -9,7 +9,8 @@ namespace PrintDeck.Application.Behaviors;
 /// <summary>
 /// Gatekeeper for every command and query. Queries need a signed-in user; commands (anything that
 /// changes the printer, files or settings) need an admin unless the message says otherwise
-/// (<see cref="IAllowAnonymous"/>, <see cref="IAllowAnyUser"/>, <see cref="IAccountAdministration"/>).
+/// (<see cref="IAllowAnonymous"/>, <see cref="IAllowAnyUser"/>, <see cref="IAccountAdministration"/>,
+/// <see cref="IHostAdministration"/>).
 /// A refused command returns a failed <see cref="Result"/>; a refused query throws <see cref="UnauthorizedAccessException"/>.
 /// </summary>
 public sealed class AuthorizationBehavior<TMessage, TResponse>(ICurrentUser currentUser)
@@ -19,6 +20,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>(ICurrentUser curr
 	public const string SignInRequired = "Sign in first.";
 	public const string AdminRequired = "Only admins can do that.";
 	public const string AccountRequired = "Sign in with an admin account to manage users.";
+	public const string HostAccountRequired = "Sign in with an admin account to restart or shut down the host.";
 
 	public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
 	{
@@ -34,6 +36,8 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>(ICurrentUser curr
 		(_, null) => SignInRequired,
 		(IAccountAdministration, { IsApiKey: true }) => AccountRequired,
 		(IAccountAdministration, { IsAdmin: false }) => AdminRequired,
+		(IHostAdministration, { IsApiKey: true }) => HostAccountRequired,
+		(IHostAdministration, { IsAdmin: false }) => AdminRequired,
 		(IAllowAnyUser, _) => null,
 		(IBaseCommand, { IsAdmin: false }) => AdminRequired,
 		_ => null

@@ -17,6 +17,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - Terminal with command history and temperature-noise filter
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
+- **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
 - Dark and light themes, mobile layout
 
 ## Architecture
@@ -67,6 +68,24 @@ After changing the Identity model, add a migration (the database upgrades itself
 ```bash
 dotnet tool restore
 dotnet ef migrations add <Name> --project src/PrintDeck.Infrastructure --startup-project src/PrintDeck.Web --output-dir Identity/Migrations
+```
+
+### System menu
+
+The restart, reboot and shutdown buttons run shell commands from the `System` section of `appsettings.json` (or environment variables such as `System__RebootCommand`). They are deliberately not editable in the web UI. Buttons without a command stay hidden. For a systemd service called `printdeck`:
+
+```json
+"System": {
+  "RestartCommand": "sudo systemctl restart printdeck",
+  "RebootCommand": "sudo systemctl reboot",
+  "ShutdownCommand": "sudo systemctl poweroff"
+}
+```
+
+Allow exactly those commands without a password, for the user PrintDeck runs as (`sudo visudo -f /etc/sudoers.d/printdeck`):
+
+```
+printdeck ALL=(root) NOPASSWD: /usr/bin/systemctl restart printdeck, /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff
 ```
 
 On Linux your user needs serial access: `sudo usermod -aG uucp $USER` (Arch/CachyOS) or `dialout` (Debian/Ubuntu), then log in again.

@@ -17,6 +17,7 @@ public class AuthorizationBehaviorTests
 	public sealed record OwnPasswordCommand : ICommand<Result>, IAllowAnyUser;
 	public sealed record ManageUsersCommand : ICommand<Result>, IAccountAdministration;
 	public sealed record ListUsersQuery : IQuery<string>, IAccountAdministration;
+	public sealed record RebootCommand : ICommand<Result>, IHostAdministration;
 
 	private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -82,5 +83,14 @@ public class AuthorizationBehaviorTests
 		Assert.Equal(AuthorizationBehavior<ManageUsersCommand, Result>.AdminRequired, (await Command(new ManageUsersCommand(), FakeCurrentUser.Viewer)).Error);
 		Assert.Equal(AuthorizationBehavior<ManageUsersCommand, Result>.AccountRequired, (await Command(new ManageUsersCommand(), FakeCurrentUser.ApiKey)).Error);
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await Send(new ListUsersQuery(), FakeCurrentUser.Viewer, "users"));
+	}
+
+	[Fact]
+	public async Task Host_administration_needs_a_signed_in_admin_not_the_api_key()
+	{
+		Assert.True((await Command(new RebootCommand(), FakeCurrentUser.Admin)).IsSuccess);
+		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.AdminRequired, (await Command(new RebootCommand(), FakeCurrentUser.Viewer)).Error);
+		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.HostAccountRequired, (await Command(new RebootCommand(), FakeCurrentUser.ApiKey)).Error);
+		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.SignInRequired, (await Command(new RebootCommand(), null)).Error);
 	}
 }

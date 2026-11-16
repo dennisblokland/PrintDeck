@@ -2,7 +2,7 @@
 
 Features PrintDeck still lacks compared to an OctoPrint 1.11 setup (Prusa MK3S over USB, with PSU Control, OctoLight, MQTT, Home Assistant, Slicer Thumbnails, Camera Settings, Firmware Updater and Connect And Print plugins). Picked 2026-11-14.
 
-Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands; progress on the printer screen.
+Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands; progress on the printer screen; system menu.
 
 ## Wanted
 
@@ -38,7 +38,7 @@ Mostly in `PrinterSession` and the Control page.
 - [ ] **Editable terminal filters.** Choose which lines to hide instead of one fixed temperature filter.
 - [ ] **Serial log and app logs.** Toggle a full serial log; download log files.
 - [ ] **Health checks.** Low disk space, undervoltage on a Pi, known-bad firmware versions.
-- [ ] **System menu.** Restart PrintDeck, reboot or shut down the host.
+- [x] **System menu.** Restart PrintDeck, reboot or shut down the host.
 - [ ] **Backup and restore.** Settings, profiles and files as one archive.
 
 ### 5. Camera
