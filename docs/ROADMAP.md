@@ -2,7 +2,7 @@
 
 Features PrintDeck still lacks compared to an OctoPrint 1.11 setup (Prusa MK3S over USB, with PSU Control, OctoLight, MQTT, Home Assistant, Slicer Thumbnails, Camera Settings, Firmware Updater and Connect And Print plugins). Picked 2026-11-14.
 
-Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands; progress on the printer screen; system menu; serial log and app logs.
+Done: login and user accounts (ASP.NET Core Identity on SQLite, Admin and Viewer roles); multiple printer profiles; SD card; firmware dialogs and action commands; progress on the printer screen; system menu; serial log and app logs; file problem check.
 
 ## Wanted
 
@@ -23,7 +23,7 @@ Mostly in `PrinterSession` and the Control page.
 - [ ] **Folders.** Create, rename, move; upload into a folder (also via the slicer API `path` field).
 - [ ] **Sort, search and filter.** By name, upload date, last print, size; hide files that printed successfully.
 - [ ] **Print history and statistics.** Per-file success/fail count, last print date, total print time and filament.
-- [ ] **File problem check.** Warn about known bad G-code before a print starts.
+- [x] **File problem check.** Warn about known bad G-code before a print starts.
 - [ ] **Start print after upload.** Slicer upload with `print=true` connects first if needed.
 - [x] **SD card.** List (`M20`), select and print (`M23`/`M24`), upload, init and release.
 
