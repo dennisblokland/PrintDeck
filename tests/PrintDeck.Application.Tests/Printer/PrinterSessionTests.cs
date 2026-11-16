@@ -253,16 +253,17 @@ public class PrinterSessionTests : IAsyncDisposable
 		public async Task Pause_and_cancel_show_on_the_printer_screen()
 		{
 			await ConnectAsync();
+			// The printer stays silent, so the job is still running when it is paused and cancelled.
 			_printer.Respond = _ => [];
 			_session.StartJob("a.gcode", Gcode("G1 X1\nG1 X2\n", out long size), size, null, new PrintOptions(true));
+
+			Assert.True(_session.PauseJob().IsSuccess);
+			Assert.True(_session.CancelJob(["M104 S0"]).IsSuccess);
 			_printer.Respond = _ => ["ok"];
 			_printer.Emit("ok");
 
-			_session.PauseJob();
-			await Until(() => _printer.Commands.Contains("M117 Paused"));
-			_session.CancelJob(["M104 S0"]);
-
 			await Until(() => _printer.Commands.Contains("M117 Print cancelled"));
+			Assert.True(IndexOf("M117 Paused") < IndexOf("M104 S0"));
 			Assert.True(IndexOf("M104 S0") < IndexOf("M117 Print cancelled"));
 		}
 
