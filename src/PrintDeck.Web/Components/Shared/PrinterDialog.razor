@@ -1,0 +1,83 @@
+@inherits PrinterComponent
+
+@* Firmware prompts, "waiting for user" and printer messages, shown above every page. *@
+@if (_dialog.Prompt is { } prompt)
+{
+	<section class="printer-dialog is-prompt" role="alertdialog" aria-labelledby="printer-prompt">
+		<Icon Name="bell" Size="18" />
+		<div class="printer-dialog-body">
+			<strong id="printer-prompt">@prompt.Message</strong>
+			<span class="muted">The printer is asking.</span>
+		</div>
+		<div class="printer-dialog-actions">
+			@if (CanControl)
+			{
+				@for (int i = 0; i < prompt.Choices.Count; i++)
+				{
+					int choice = i;
+					<button class="btn btn-sm @(choice == prompt.Choices.Count - 1 ? "btn-primary" : "")" disabled="@_busy"
+							@onclick="() => AnswerAsync(choice)">@prompt.Choices[choice]</button>
+				}
+			}
+			else
+			{
+				<span class="muted">Waiting for an admin or the printer's screen</span>
+			}
+		</div>
+	</section>
+}
+else if (_dialog.WaitingForUser)
+{
+	<section class="printer-dialog is-prompt" role="status">
+		<Icon Name="bell" Size="18" />
+		<div class="printer-dialog-body">
+			<strong>The printer is waiting for you</strong>
+			<span class="muted">Finish on the printer's screen, or continue from here.</span>
+		</div>
+		@if (CanControl)
+		{
+			<div class="printer-dialog-actions">
+				<button class="btn btn-sm btn-primary" disabled="@_busy" title="Sends M108; needs firmware with the emergency parser"
+						@onclick="ContinueAsync">Continue</button>
+			</div>
+		}
+	</section>
+}
+
+@if (_dialog.Notification is { } note)
+{
+	<section class="printer-dialog" role="status">
+		<Icon Name="bell" Size="18" />
+		<div class="printer-dialog-body">
+			<strong>@note.Text</strong>
+			<span class="muted">From the printer · @Format.Ago(note.At, Time.GetUtcNow())</span>
+		</div>
+		@if (CanControl)
+		{
+			<button class="icon-btn" title="Dismiss" aria-label="Dismiss" @onclick="() => Run(new DismissNotificationCommand())"><Icon Name="x" Size="16" /></button>
+		}
+	</section>
+}
+
+@code {
+	private PrinterDialogDto _dialog = new(null, null, false);
+	private bool _busy;
+
+	protected override PrinterChange Interests => PrinterChange.Dialog;
+
+	protected override async Task RefreshAsync() => _dialog = await Mediator.Send(new GetPrinterDialogQuery());
+
+	private async Task AnswerAsync(int choice)
+	{
+		_busy = true;
+		try { await Run(new AnswerPromptCommand(choice)); }
+		finally { _busy = false; }
+	}
+
+	private async Task ContinueAsync()
+	{
+		_busy = true;
+		try { await Run(new ContinueFromUserCommand()); }
+		finally { _busy = false; }
+	}
+}
