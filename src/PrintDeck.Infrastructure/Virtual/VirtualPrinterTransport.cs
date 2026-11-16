@@ -153,6 +153,11 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				await Task.Delay(TimeSpan.FromSeconds(1.5), time, ct);
 				(_x, _y, _z) = (0, 0, 0);
 				break;
+			case "G4":
+				// Dwell: P milliseconds or S seconds, like the real thing (scaled like moves).
+				double dwell = (Arg('P') ?? 0) / 1000 + (Arg('S') ?? 0);
+				if (dwell > 0) await Task.Delay(TimeSpan.FromSeconds(dwell / speedFactor), time, ct);
+				break;
 			case "G90": _relative = false; break;
 			case "G91": _relative = true; break;
 			case "G0" or "G1":
