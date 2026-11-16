@@ -9,6 +9,8 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 {
 	private readonly Dictionary<string, (byte[] Content, DateTimeOffset UploadedAt, GcodeAnalysis? Analysis)> _files = new();
 
+	private readonly Dictionary<string, List<PrintRecord>> _prints = new();
+
 	public DateTimeOffset Now { get; set; } = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
 	public int Opens { get; private set; }
 
@@ -43,11 +45,27 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 		return new MemoryStream(_files[name].Content, writable: false);
 	}
 
-	public Task<bool> DeleteAsync(string name, CancellationToken ct) => Task.FromResult(_files.Remove(name));
+	public Task<bool> DeleteAsync(string name, CancellationToken ct)
+	{
+		_prints.Remove(name);
+		return Task.FromResult(_files.Remove(name));
+	}
+
+	public Task RecordPrintAsync(string name, PrintRecord print, CancellationToken ct)
+	{
+		if (_files.ContainsKey(name))
+		{
+			if (!_prints.TryGetValue(name, out List<PrintRecord>? list)) _prints[name] = list = [];
+			list.Add(print);
+		}
+		return Task.CompletedTask;
+	}
+
+	public IReadOnlyList<PrintRecord> PrintsOf(string name) => _prints.TryGetValue(name, out List<PrintRecord>? list) ? list : [];
 
 	private GcodeFile ToFile(string name)
 	{
 		(byte[] content, DateTimeOffset uploadedAt, GcodeAnalysis? analysis) = _files[name];
-		return new GcodeFile(name, content.Length, uploadedAt, analysis);
+		return new GcodeFile(name, content.Length, uploadedAt, analysis, PrintStats.From(PrintsOf(name)));
 	}
 }

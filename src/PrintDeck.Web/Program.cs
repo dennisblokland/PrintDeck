@@ -37,6 +37,7 @@ WebApplication app = builder.Build();
 
 await app.Services.InitializeDatabaseAsync();
 await app.Services.InitializeSerialLogAsync();
+app.Services.StartPrintHistory();
 
 if (!app.Environment.IsDevelopment())
 {

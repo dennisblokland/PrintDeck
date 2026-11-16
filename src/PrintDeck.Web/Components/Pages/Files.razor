@@ -1,11 +1,21 @@
 @page "/files"
 @inherits PrinterComponent
+@inject NavigationManager Nav
 
 <PageTitle>Files · PrintDeck</PageTitle>
 
 <header class="page-head">
 	<h1>Files</h1>
-	<p class="muted">@_files.Count file@(_files.Count == 1 ? "" : "s") · @Format.Bytes(_files.Sum(f => f.SizeBytes))</p>
+	<p class="muted">
+		@if (Filtered)
+		{
+			<text>@_files.Count of @_total file@(_total == 1 ? "" : "s")</text>
+		}
+		else
+		{
+			<text>@_files.Count file@(_files.Count == 1 ? "" : "s") · @Format.Bytes(_files.Sum(f => f.SizeBytes))</text>
+		}
+	</p>
 </header>
 
 @if (CanControl)
@@ -53,13 +63,39 @@
 	</section>
 }
 
+@if (_total > 0)
+{
+	<div class="file-toolbar">
+		<input class="input file-search" type="search" placeholder="Search files" aria-label="Search files"
+			   value="@_search" @oninput="OnSearch" />
+		<select class="input" aria-label="Sort by" value="@_sort" @onchange="OnSort">
+			<option value="@FileSort.Uploaded">Newest upload</option>
+			<option value="@FileSort.Name">Name</option>
+			<option value="@FileSort.LastPrinted">Last printed</option>
+			<option value="@FileSort.Size">Size</option>
+		</select>
+		<label class="toggle">
+			<input type="checkbox" checked="@_hidePrinted" @onchange="OnHidePrinted" />
+			<span>Hide printed</span>
+		</label>
+	</div>
+}
+
 @if (_files.Count == 0)
 {
-	<div class="card empty"><Icon Name="folder" Size="28" /><p>No files yet</p></div>
+	@if (Filtered)
+	{
+		<div class="card empty"><Icon Name="folder" Size="28" /><p>No files match</p>
+			<button class="btn btn-ghost" @onclick="ShowAllAsync">Show all files</button></div>
+	}
+	else
+	{
+		<div class="card empty"><Icon Name="folder" Size="28" /><p>No files yet</p></div>
+	}
 }
 else
 {
-	<ul class="file-list">
+	<ul class="file-list local-files">
 		@foreach (GcodeFile f in _files)
 		{
 			bool printing = _activeFile == f.Name;
@@ -70,6 +106,11 @@ else
 					<span class="file-sub">
 						@Format.Bytes(f.SizeBytes) · @Format.Ago(f.UploadedAt, Time.GetUtcNow())
 						@if (f.Analysis?.Slicer is { } slicer) { <text> · @slicer</text> }
+						@if (f.Prints?.Last is { } last)
+						{
+							<text> · </text><span class="file-printed @(last.Succeeded ? "is-ok" : "is-bad")"
+												   title="@PrintSummary(f.Prints)">@(last.Succeeded ? "printed" : last.Status == JobStatus.Cancelled ? "cancelled" : "failed") @Format.Ago(last.EndedAt, Time.GetUtcNow())</span>
+						}
 					</span>
 				</div>
 				<div class="file-stats">
@@ -196,6 +237,62 @@ else
 	private string? _uploadName;
 	private string? _confirmDelete;
 	private string? _checking;
+	private int _total;
+
+	// The view lives in these fields and is mirrored in the address (?q=…&sort=…&hide=true),
+	// so a reload or a bookmark keeps it. Handlers change the fields first: quick successive
+	// changes never build on an address that hasn't caught up yet.
+	[SupplyParameterFromQuery(Name = "q")] private string? QueryText { get; set; }
+	[SupplyParameterFromQuery(Name = "sort")] private string? QuerySort { get; set; }
+	[SupplyParameterFromQuery(Name = "hide")] private bool QueryHide { get; set; }
+
+	private string? _search;
+	private FileSort _sort;
+	private bool _hidePrinted;
+	private bool _initialized;
+
+	private bool Filtered => !string.IsNullOrWhiteSpace(_search) || _hidePrinted;
+
+	private (string? Search, FileSort Sort, bool Hide) FromQuery =>
+		(string.IsNullOrWhiteSpace(QueryText) ? null : QueryText,
+		 Enum.TryParse(QuerySort, ignoreCase: true, out FileSort s) ? s : FileSort.Uploaded,
+		 QueryHide);
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Before the first listing, so a reload or bookmark opens on the saved view.
+		(_search, _sort, _hidePrinted) = FromQuery;
+		_initialized = true;
+		await base.OnInitializedAsync();
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		// Back/forward or an edited address: follow it.
+		if (!_initialized || FromQuery == (_search, _sort, _hidePrinted)) return;
+		(_search, _sort, _hidePrinted) = FromQuery;
+		await RefreshAsync();
+	}
+
+	private Task OnSearch(ChangeEventArgs e) => ApplyAsync(e.Value as string, _sort, _hidePrinted);
+	private Task OnSort(ChangeEventArgs e) => ApplyAsync(_search, Enum.TryParse(e.Value as string, out FileSort s) ? s : FileSort.Uploaded, _hidePrinted);
+	private Task OnHidePrinted(ChangeEventArgs e) => ApplyAsync(_search, _sort, e.Value is true);
+	private Task ShowAllAsync() => ApplyAsync(null, _sort, false);
+
+	private async Task ApplyAsync(string? search, FileSort sort, bool hidePrinted)
+	{
+		(_search, _sort, _hidePrinted) = (string.IsNullOrWhiteSpace(search) ? null : search, sort, hidePrinted);
+		Nav.NavigateTo(Nav.GetUriWithQueryParameters(new Dictionary<string, object?>
+		{
+			["q"] = _search,
+			["sort"] = _sort == FileSort.Uploaded ? null : _sort.ToString().ToLowerInvariant(),
+			["hide"] = _hidePrinted ? true : null
+		}), replace: true);
+		await RefreshAsync();
+	}
+
+	private static string PrintSummary(PrintStats p) =>
+		$"{p.Completed} successful print{(p.Completed == 1 ? "" : "s")}" + (p.Unsuccessful > 0 ? $", {p.Unsuccessful} cancelled or failed" : "");
 	private (string FileName, IReadOnlyList<GcodeProblem> Problems)? _review;
 
 	protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.State | PrinterChange.Job;
@@ -203,7 +300,8 @@ else
 
 	protected override async Task RefreshAsync()
 	{
-		_files = await Mediator.Send(new ListGcodeFilesQuery());
+		_files = await Mediator.Send(new ListGcodeFilesQuery(_search, _sort, _hidePrinted));
+		_total = Filtered ? (await Mediator.Send(new ListGcodeFilesQuery())).Count : _files.Count;
 		PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
 		_state = status.State;
 		JobDto? active = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j : null;

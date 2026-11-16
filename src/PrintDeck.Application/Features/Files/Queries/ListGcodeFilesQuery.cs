@@ -10,7 +10,10 @@ using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
+using PrintDeck.Domain.Files.Enums;
 
 namespace PrintDeck.Application.Features.Files.Queries;
 
-public sealed record ListGcodeFilesQuery : IQuery<IReadOnlyList<GcodeFile>>;
+/// <summary>Stored files, searched, sorted and filtered (see <see cref="FileListView"/>). The defaults list everything, newest first.</summary>
+public sealed record ListGcodeFilesQuery(string? Search = null, FileSort Sort = FileSort.Uploaded, bool HidePrinted = false)
+	: IQuery<IReadOnlyList<GcodeFile>>;

@@ -11,4 +11,7 @@ public interface IGcodeFileStore
 	Task SaveAnalysisAsync(string name, GcodeAnalysis analysis, CancellationToken ct);
 	Stream OpenRead(string name);
 	Task<bool> DeleteAsync(string name, CancellationToken ct);
+
+	/// <summary>Adds a finished print to the file's history; ignored when the file is gone.</summary>
+	Task RecordPrintAsync(string name, PrintRecord print, CancellationToken ct);
 }

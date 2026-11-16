@@ -16,5 +16,5 @@ namespace PrintDeck.Application.Features.Files.Handlers;
 public sealed class ListGcodeFilesHandler(IGcodeFileStore files) : IQueryHandler<ListGcodeFilesQuery, IReadOnlyList<GcodeFile>>
 {
 	public async ValueTask<IReadOnlyList<GcodeFile>> Handle(ListGcodeFilesQuery q, CancellationToken ct) =>
-		(await files.ListAsync(ct)).OrderByDescending(f => f.UploadedAt).ToList();
+		FileListView.Apply(await files.ListAsync(ct), q.Search, q.Sort, q.HidePrinted);
 }

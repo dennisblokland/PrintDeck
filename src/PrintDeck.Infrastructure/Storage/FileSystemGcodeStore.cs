@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Options;
 
@@ -9,11 +10,17 @@ using PrintDeck.Domain.Files;
 
 namespace PrintDeck.Infrastructure.Storage;
 
-/// <summary>G-code files on disk; analysis kept in a sidecar "&lt;name&gt;.meta.json".</summary>
+/// <summary>
+/// G-code files on disk; analysis kept in a sidecar "&lt;name&gt;.meta.json" and finished prints in "&lt;name&gt;.prints.json".
+/// </summary>
 public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGcodeFileStore
 {
 	private const string _metaSuffix = ".meta.json";
-	private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
+	private const string _printsSuffix = ".prints.json";
+	private const int _maxPrints = 100;
+	private readonly SemaphoreSlim _historyLock = new(1, 1);
+	// Status as text ("Completed"), so reordering JobStatus never rewrites history.
+	private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
 	private readonly string _root = Directory.CreateDirectory(options.Value.UploadsDirectory).FullName;
 
 	private string PathOf(string name)
@@ -27,7 +34,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 	public async Task<IReadOnlyList<GcodeFile>> ListAsync(CancellationToken ct)
 	{
 		List<GcodeFile> result = new();
-		foreach (string? path in Directory.EnumerateFiles(_root).Where(p => !p.EndsWith(_metaSuffix, StringComparison.Ordinal)))
+		foreach (string? path in Directory.EnumerateFiles(_root).Where(IsGcode))
 			result.Add(await LoadAsync(new FileInfo(path), ct));
 		return result;
 	}
@@ -64,7 +71,47 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		if (!File.Exists(path)) return Task.FromResult(false);
 		File.Delete(path);
 		File.Delete(path + _metaSuffix);
+		File.Delete(path + _printsSuffix);
 		return Task.FromResult(true);
+	}
+
+	public async Task RecordPrintAsync(string name, PrintRecord print, CancellationToken ct)
+	{
+		string path = PathOf(name);
+		await _historyLock.WaitAsync(ct);
+		try
+		{
+			if (!File.Exists(path)) return;
+			List<PrintRecord> prints = [.. await ReadPrintsAsync(path, ct), print];
+			string temp = path + _printsSuffix + ".part";
+			await using (FileStream s = File.Create(temp))
+				await JsonSerializer.SerializeAsync(s, prints.TakeLast(_maxPrints).ToList(), _json, ct);
+			File.Move(temp, path + _printsSuffix, overwrite: true);
+		}
+		finally
+		{
+			_historyLock.Release();
+		}
+	}
+
+	private static bool IsGcode(string path) =>
+		!path.EndsWith(_metaSuffix, StringComparison.Ordinal)
+		&& !path.EndsWith(_printsSuffix, StringComparison.Ordinal)
+		&& !path.EndsWith(".part", StringComparison.Ordinal);
+
+	private static async Task<IReadOnlyList<PrintRecord>> ReadPrintsAsync(string path, CancellationToken ct)
+	{
+		string file = path + _printsSuffix;
+		if (!File.Exists(file)) return [];
+		try
+		{
+			await using FileStream s = File.OpenRead(file);
+			return await JsonSerializer.DeserializeAsync<List<PrintRecord>>(s, _json, ct) ?? [];
+		}
+		catch (JsonException)
+		{
+			return [];
+		}
 	}
 
 	private static async Task<GcodeFile> LoadAsync(FileInfo info, CancellationToken ct)
@@ -80,6 +127,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 			}
 			catch (JsonException) { /* re-analysed on next upload */ }
 		}
-		return new GcodeFile(info.Name, info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis);
+		PrintStats prints = PrintStats.From(await ReadPrintsAsync(info.FullName, ct));
+		return new GcodeFile(info.Name, info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis, prints);
 	}
 }
