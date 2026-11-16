@@ -131,6 +131,34 @@
 				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
 			</div>
 		</form>
+
+		<section class="card" aria-labelledby="system-title">
+			<header class="card-head"><h2 id="system-title">System</h2></header>
+			@if (_hostActions.Count == 0)
+			{
+				<p class="muted small">
+					No commands configured. Set <code>System:RestartCommand</code>, <code>System:RebootCommand</code> and
+					<code>System:ShutdownCommand</code> in <code>appsettings.json</code> on the host, for example
+					<code>sudo systemctl restart printdeck</code>. They can't be set here, on purpose.
+				</p>
+			}
+			else
+			{
+				<p class="muted small">Disconnects the printer first. Not available while printing.</p>
+				<div class="system-actions">
+					@foreach (HostAction action in _hostActions)
+					{
+						bool armed = _confirmAction == action;
+						<button type="button" class="btn @(action == HostAction.RestartPrintDeck ? "" : "btn-danger") @(armed ? "is-armed" : "")"
+								disabled="@(_busy || _runningAction)" title="@(_busy ? "Finish the print first" : armed ? "Click again to confirm" : null)"
+								@onclick="() => RunHostActionAsync(action)">
+							<Icon Name="@(action == HostAction.RestartPrintDeck ? "refresh" : "power")" Size="16" />
+							@(armed ? $"Confirm: {HostActionLabel(action)}" : HostActionLabel(action))
+						</button>
+					}
+				</div>
+			}
+		</section>
 	</div>
 }
 
@@ -185,6 +213,9 @@
 	private HostForm? _host;
 	private bool _busy;
 	private string? _confirmDelete;
+	private IReadOnlyList<HostAction> _hostActions = [];
+	private HostAction? _confirmAction;
+	private bool _runningAction;
 
 	// Other tabs and the connection panel can switch or edit profiles; the list follows, the open forms stay as typed.
 	protected override PrinterChange Interests => PrinterChange.Settings | PrinterChange.State;
@@ -193,8 +224,42 @@
 	{
 		_settings = await Mediator.Send(new GetSettingsQuery());
 		_busy = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsBusy();
+		_hostActions = await Mediator.Send(new GetHostActionsQuery());
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
+	}
+
+	private static string HostActionLabel(HostAction action) => action switch
+	{
+		HostAction.RestartPrintDeck => "Restart PrintDeck",
+		HostAction.RebootHost => "Reboot host",
+		_ => "Shut down host"
+	};
+
+	private async Task RunHostActionAsync(HostAction action)
+	{
+		if (_confirmAction != action)
+		{
+			_confirmAction = action;
+			_ = Task.Delay(4000).ContinueWith(_ => InvokeAsync(() => { if (_confirmAction == action) _confirmAction = null; StateHasChanged(); }));
+			return;
+		}
+		_confirmAction = null;
+		_runningAction = true;
+		try
+		{
+			string done = action switch
+			{
+				HostAction.RestartPrintDeck => "Restarting PrintDeck; this page reconnects when it is back.",
+				HostAction.RebootHost => "Rebooting the host.",
+				_ => "Shutting down the host."
+			};
+			await Run(new RunHostActionCommand(action), done);
+		}
+		finally
+		{
+			_runningAction = false;
+		}
 	}
 
 	private static string Summary(PrinterProfile p) =>

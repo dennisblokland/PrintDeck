@@ -495,6 +495,9 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ───────────────────────── settings: system ───────────────────────── */
+.system-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* ───────────────────────── printer dialogs ───────────────────────── */
 .printer-dialog {
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
