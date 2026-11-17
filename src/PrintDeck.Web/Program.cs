@@ -9,6 +9,7 @@ using PrintDeck.Infrastructure.Identity;
 using PrintDeck.Web.Api;
 using PrintDeck.Web.Auth;
 using PrintDeck.Web.Components;
+using PrintDeck.Web.Hosting;
 using PrintDeck.Web.Services;
 using PrintDeck.Web.Services.Enums;
 
@@ -25,6 +26,7 @@ builder.Services.AddMediator(options =>
 	options.PipelineBehaviors = [typeof(LoggingBehavior<,>), typeof(AuthorizationBehavior<,>)];
 });
 
+builder.Services.AddPrintDeckReverseProxy();
 builder.Services.AddPrintDeckAuthentication();
 builder.Services.AddScoped<ToastService>();
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = MaxUploadBytes);
@@ -39,6 +41,7 @@ await app.Services.InitializeDatabaseAsync();
 await app.Services.InitializeSerialLogAsync();
 app.Services.StartPrintHistory();
 
+app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())
 {
 	app.UseExceptionHandler("/Error", createScopeForErrors: true);
