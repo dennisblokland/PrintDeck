@@ -80,6 +80,11 @@
 	</section>
 </fieldset>
 
+@* Outside the fieldset: speed and flow stay adjustable while printing. *@
+<div class="control-grid control-more">
+	<SpeedFlowPanel />
+</div>
+
 @code {
 	private static readonly double[] _steps = [0.1, 1, 10, 100];
 	private PrinterState _state;

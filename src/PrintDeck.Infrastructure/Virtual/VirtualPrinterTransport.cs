@@ -26,6 +26,7 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 	private TimeSpan _autoReport = TimeSpan.Zero;
 	private double _x, _y, _z, _feed = 3000;
 	private bool _relative;
+	private int _feedRate = 100, _flowRate = 100;
 
 	[GeneratedRegex(@"^N(?<n>\d+)\s+(?<cmd>.*)\*(?<cs>\d+)$")]
 	private static partial Regex Numbered();
@@ -167,7 +168,7 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				if (Arg('Z') is { } z) nz = _relative ? _z + z : z;
 				if (Arg('F') is { } f && f > 0) _feed = f;
 				double dist = Math.Sqrt(Math.Pow(nx - _x, 2) + Math.Pow(ny - _y, 2) + Math.Pow(nz - _z, 2));
-				double seconds = dist / (_feed / 60.0) / speedFactor;
+				double seconds = dist / (_feed / 60.0) / speedFactor / (_feedRate / 100.0);
 				if (seconds > 0.001) await Task.Delay(TimeSpan.FromSeconds(Math.Min(seconds, 5)), time, ct);
 				(_x, _y, _z) = (nx, ny, nz);
 				break;
@@ -178,6 +179,15 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				Emit("//action:paused");
 				await WaitForUserAsync("Load new filament", ct);
 				Emit("//action:resumed");
+				break;
+			case "M220":
+				// Speed factor: S sets it, without S Marlin reports it.
+				if (Arg('S') is { } speed) _feedRate = Math.Clamp((int)Math.Round(speed), 10, 999);
+				else Emit($"FR:{_feedRate}%");
+				break;
+			case "M221":
+				if (Arg('S') is { } flow) _flowRate = Math.Clamp((int)Math.Round(flow), 10, 999);
+				else Emit($"echo:E0 Flow: {_flowRate}%");
 				break;
 			case "M118":
 				// Echo: lets G-code (and tests) send action commands, e.g. "M118 //action:notification Hi".

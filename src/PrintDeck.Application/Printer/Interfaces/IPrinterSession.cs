@@ -31,6 +31,12 @@ public interface IPrinterSession
 	/// <summary>Latest message from the printer, until dismissed.</summary>
 	PrinterNotification? Notification { get; }
 
+	/// <summary>Speed factor in percent (<c>M220</c>), as last sent or reported; 100 after connecting.</summary>
+	int FeedRate { get; }
+
+	/// <summary>Flow (extrusion) factor in percent (<c>M221</c>), as last sent or reported; 100 after connecting.</summary>
+	int FlowRate { get; }
+
 	/// <summary>The printer reports "busy: paused for user" (M0/M1/M600 waiting).</summary>
 	bool WaitingForUser { get; }
 

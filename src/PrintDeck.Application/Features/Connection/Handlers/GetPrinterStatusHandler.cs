@@ -30,6 +30,8 @@ public sealed class GetPrinterStatusHandler(IPrinterSession session, TimeProvide
 			session.Firmware,
 			session.ErrorMessage,
 			job,
-			session.Temperatures.Latest?.Heaters ?? []));
+			session.Temperatures.Latest?.Heaters ?? [],
+			session.FeedRate,
+			session.FlowRate));
 	}
 }
