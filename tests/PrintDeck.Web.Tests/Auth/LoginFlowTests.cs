@@ -69,6 +69,23 @@ public sealed class LoginFlowTests : IAsyncDisposable
 	}
 
 	[Fact]
+	public async Task Guessing_across_usernames_pauses_the_address()
+	{
+		await _browser.SetUp("ada", "correct-horse");
+		BrowserSession guesser = new(_app);
+
+		// Ten different accounts, so no single one is locked; the address still runs out of tries.
+		for (int i = 0; i < 10; i++)
+			Assert.Contains("Wrong username or password.", await (await guesser.LogIn($"user{i}", "guess")).Content.ReadAsStringAsync(Ct));
+		HttpResponseMessage paused = await guesser.LogIn("ada", "correct-horse");
+
+		Assert.Equal(HttpStatusCode.TooManyRequests, paused.StatusCode);
+		Assert.Equal(TimeSpan.FromMinutes(15), paused.Headers.RetryAfter?.Delta);
+		Assert.Contains("Too many failed sign-ins from your network. Try again in 15 minutes.", await paused.Content.ReadAsStringAsync(Ct));
+		Assert.Contains("/login", Location(await guesser.Open("/")));
+	}
+
+	[Fact]
 	public async Task Login_returns_to_the_page_you_asked_for_but_never_off_site()
 	{
 		await _browser.SetUp("ada", "correct-horse");

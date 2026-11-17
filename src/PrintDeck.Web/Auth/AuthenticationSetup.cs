@@ -27,6 +27,8 @@ public static class AuthenticationSetup
 		services.AddCascadingAuthenticationState();
 		services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 		services.AddScoped<ICurrentUser, CurrentUser>();
+		services.AddOptions<LoginRateLimitOptions>().BindConfiguration(LoginRateLimitOptions.Section);
+		services.AddSingleton<LoginRateLimiter>();
 
 		services.AddAuthentication(o =>
 			{
