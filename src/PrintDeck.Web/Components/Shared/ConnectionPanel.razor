@@ -19,6 +19,10 @@
 		{
 			<p class="conn-error">@error</p>
 		}
+		@if (_settings is { AutoConnect: true, LastPort: { } autoPort })
+		{
+			<p class="muted small">Auto-connects to @ShortPort(autoPort) when it next appears.</p>
+		}
 		<div class="field-row">
 			<select class="input" @bind="_port" aria-label="Serial port">
 				@foreach (string p in _ports)

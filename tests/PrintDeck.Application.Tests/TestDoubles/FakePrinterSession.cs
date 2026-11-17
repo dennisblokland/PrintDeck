@@ -36,6 +36,7 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public (string FileName, long Size, TimeSpan? Estimate)? StartedJob { get; private set; }
 	public PrintOptions? StartedWith { get; private set; }
 	public (string Port, int BaudRate)? ConnectedWith { get; private set; }
+	public int ConnectCalls { get; private set; }
 	public bool Disconnected { get; private set; }
 	public bool TerminalCleared { get; private set; }
 
@@ -48,6 +49,7 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public Task<Result> ConnectAsync(string port, int baudRate, CancellationToken ct)
 	{
 		ConnectedWith = (port, baudRate);
+		ConnectCalls++;
 		return Task.FromResult(ConnectResult);
 	}
 

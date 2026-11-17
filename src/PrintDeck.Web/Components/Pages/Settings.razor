@@ -97,6 +97,26 @@
 			</section>
 
 			<section class="card">
+				<header class="card-head"><h2>Connection</h2></header>
+				<label class="toggle">
+					<input type="checkbox" @bind="_host.AutoConnect" />
+					<span>Connect automatically</span>
+				</label>
+				<p class="muted small">
+					@if (_settings.LastPort is { } lastPort)
+					{
+						<text>Connects to <code>@lastPort</code> at @_settings.DefaultBaudRate baud, the last port used, </text>
+					}
+					else
+					{
+						<text>Connects to the last port used, once you have connected by hand, </text>
+					}
+					when PrintDeck starts and whenever the port appears, for example when the printer is switched on.
+					After a failed attempt it waits until the port disappears and comes back.
+				</p>
+			</section>
+
+			<section class="card">
 				<header class="card-head"><h2>Printer screen</h2></header>
 				<label class="toggle">
 					<input type="checkbox" @bind="_host.ShowProgressOnPrinter" />
@@ -279,11 +299,13 @@
 		public string? WebcamStreamUrl { get; set; }
 		public string CancelGcode { get; set; } = "";
 		public bool ShowProgressOnPrinter { get; set; } = true;
+		public bool AutoConnect { get; set; }
 		public List<PresetRow> Presets { get; set; } = [];
 
 		public static HostForm From(HostSettings s) => new()
 		{
 			WebcamStreamUrl = s.WebcamStreamUrl, CancelGcode = s.CancelGcode, ShowProgressOnPrinter = s.ShowProgressOnPrinter,
+			AutoConnect = s.AutoConnect,
 			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
 		};
 	}
@@ -447,7 +469,7 @@
 	{
 		HostForm f = _host!;
 		UpdateSettingsCommand command = new(
-			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl, f.ShowProgressOnPrinter);
+			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect);
 		if (await Run(command, "Settings saved"))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
