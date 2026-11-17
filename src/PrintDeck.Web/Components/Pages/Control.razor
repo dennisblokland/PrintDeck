@@ -1,6 +1,7 @@
 @page "/control"
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inherits PrinterComponent
+@inject IJSRuntime JS
 
 <PageTitle>Control · PrintDeck</PageTitle>
 
@@ -51,6 +52,10 @@
 			<button class="btn" @onclick="() => Run(new HomeCommand(Axis.All))"><Icon Name="home" Size="16" /> Home all</button>
 			<button class="btn btn-ghost" @onclick='() => Run(new MotorsOffCommand(), "Motors off")'><Icon Name="power" Size="16" /> Motors off</button>
 		</div>
+		<p class="muted small key-hint">
+			Keyboard: <kbd>←</kbd><kbd>→</kbd> X, <kbd>↑</kbd><kbd>↓</kbd> Y, <kbd>PgUp</kbd><kbd>PgDn</kbd> Z,
+			<kbd>Home</kbd> homes X and Y, <kbd>End</kbd> homes Z, <kbd>1</kbd>–<kbd>4</kbd> step size.
+		</p>
 	</section>
 
 	<section class="card">
@@ -94,11 +99,73 @@
 
 	private bool _canMove => _state is PrinterState.Operational or PrinterState.Paused;
 
+	private IJSObjectReference? _keysModule;
+	private IJSObjectReference? _keys;
+	private DotNetObjectReference<Control>? _self;
+
 	protected override PrinterChange Interests => PrinterChange.State;
 
 	protected override async Task RefreshAsync() => _state = (await Mediator.Send(new GetPrinterStatusQuery())).State;
 
 	private Task Jog(Axis axis, int direction) => Run(new JogCommand(axis, direction * _step));
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender) return;
+		try
+		{
+			_self = DotNetObjectReference.Create(this);
+			_keysModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/control/keyboard-jog.js");
+			_keys = await _keysModule.InvokeAsync<IJSObjectReference>("attach", _self, _steps.Length);
+		}
+		catch (JSDisconnectedException) { }
+	}
+
+	/// <summary>A key from keyboard-jog.ts: "X+", "Z-", "home-xy", "home-z" or "step-N".</summary>
+	[JSInvokable]
+	public async Task OnJogKey(string key)
+	{
+		if (key.StartsWith("step-", StringComparison.Ordinal))
+		{
+			if (int.TryParse(key.AsSpan(5), out int i) && i >= 0 && i < _steps.Length) _step = _steps[i];
+			StateHasChanged();
+			return;
+		}
+		if (!_canMove) return; // same rule as the disabled buttons; the server refuses anyway
+
+		await (key switch
+		{
+			"X+" => Jog(Axis.X, 1),
+			"X-" => Jog(Axis.X, -1),
+			"Y+" => Jog(Axis.Y, 1),
+			"Y-" => Jog(Axis.Y, -1),
+			"Z+" => Jog(Axis.Z, 1),
+			"Z-" => Jog(Axis.Z, -1),
+			"home-xy" => Run(new HomeCommand(Axis.X | Axis.Y)),
+			"home-z" => Run(new HomeCommand(Axis.Z)),
+			_ => Task.CompletedTask
+		});
+	}
+
+	public override void Dispose()
+	{
+		IJSObjectReference? keys = _keys, module = _keysModule;
+		DotNetObjectReference<Control>? self = _self;
+		_keys = _keysModule = null;
+		_self = null;
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				if (keys is not null) { await keys.InvokeVoidAsync("dispose"); await keys.DisposeAsync(); }
+				if (module is not null) await module.DisposeAsync();
+			}
+			catch (JSDisconnectedException) { }
+			catch (ObjectDisposedException) { }
+			finally { self?.Dispose(); }
+		});
+		base.Dispose();
+	}
 
 	private Task FanChanged(ChangeEventArgs e) => SetFan(int.Parse(e.Value?.ToString() ?? "0"));
 
