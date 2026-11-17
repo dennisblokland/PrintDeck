@@ -6,6 +6,7 @@
 @inject SignInManager<PrintDeckUser> SignInManager
 @inject IMediator Mediator
 @inject NavigationManager Nav
+@inject LoginRateLimiter RateLimiter
 
 <PageTitle>Sign in · PrintDeck</PageTitle>
 
@@ -37,6 +38,7 @@
 @code {
 	[SupplyParameterFromForm] private LoginInput? Input { get; set; }
 	[SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+	[CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
 	private string? _error;
 
 	protected override async Task OnInitializedAsync()
@@ -47,13 +49,24 @@
 
 	private async Task SignInAsync()
 	{
+		// Checked before the password, so a paused address learns nothing and doesn't lock accounts out either.
+		if (RateLimiter.RetryAfter(HttpContext) is { } wait)
+		{
+			HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+			HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+			_error = LoginRateLimiter.Message(wait);
+			return;
+		}
+
+		string userName = Input!.UserName.Trim();
 		Microsoft.AspNetCore.Identity.SignInResult result =
-			await SignInManager.PasswordSignInAsync(Input!.UserName.Trim(), Input!.Password, Input!.RememberMe, lockoutOnFailure: true);
+			await SignInManager.PasswordSignInAsync(userName, Input!.Password, Input!.RememberMe, lockoutOnFailure: true);
 		if (result.Succeeded)
 		{
 			Nav.NavigateTo(LocalUrl.OrHome(ReturnUrl));
 			return;
 		}
+		RateLimiter.RecordFailure(HttpContext, userName);
 		_error = result.IsLockedOut
 			? "Too many wrong passwords. Try again in 5 minutes, or ask an admin to reset yours."
 			: "Wrong username or password.";
