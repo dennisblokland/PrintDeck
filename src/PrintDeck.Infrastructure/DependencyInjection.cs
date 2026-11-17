@@ -25,6 +25,7 @@ public static class DependencyInjection
 		services.AddSingleton<IPortDiscovery, PortDiscovery>();
 		services.AddSingleton<IGcodeFileStore, FileSystemGcodeStore>();
 		services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+		services.AddSingleton<IBackupArchive, ZipBackupArchive>();
 		services.Configure<HostCommandOptions>(configuration.GetSection(HostCommandOptions.Section));
 		services.AddSingleton<IHostCommands, ShellHostCommands>();
 		services.AddSingleton<ISerialLog, FileSerialLog>();

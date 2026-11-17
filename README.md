@@ -21,6 +21,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - **Logs**: switch on a full serial log (every line to and from the printer, timestamped, in `logs/serial.log`); PrintDeck's own log goes to `logs/printdeck.log`. Both roll over by size and download from the Terminal page (admin accounts only)
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
+- **Backup and restore** (Settings → Backup): download one zip with the settings, printer profiles, API key and every uploaded file with its analysis and print history; restore it on this or another PrintDeck. A restore replaces the settings and overwrites files with the same name, other files stay. The whole archive is checked before anything changes, and restoring waits until no print is running. Accounts are not included. Admin accounts only
 - **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
 - Dark and light themes, mobile layout
 

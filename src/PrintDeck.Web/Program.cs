@@ -52,6 +52,7 @@ app.MapStaticAssets().AllowAnonymous();
 app.MapSlicerApi();
 app.MapToolpathApi();
 app.MapLogsApi();
+app.MapBackupApi();
 app.MapAccountEndpoints();
 app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode();

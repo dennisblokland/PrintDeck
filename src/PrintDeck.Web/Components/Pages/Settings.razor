@@ -132,6 +132,36 @@
 			</div>
 		</form>
 
+		<section class="card" aria-labelledby="backup-title">
+			<header class="card-head"><h2 id="backup-title">Backup</h2></header>
+			<p class="muted small">
+				One zip with the settings, printer profiles, API key and every uploaded file with its print history.
+				Accounts are not included. Keep it private: it holds the API key.
+			</p>
+			<div class="system-actions">
+				<a class="btn btn-ghost" href="backup" download><Icon Name="down" Size="16" /> Download backup</a>
+				<label class="btn btn-ghost file-btn @(_restoring || _busy ? "is-disabled" : "")" title="@(_busy ? "Finish the print first" : null)">
+					<InputFile OnChange="PickBackup" accept=".zip,application/zip" disabled="@(_restoring || _busy)" />
+					<Icon Name="upload" Size="16" /> Restore…
+				</label>
+			</div>
+			@if (_restoreFile is not null)
+			{
+				<div class="restore-confirm" role="alert">
+					<p>
+						Restore <strong>@_restoreFile.Name</strong> (@Format.Bytes(_restoreFile.Size))? It replaces the settings,
+						printer profiles and API key. Files in the backup overwrite files with the same name; other files stay.
+					</p>
+					<div class="system-actions">
+						<button type="button" class="btn btn-ghost" disabled="@_restoring" @onclick="() => _restoreFile = null">Cancel</button>
+						<button type="button" class="btn btn-danger" disabled="@(_restoring || _busy)" @onclick="RestoreAsync">
+							<Icon Name="refresh" Size="16" /> @(_restoring ? "Restoring…" : "Restore")
+						</button>
+					</div>
+				</div>
+			}
+		</section>
+
 		<section class="card" aria-labelledby="system-title">
 			<header class="card-head"><h2 id="system-title">System</h2></header>
 			@if (_hostActions.Count == 0)
@@ -216,6 +246,11 @@
 	private IReadOnlyList<HostAction> _hostActions = [];
 	private HostAction? _confirmAction;
 	private bool _runningAction;
+	private IBrowserFile? _restoreFile;
+	private bool _restoring;
+
+	// A backup holds every upload, so it may be far larger than a single G-code file.
+	private const long _maxBackup = 64L << 30;
 
 	// Other tabs and the connection panel can switch or edit profiles; the list follows, the open forms stay as typed.
 	protected override PrinterChange Interests => PrinterChange.Settings | PrinterChange.State;
@@ -259,6 +294,38 @@
 		finally
 		{
 			_runningAction = false;
+		}
+	}
+
+	private void PickBackup(InputFileChangeEventArgs e) => _restoreFile = e.File;
+
+	private async Task RestoreAsync()
+	{
+		if (_restoreFile is null) return;
+		_restoring = true;
+		try
+		{
+			await using Stream stream = _restoreFile.OpenReadStream(_maxBackup);
+			Result<BackupRestore> result = await Mediator.Send(new RestoreBackupCommand(stream));
+			if (!result.IsSuccess)
+			{
+				Toasts.Error(result.Error ?? "Something went wrong.");
+				return;
+			}
+			int count = result.Value!.Files.Count;
+			Toasts.Success($"Restored the settings and {count} file{(count == 1 ? "" : "s")} (backup made {Format.Ago(result.Value.CreatedAt, Time.GetUtcNow())})");
+			_restoreFile = null;
+			_settings = await Mediator.Send(new GetSettingsQuery());
+			_host = HostForm.From(_settings);
+			Edit(_settings.ActiveProfile);
+		}
+		catch (IOException ex)
+		{
+			Toasts.Error($"Restore failed: {ex.Message}");
+		}
+		finally
+		{
+			_restoring = false;
 		}
 	}
 
