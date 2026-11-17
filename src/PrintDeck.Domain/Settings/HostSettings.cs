@@ -12,6 +12,9 @@ public sealed record HostSettings
 	public string? LastPort { get; init; }
 	public string? WebcamStreamUrl { get; init; }
 	public string ApiKey { get; init; } = "";
+
+	/// <summary>Whether <see cref="ApiKey"/>, the one key shared by every slicer, still signs in. App keys replace it.</summary>
+	public bool SharedApiKeyEnabled { get; init; } = true;
 	/// <summary>Send M73 progress and M117 messages to the printer's screen during streamed prints.</summary>
 	public bool ShowProgressOnPrinter { get; init; } = true;
 

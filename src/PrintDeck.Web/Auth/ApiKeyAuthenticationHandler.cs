@@ -14,10 +14,11 @@ namespace PrintDeck.Web.Auth;
 
 /// <summary>
 /// The slicer's "send to printer" key, as OctoPrint takes it: <c>X-Api-Key</c> header or <c>?apikey=</c>.
-/// A valid key signs the request in as an admin named "API key"; anything else gets OctoPrint's 403.
+/// An app key signs the request in as its owner's account, with that account's role, named like "OrcaSlicer (ada)".
+/// The shared key, while it is switched on, signs in as an admin named "API key". Anything else gets OctoPrint's 403.
 /// </summary>
 public sealed class ApiKeyAuthenticationHandler(
-	IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISettingsStore settings)
+	IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISettingsStore settings, IApiKeys keys)
 	: AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
 	public const string DisplayName = "API key";
@@ -31,12 +32,18 @@ public sealed class ApiKeyAuthenticationHandler(
 		if (string.IsNullOrEmpty(supplied)) return AuthenticateResult.NoResult();
 
 		HostSettings s = await settings.GetAsync(Context.RequestAborted);
-		if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(s.ApiKey)))
-			return AuthenticateResult.Fail("Invalid API key");
+		if (s.SharedApiKeyEnabled && s.ApiKey.Length > 0
+			&& CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied), Encoding.UTF8.GetBytes(s.ApiKey)))
+			return SignIn(DisplayName, UserRole.Admin);
 
-		ClaimsIdentity identity = new(
-			[new Claim(ClaimTypes.Name, DisplayName), new Claim(ClaimTypes.Role, nameof(UserRole.Admin))],
-			AuthSchemes.ApiKey);
+		return await keys.FindAsync(supplied, Context.RequestAborted) is { } owner
+			? SignIn(owner.DisplayName, owner.Role)
+			: AuthenticateResult.Fail("Invalid API key");
+	}
+
+	private static AuthenticateResult SignIn(string name, UserRole role)
+	{
+		ClaimsIdentity identity = new([new Claim(ClaimTypes.Name, name), new Claim(ClaimTypes.Role, role.ToString())], AuthSchemes.ApiKey);
 		return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), AuthSchemes.ApiKey));
 	}
 

@@ -35,6 +35,7 @@ public static class DependencyInjection
 		services.AddDbContext<PrintDeckDbContext>((sp, o) =>
 			o.UseSqlite($"Data Source={sp.GetRequiredService<IOptions<StorageOptions>>().Value.DatabaseFile}"));
 		services.AddScoped<IUserAccounts, IdentityUserAccounts>();
+		services.AddScoped<IApiKeys, IdentityApiKeys>();
 		return services;
 	}
 

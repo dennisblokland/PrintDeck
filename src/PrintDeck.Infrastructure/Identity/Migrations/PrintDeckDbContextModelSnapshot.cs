@@ -15,7 +15,7 @@ partial class PrintDeckDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261114154943_InitialIdentity";
+    public override string LastMigrationId => "20261117091956_AppApiKeys";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -150,6 +150,47 @@ partial class PrintDeckDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("AspNetUserTokens");
             });
 
+        modelBuilder.Entity("PrintDeck.Infrastructure.Identity.PrintDeckApiKey", b =>
+            {
+                b.Property<string>("Id")
+                    .HasMaxLength(32)
+                    .HasColumnType("TEXT");
+
+                b.Property<DateTimeOffset>("CreatedAt")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Hash")
+                    .IsRequired()
+                    .HasMaxLength(64)
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Hint")
+                    .IsRequired()
+                    .HasMaxLength(4)
+                    .HasColumnType("TEXT");
+
+                b.Property<DateTimeOffset?>("LastUsedAt")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasMaxLength(64)
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("Hash")
+                    .IsUnique();
+
+                b.HasIndex("UserId");
+
+                b.ToTable("ApiKeys");
+            });
+
         modelBuilder.Entity("PrintDeck.Infrastructure.Identity.PrintDeckUser", b =>
             {
                 b.Property<string>("Id")
@@ -263,6 +304,17 @@ partial class PrintDeckDbContextModelSnapshot : ModelSnapshot
                     .HasForeignKey("UserId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
+            });
+
+        modelBuilder.Entity("PrintDeck.Infrastructure.Identity.PrintDeckApiKey", b =>
+            {
+                b.HasOne("PrintDeck.Infrastructure.Identity.PrintDeckUser", "User")
+                    .WithMany()
+                    .HasForeignKey("UserId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                b.Navigation("User");
             });
 #pragma warning restore 612, 618
     }
