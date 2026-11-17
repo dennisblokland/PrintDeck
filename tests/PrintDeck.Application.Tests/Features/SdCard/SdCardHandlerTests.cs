@@ -6,6 +6,7 @@ using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.SdCard;
 using PrintDeck.Domain.SdCard.Enums;
+using PrintDeck.Domain.Settings;
 
 namespace PrintDeck.Application.Tests.Features.SdCard;
 
@@ -33,17 +34,27 @@ public class SdCardHandlerTests
 		await new RefreshSdCardHandler(_session).Handle(new RefreshSdCardCommand(), Ct);
 		await new InitSdCardHandler(_session).Handle(new InitSdCardCommand(), Ct);
 		await new ReleaseSdCardHandler(_session).Handle(new ReleaseSdCardCommand(), Ct);
-		await new StartSdPrintHandler(_session).Handle(new StartSdPrintCommand("CUBE.GCO"), Ct);
+		await new StartSdPrintHandler(_session, new FakeSettingsStore()).Handle(new StartSdPrintCommand("CUBE.GCO"), Ct);
 		await new DeleteSdFileHandler(_session).Handle(new DeleteSdFileCommand("CUBE.GCO"), Ct);
 
 		Assert.Equal(["refresh", "init", "release", "print CUBE.GCO", "delete CUBE.GCO"], _session.SdCalls);
 	}
 
 	[Fact]
+	public async Task Sd_prints_get_the_scripts()
+	{
+		FakeSettingsStore settings = new(new HostSettings { AfterPrintGcode = "M84" });
+
+		await new StartSdPrintHandler(_session, settings).Handle(new StartSdPrintCommand("CUBE.GCO"), Ct);
+
+		Assert.Equal(["M84"], _session.SdScripts?.AfterPrint);
+	}
+
+	[Fact]
 	public async Task Session_refusals_come_back()
 	{
 		_session.JobResult = Result.Failure("No SD card.");
-		Assert.Equal("No SD card.", (await new StartSdPrintHandler(_session).Handle(new StartSdPrintCommand("CUBE.GCO"), Ct)).Error);
+		Assert.Equal("No SD card.", (await new StartSdPrintHandler(_session, new FakeSettingsStore()).Handle(new StartSdPrintCommand("CUBE.GCO"), Ct)).Error);
 	}
 
 	[Fact]

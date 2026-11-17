@@ -51,7 +51,7 @@ public interface IPrinterSession
 	Result InitSdCard();
 	Result ReleaseSdCard();
 	Result DeleteSdFile(string path);
-	Result StartSdPrint(string path);
+	Result StartSdPrint(string path, PrintScripts? scripts = null);
 
 	/// <summary>Answers <see cref="Prompt"/> with <c>M876 S&lt;choice&gt;</c>, sent past the command queue.</summary>
 	Result AnswerPrompt(int choice);

@@ -91,12 +91,6 @@
 			</section>
 
 			<section class="card">
-				<header class="card-head"><h2>Cancel script</h2></header>
-				<p class="muted small">Sent after a print is cancelled</p>
-				<textarea class="input mono" rows="6" spellcheck="false" @bind="_host.CancelGcode"></textarea>
-			</section>
-
-			<section class="card">
 				<header class="card-head"><h2>Connection</h2></header>
 				<label class="toggle">
 					<input type="checkbox" @bind="_host.AutoConnect" />
@@ -139,6 +133,58 @@
 				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
 			</div>
 		</form>
+
+		@if (_scripts is { } scripts)
+		{
+			<form class="card settings-wide" aria-labelledby="scripts-title" @onsubmit="SaveScriptsAsync" @onsubmit:preventDefault>
+				<header class="card-head"><h2 id="scripts-title">G-code scripts</h2></header>
+				<div class="scripts-grid">
+					<div class="scripts-pane">
+						<div class="seg scripts-tabs" role="tablist" aria-label="Script">
+							@for (int i = 0; i < ScriptSlots.Length; i++)
+							{
+								int slot = i;
+								<button type="button" role="tab" aria-selected="@(slot == _scriptSlot)"
+										class="seg-btn @(slot == _scriptSlot ? "is-active" : "")" @onclick="() => _scriptSlot = slot">
+									@ScriptSlots[slot].Label@if (!string.IsNullOrWhiteSpace(scripts.Texts[slot])) { <span class="script-dot" title="Has commands"></span> }
+								</button>
+							}
+						</div>
+						<p class="muted small">@ScriptSlots[_scriptSlot].Hint</p>
+						<textarea class="input mono" rows="9" spellcheck="false" aria-label="@ScriptSlots[_scriptSlot].Label script"
+								  @bind="scripts.Texts[_scriptSlot]"></textarea>
+						<p class="muted small">
+							Include a snippet on its own line with <code>{% snippet 'disable_hotends' %}</code>.
+							Scripts are taken when a print starts, for prints streamed by PrintDeck and prints from the SD card.
+						</p>
+					</div>
+
+					<div class="scripts-pane">
+						<div class="scripts-head">
+							<h3 class="card-subhead">Snippets</h3>
+							<button type="button" class="btn btn-sm btn-ghost" @onclick="() => scripts.Snippets.Add(new SnippetRow())">Add snippet</button>
+						</div>
+						@if (scripts.Snippets.Count == 0)
+						{
+							<p class="muted small">No snippets yet.</p>
+						}
+						@foreach (SnippetRow snippet in scripts.Snippets)
+						{
+							<div class="snippet-row">
+								<div class="field-row">
+									<input class="input mono" placeholder="name" aria-label="Snippet name" @bind="snippet.Name" />
+									<button type="button" class="icon-btn icon-btn-danger" title="Remove snippet" @onclick="() => scripts.Snippets.Remove(snippet)"><Icon Name="x" Size="16" /></button>
+								</div>
+								<textarea class="input mono" rows="2" spellcheck="false" aria-label="Snippet G-code" @bind="snippet.Gcode"></textarea>
+							</div>
+						}
+					</div>
+				</div>
+				<div class="form-actions">
+					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save scripts</button>
+				</div>
+			</form>
+		}
 
 		<section class="card settings-wide" aria-labelledby="keys-title">
 			<header class="card-head"><h2 id="keys-title">Slicer upload</h2></header>
@@ -297,19 +343,47 @@
 	private sealed class HostForm
 	{
 		public string? WebcamStreamUrl { get; set; }
-		public string CancelGcode { get; set; } = "";
 		public bool ShowProgressOnPrinter { get; set; } = true;
 		public bool AutoConnect { get; set; }
 		public List<PresetRow> Presets { get; set; } = [];
 
 		public static HostForm From(HostSettings s) => new()
 		{
-			WebcamStreamUrl = s.WebcamStreamUrl, CancelGcode = s.CancelGcode, ShowProgressOnPrinter = s.ShowProgressOnPrinter,
+			WebcamStreamUrl = s.WebcamStreamUrl, ShowProgressOnPrinter = s.ShowProgressOnPrinter,
 			AutoConnect = s.AutoConnect,
 			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
 		};
 	}
 
+	private sealed class SnippetRow { public string Name { get; set; } = ""; public string Gcode { get; set; } = ""; }
+
+	/// <summary>The five scripts in <see cref="ScriptSlots"/> order, and the snippets.</summary>
+	private sealed class ScriptsForm
+	{
+		public string[] Texts { get; private init; } = [];
+		public List<SnippetRow> Snippets { get; private init; } = [];
+
+		public static ScriptsForm From(HostSettings s) => new()
+		{
+			Texts = [s.BeforePrintGcode, s.AfterPrintGcode, s.CancelGcode, s.PauseGcode, s.ResumeGcode],
+			Snippets = s.Snippets.Select(x => new SnippetRow { Name = x.Name, Gcode = x.Gcode }).ToList()
+		};
+
+		public UpdateGcodeScriptsCommand ToCommand() =>
+			new(Texts[0], Texts[1], Texts[2], Texts[3], Texts[4], Snippets.Select(x => new GcodeSnippet(x.Name, x.Gcode)).ToList());
+	}
+
+	private static readonly (string Label, string Hint)[] ScriptSlots =
+	[
+		("Before print", "Sent before the print starts."),
+		("After print", "Sent after the print finished."),
+		("After cancel", "Sent after a print is cancelled, from PrintDeck or from the printer."),
+		("On pause", "Sent after PrintDeck pauses the print, or the printer asks it to (//action:pause). Not when the printer pauses on its own, e.g. M600."),
+		("On resume", "Sent before a paused print continues.")
+	];
+
+	private ScriptsForm? _scripts;
+	private int _scriptSlot;
 	private HostSettings? _settings;
 	private ProfileForm? _profile;
 	private string _profileName = "";
@@ -343,6 +417,7 @@
 		_keys = await Mediator.Send(new ListApiKeysQuery());
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
+		_scripts ??= ScriptsForm.From(_settings);
 	}
 
 	private static string HostActionLabel(HostAction action) => action switch
@@ -398,6 +473,7 @@
 			_restoreFile = null;
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
+			_scripts = ScriptsForm.From(_settings);
 			Edit(_settings.ActiveProfile);
 		}
 		catch (IOException ex)
@@ -465,11 +541,20 @@
 		if (_profile?.Id == p.Id) Edit(_settings.ActiveProfile);
 	}
 
+	private async Task SaveScriptsAsync()
+	{
+		if (await Run(_scripts!.ToCommand(), "Scripts saved"))
+		{
+			_settings = await Mediator.Send(new GetSettingsQuery());
+			_scripts = ScriptsForm.From(_settings);
+		}
+	}
+
 	private async Task SaveHostAsync()
 	{
 		HostForm f = _host!;
 		UpdateSettingsCommand command = new(
-			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.CancelGcode, f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect);
+			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect);
 		if (await Run(command, "Settings saved"))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());

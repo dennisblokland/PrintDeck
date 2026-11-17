@@ -151,6 +151,23 @@ public sealed class PrinterSessionWithVirtualPrinterTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task Runs_the_scripts_around_a_print()
+	{
+		PrintScripts scripts = new(["M117 Starting", "G28"], ["M117 Finished", "M84"], [], [], []);
+		byte[] bytes = Encoding.UTF8.GetBytes("G1 X10 F3000\nG1 X20\n");
+
+		Assert.True(_session.StartJob("scripted.gcode", new MemoryStream(bytes), bytes.Length, null, new PrintOptions(Scripts: scripts)).IsSuccess);
+		await Until(() => _session.Terminal(2000).Any(e => e.Direction == TerminalDirection.Sent && e.Text.Contains("M84")));
+
+		List<string> sent = _session.Terminal(2000).Where(e => e.Direction == TerminalDirection.Sent).Select(e => e.Text).ToList();
+		int Index(string command) => sent.FindIndex(t => t.Contains(command, StringComparison.Ordinal));
+		Assert.True(Index("M117 Starting") < Index("G1 X10"));
+		Assert.True(Index("G28") < Index("G1 X10"));
+		Assert.True(Index("G1 X20") < Index("M117 Finished"));
+		Assert.Equal(JobStatus.Completed, _session.CurrentJob!.Status);
+	}
+
+	[Fact]
 	public async Task Emergency_stop_puts_the_session_in_error()
 	{
 		_session.Enqueue(["M112"]);

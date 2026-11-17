@@ -463,6 +463,14 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .profile-name:hover strong, .profile-row.is-editing .profile-name strong { color: var(--accent); }
 .profile-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
 .settings-wide { grid-column: 1 / -1; }
+.scripts-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; margin-bottom: 16px; }
+.scripts-pane { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.scripts-tabs { flex-wrap: wrap; align-self: flex-start; }
+.script-dot { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
+.scripts-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.scripts-head .card-subhead { margin: 0; }
+.snippet-row { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.snippet-row:first-of-type { border-top: 0; padding-top: 0; }
 .card-subhead { margin: 20px 0 4px; font-size: 14px; font-weight: 600; }
 .key-list { margin: 8px 0 12px; }
 .key-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
@@ -638,7 +646,7 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 
 /* ───────────────────────── responsive ───────────────────────── */
 @media (max-width: 1100px) {
-    .dash, .control-grid, .settings, .settings-host, .viewer, .users { grid-template-columns: minmax(0, 1fr); }
+    .dash, .control-grid, .settings, .settings-host, .viewer, .users, .scripts-grid { grid-template-columns: minmax(0, 1fr); }
     .viewer-canvas-wrap { height: 62vh; }
     .control-grid > .card:first-child { grid-row: auto; }
     .file { grid-template-columns: minmax(0, 1fr) auto; }

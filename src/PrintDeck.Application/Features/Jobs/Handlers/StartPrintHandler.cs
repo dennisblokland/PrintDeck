@@ -34,7 +34,7 @@ public sealed class StartPrintHandler(IPrinterSession session, IGcodeFileStore f
 				return Result.Failure($"Not printing {file.Name}: {error.Message}");
 		}
 
-		PrintOptions options = new(s.ShowProgressOnPrinter, file.Analysis?.LayerCount);
+		PrintOptions options = new(s.ShowProgressOnPrinter, file.Analysis?.LayerCount, PrintScripts.From(s));
 		return session.StartJob(file.Name, files.OpenRead(file.Name), file.SizeBytes, file.Analysis?.EstimatedPrintTime, options);
 	}
 }

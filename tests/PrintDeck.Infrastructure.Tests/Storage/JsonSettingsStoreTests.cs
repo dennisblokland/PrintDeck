@@ -57,8 +57,9 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
 		HostSettings loaded = await NewStore().GetAsync(Ct);
 
-		Assert.Equal(saved with { Presets = [], Profiles = [] }, loaded with { Presets = [], Profiles = [] });
+		Assert.Equal(saved with { Presets = [], Profiles = [], Snippets = [] }, loaded with { Presets = [], Profiles = [], Snippets = [] });
 		Assert.Equal(saved.Presets, loaded.Presets);
+		Assert.Equal(saved.Snippets, loaded.Snippets);
 		Assert.Equal(saved.Profiles, loaded.Profiles);
 		Assert.Equal(ender, loaded.ActiveProfile);
 	}
@@ -139,6 +140,9 @@ public sealed class JsonSettingsStoreTests : IDisposable
 		Assert.Equal(expected, settings.ActiveProfile);
 		Assert.Equal(("/dev/ttyACM0", 115200, "http://cam/stream", "OLDKEY", "M84"),
 			(settings.LastPort, settings.DefaultBaudRate, settings.WebcamStreamUrl, settings.ApiKey, settings.CancelGcode));
+		// A file from before G-code scripts gets the default snippets and empty scripts.
+		Assert.Equal(["disable_hotends", "disable_bed"], settings.Snippets.Select(s => s.Name));
+		Assert.Equal("", settings.BeforePrintGcode);
 		Assert.Equal([new TemperaturePreset("PLA", 215, 60)], settings.Presets);
 
 		string rewritten = await File.ReadAllTextAsync(Storage.SettingsFile, Ct);

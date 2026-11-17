@@ -71,6 +71,9 @@ public sealed class PrinterSession(
 	/// <summary>Original names of files copied to the card, which Marlin only stores as 8.3 names.</summary>
 	private readonly ConcurrentDictionary<string, string> _uploadedNames = new(StringComparer.OrdinalIgnoreCase);
 
+	/// <summary>Scripts of the running print; <see cref="PrintScripts.None"/> between prints.</summary>
+	private PrintScripts _scripts = PrintScripts.None;
+
 	private string? _promptMessage;
 	private List<string> _promptChoices = [];
 
@@ -230,6 +233,9 @@ public sealed class PrinterSession(
 			_job = new StreamReader(content, Encoding.UTF8);
 			CurrentJob = new PrintJob(fileName, size, estimate, Now);
 			_screen = options?.ShowProgressOnPrinter == true ? new PrinterScreenReporter(fileName, options.LayerCount) : null;
+			_scripts = options?.Scripts ?? PrintScripts.None;
+			// Queued commands go out before the file's lines.
+			QueueScript(_scripts.BeforePrint);
 			State = PrinterState.Printing;
 		}
 		ShowOnScreen(_screen?.Start());
@@ -257,7 +263,8 @@ public sealed class PrinterSession(
 		events.Publish(PrinterChange.State | PrinterChange.Job);
 		// A printer that paused itself (M600, LCD) shows its own message.
 		if (tellPrinter && kind == JobKind.Print) ShowOnScreen(_screen?.Paused());
-		return kind == JobKind.SdPrint && tellPrinter ? Enqueue(["M25"]) : Result.Success();
+		if (!tellPrinter) return Result.Success();
+		return kind == JobKind.SdPrint ? Enqueue(["M25", .. _scripts.Pause]) : Enqueue(_scripts.Pause);
 	}
 
 	public Result ResumeJob() => Resume(tellPrinter: true);
@@ -267,13 +274,15 @@ public sealed class PrinterSession(
 		lock (_gate)
 		{
 			if (CurrentJob?.Status != JobStatus.Paused) return Result.Failure("Print is not paused.");
+			// Queued before the job streams again, so the resume script runs first.
+			if (tellPrinter && CurrentJob.Kind == JobKind.Print) QueueScript(_scripts.Resume);
 			CurrentJob.Resume(Now);
 			State = PrinterState.Printing;
 		}
 		Log(TerminalDirection.Info, "Print resumed");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
 		if (tellPrinter && CurrentJob.Kind == JobKind.Print) ShowOnScreen(_screen?.Resumed());
-		if (CurrentJob.Kind == JobKind.SdPrint) return tellPrinter ? Enqueue(["M24"]) : Result.Success();
+		if (CurrentJob.Kind == JobKind.SdPrint) return tellPrinter ? Enqueue([.. _scripts.Resume, "M24"]) : Result.Success();
 		_work.Release();
 		return Result.Success();
 	}
@@ -299,6 +308,7 @@ public sealed class PrinterSession(
 				_ => (cancelCommands.Concat(farewell), "Print cancelled")
 			};
 			_screen = null;
+			_scripts = PrintScripts.None;
 		}
 		Log(TerminalDirection.Info, message);
 		events.Publish(PrinterChange.State | PrinterChange.Job);
@@ -444,7 +454,7 @@ public sealed class PrinterSession(
 		string[] script = [];
 		if (settings is not null)
 		{
-			try { script = (await settings.GetAsync(CancellationToken.None)).CancelGcode.Split('\n'); }
+			try { script = [.. PrintScripts.From(await settings.GetAsync(CancellationToken.None)).Cancel]; }
 			catch (Exception ex) { logger.LogWarning(ex, "Could not read the cancel script"); }
 		}
 		if (CancelJob(script).IsSuccess) Notify("Cancelled from the printer");
@@ -480,6 +490,13 @@ public sealed class PrinterSession(
 		if (commands is { Count: > 0 }) Enqueue(commands);
 	}
 
+	/// <summary>Queues a script's lines without the connected check (the caller holds <c>_gate</c> and knows it is printing).</summary>
+	private void QueueScript(IReadOnlyList<string> script)
+	{
+		foreach (string raw in script)
+			if (GcodeLine.Clean(raw) is { } line) _manual.Enqueue(line);
+	}
+
 	// ---------------------------------------------------------------- SD card
 
 	public Result RefreshSdFiles() => Enqueue(["M20 L"]);
@@ -513,7 +530,7 @@ public sealed class PrinterSession(
 		return Enqueue([$"M30 {path}", "M20 L"]);
 	}
 
-	public Result StartSdPrint(string path)
+	public Result StartSdPrint(string path, PrintScripts? scripts = null)
 	{
 		SdFile? file = SdFiles.FirstOrDefault(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase));
 		lock (_gate)
@@ -525,13 +542,14 @@ public sealed class PrinterSession(
 			if (file.SizeBytes <= 0) return Result.Failure("The printer did not report the file's size.");
 
 			CurrentJob = new PrintJob(file.DisplayName, file.SizeBytes, null, Now, JobKind.SdPrint);
+			_scripts = scripts ?? PrintScripts.None;
 			State = PrinterState.Printing;
 		}
 		Interlocked.Exchange(ref _lastSdProgressTicks, Now.UtcTicks);
 		Log(TerminalDirection.Info, $"Printing {file.DisplayName} from the SD card");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
 		// M27 S2: report progress every 2 s; firmware without it gets polled with M27.
-		return Enqueue([$"M23 {file.Path}", "M24", "M27 S2"]);
+		return Enqueue([.. _scripts.BeforePrint, $"M23 {file.Path}", "M24", "M27 S2"]);
 	}
 
 	public Result<string> StartSdUpload(string fileName, Stream content, long size)
@@ -631,6 +649,7 @@ public sealed class PrinterSession(
 	private void EndSdPrint(JobStatus status, string? error)
 	{
 		string? name;
+		PrintScripts scripts;
 		lock (_gate)
 		{
 			if (CurrentJob is not { Kind: JobKind.SdPrint, IsActive: true }) return;
@@ -638,11 +657,13 @@ public sealed class PrinterSession(
 			else CurrentJob.Fail(Now);
 			name = CurrentJob.FileName;
 			State = PrinterState.Operational;
+			scripts = _scripts;
+			_scripts = PrintScripts.None;
 		}
 		if (error is null) Log(TerminalDirection.Info, $"Print finished: {name}");
 		else Log(TerminalDirection.Error, $"{error}: {name}");
 		events.Publish(PrinterChange.State | PrinterChange.Job);
-		Enqueue(["M27 S0"]);
+		Enqueue(status == JobStatus.Completed ? ["M27 S0", .. scripts.AfterPrint] : ["M27 S0"]);
 	}
 
 	private string? NextCommand()
@@ -655,6 +676,7 @@ public sealed class PrinterSession(
 
 		bool refused;
 		string name;
+		PrintScripts finished;
 		lock (_gate)
 		{
 			if (CurrentJob?.Status != JobStatus.Printing || _job is null) return null;
@@ -690,6 +712,8 @@ public sealed class PrinterSession(
 			reader.Dispose();
 			_job = null;
 			State = PrinterState.Operational;
+			finished = _scripts;
+			_scripts = PrintScripts.None;
 		}
 
 		if (refused)
@@ -705,6 +729,7 @@ public sealed class PrinterSession(
 			Log(TerminalDirection.Info, $"Print finished: {name}");
 			ShowOnScreen(_screen?.Finish(JobStatus.Completed));
 			_screen = null;
+			Enqueue(finished.AfterPrint);
 			return null;
 		}
 
