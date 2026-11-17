@@ -86,7 +86,13 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public Result InitSdCard() => Sd("init");
 	public Result ReleaseSdCard() => Sd("release");
 	public Result DeleteSdFile(string path) => Sd("delete " + path);
-	public Result StartSdPrint(string path) => Sd("print " + path);
+	public PrintScripts? SdScripts { get; private set; }
+
+	public Result StartSdPrint(string path, PrintScripts? scripts = null)
+	{
+		SdScripts = scripts;
+		return Sd("print " + path);
+	}
 
 	public Result<string> StartSdUpload(string fileName, Stream content, long size)
 	{

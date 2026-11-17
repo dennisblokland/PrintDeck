@@ -29,8 +29,8 @@ public class SettingsHandlerTests
 	private ValueTask<Result> Delete(string id) =>
 		new DeletePrinterProfileHandler(_settings, _events.Hub).Handle(new DeletePrinterProfileCommand(id), Ct);
 
-	private ValueTask<Result> UpdateHost(IReadOnlyList<TemperaturePreset>? presets = null, string cancel = "M84", string? webcam = null) =>
-		new UpdateSettingsHandler(_settings, _events.Hub).Handle(new UpdateSettingsCommand(presets ?? [new("PLA", 205, 60)], cancel, webcam), Ct);
+	private ValueTask<Result> UpdateHost(IReadOnlyList<TemperaturePreset>? presets = null, string? webcam = null) =>
+		new UpdateSettingsHandler(_settings, _events.Hub).Handle(new UpdateSettingsCommand(presets ?? [new("PLA", 205, 60)], webcam), Ct);
 
 	public class Profiles : SettingsHandlerTests
 	{
@@ -201,7 +201,7 @@ public class SettingsHandlerTests
 			Assert.True(_settings.Settings.ShowProgressOnPrinter); // on by default
 
 			await new UpdateSettingsHandler(_settings, _events.Hub).Handle(
-				new UpdateSettingsCommand([new("PLA", 205, 60)], "M84", null, ShowProgressOnPrinter: false), Ct);
+				new UpdateSettingsCommand([new("PLA", 205, 60)], null, ShowProgressOnPrinter: false), Ct);
 
 			Assert.False(_settings.Settings.ShowProgressOnPrinter);
 		}
@@ -212,7 +212,7 @@ public class SettingsHandlerTests
 			Assert.False(_settings.Settings.AutoConnect); // off by default
 
 			await new UpdateSettingsHandler(_settings, _events.Hub).Handle(
-				new UpdateSettingsCommand([new("PLA", 205, 60)], "M84", null, AutoConnect: true), Ct);
+				new UpdateSettingsCommand([new("PLA", 205, 60)], null, AutoConnect: true), Ct);
 
 			Assert.True(_settings.Settings.AutoConnect);
 		}
@@ -250,11 +250,11 @@ public class SettingsHandlerTests
 		{
 			HostSettings before = _settings.Settings;
 
-			Assert.True((await UpdateHost([new(" TPU ", 225, 50)], "M104 S0\r\nM84", " http://cam.local/stream ")).IsSuccess);
+			Assert.True((await UpdateHost([new(" TPU ", 225, 50)], " http://cam.local/stream ")).IsSuccess);
 
 			HostSettings s = _settings.Settings;
 			Assert.Equal([new TemperaturePreset("TPU", 225, 50)], s.Presets);
-			Assert.Equal("M104 S0\nM84", s.CancelGcode);
+			Assert.Equal(before.CancelGcode, s.CancelGcode);
 			Assert.Equal("http://cam.local/stream", s.WebcamStreamUrl);
 			Assert.Equal("SECRET", s.ApiKey);
 			Assert.Equal(before.Profiles, s.Profiles);

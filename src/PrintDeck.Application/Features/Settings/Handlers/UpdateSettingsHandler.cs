@@ -30,7 +30,6 @@ public sealed class UpdateSettingsHandler(ISettingsStore settings, PrinterEventH
 		await settings.UpdateAsync(s => s with
 		{
 			Presets = presets,
-			CancelGcode = c.CancelGcode.Replace("\r", ""),
 			WebcamStreamUrl = webcam,
 			ShowProgressOnPrinter = c.ShowProgressOnPrinter,
 			AutoConnect = c.AutoConnect

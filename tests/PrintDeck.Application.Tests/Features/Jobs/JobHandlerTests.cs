@@ -34,7 +34,7 @@ public class JobHandlerTests
 		_files.Add("cube.gcode", "G28\n", analysis: new GcodeAnalysis(null, null, 80, 1, null));
 
 		await Start("cube.gcode");
-		Assert.Equal(new PrintOptions(true, 80), _session.StartedWith);
+		Assert.Equal((true, 80), (_session.StartedWith!.ShowProgressOnPrinter, _session.StartedWith.LayerCount));
 
 		await _settings.UpdateAsync(s => s with { ShowProgressOnPrinter = false }, Ct);
 		await Start("cube.gcode");
@@ -113,6 +113,28 @@ public class JobHandlerTests
 
 		Assert.True((await new CancelJobHandler(_session, settings).Handle(new CancelJobCommand(), Ct)).IsSuccess);
 		Assert.Equal(["M104 S0", "M140 S0", "G28 X"], _session.CancelCommands);
+	}
+
+	[Fact]
+	public async Task Cancel_fills_in_snippets()
+	{
+		FakeSettingsStore settings = new(new HostSettings { CancelGcode = "{% snippet 'disable_bed' %}\nM84" });
+
+		await new CancelJobHandler(_session, settings).Handle(new CancelJobCommand(), Ct);
+
+		Assert.Equal(["M140 S0", "M84"], _session.CancelCommands);
+	}
+
+	[Fact]
+	public async Task Start_passes_the_scripts()
+	{
+		_files.Add("cube.gcode", "G28\n");
+		await _settings.UpdateAsync(s => s with { BeforePrintGcode = "M117 Go", PauseGcode = "{% snippet 'disable_hotends' %}" }, Ct);
+
+		await Start("cube.gcode");
+
+		Assert.Equal(["M117 Go"], _session.StartedWith!.Scripts!.BeforePrint);
+		Assert.Equal(["M104 S0"], _session.StartedWith.Scripts.Pause);
 	}
 
 	[Theory]

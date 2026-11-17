@@ -16,6 +16,6 @@ public sealed class CancelJobHandler(IPrinterSession session, ISettingsStore set
 	public async ValueTask<Result> Handle(CancelJobCommand c, CancellationToken ct)
 	{
 		HostSettings s = await settings.GetAsync(ct);
-		return session.CancelJob(s.CancelGcode.Split('\n'));
+		return session.CancelJob(PrintScripts.From(s).Cancel);
 	}
 }

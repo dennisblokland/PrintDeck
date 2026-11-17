@@ -25,7 +25,27 @@ public sealed record HostSettings
 	/// <summary>Record every serial line in logs/serial.log.</summary>
 	public bool SerialLogEnabled { get; init; }
 
-	public string CancelGcode { get; init; } = "M104 S0\nM140 S0\nM107\nG91\nG1 Z10 F600\nG90\nM84";
+	/// <summary>Sent before a print starts streaming (or before an SD print starts).</summary>
+	public string BeforePrintGcode { get; init; } = "";
+
+	/// <summary>Sent after a print finished.</summary>
+	public string AfterPrintGcode { get; init; } = "";
+
+	/// <summary>Sent after a print is cancelled.</summary>
+	public string CancelGcode { get; init; } = "{% snippet 'disable_hotends' %}\n{% snippet 'disable_bed' %}\nM107\nG91\nG1 Z10 F600\nG90\nM84";
+
+	/// <summary>Sent after PrintDeck (or the printer's "pause" action) pauses a print.</summary>
+	public string PauseGcode { get; init; } = "";
+
+	/// <summary>Sent before a paused print continues.</summary>
+	public string ResumeGcode { get; init; } = "";
+
+	/// <summary>Named pieces of G-code the scripts include with <c>{% snippet 'name' %}</c>.</summary>
+	public IReadOnlyList<GcodeSnippet> Snippets { get; init; } =
+	[
+		new("disable_hotends", "M104 S0"),
+		new("disable_bed", "M140 S0")
+	];
 	public IReadOnlyList<TemperaturePreset> Presets { get; init; } =
 	[
 		new("PLA", 205, 60),
@@ -54,6 +74,17 @@ public sealed record HostSettings
 		if (profiles.Count == 0) profiles.Add(new PrinterProfile());
 
 		string active = profiles.Any(p => p.Id == ActiveProfileId) ? ActiveProfileId : profiles[0].Id;
-		return this with { Profiles = profiles, ActiveProfileId = active, Presets = Presets ?? [], CancelGcode = CancelGcode ?? "" };
+		return this with
+		{
+			Profiles = profiles,
+			ActiveProfileId = active,
+			Presets = Presets ?? [],
+			BeforePrintGcode = BeforePrintGcode ?? "",
+			AfterPrintGcode = AfterPrintGcode ?? "",
+			CancelGcode = CancelGcode ?? "",
+			PauseGcode = PauseGcode ?? "",
+			ResumeGcode = ResumeGcode ?? "",
+			Snippets = Snippets ?? []
+		};
 	}
 }
