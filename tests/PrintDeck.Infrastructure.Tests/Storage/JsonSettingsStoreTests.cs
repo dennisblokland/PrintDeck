@@ -94,6 +94,17 @@ public sealed class JsonSettingsStoreTests : IDisposable
 	}
 
 	[Fact]
+	public async Task The_shared_key_is_on_unless_switched_off()
+	{
+		await WriteFileAsync("""{ "profiles": [{ "id": "a", "name": "Old" }], "activeProfileId": "a", "apiKey": "K" }""");
+		Assert.True((await NewStore().GetAsync(Ct)).SharedApiKeyEnabled);
+
+		await NewStore().UpdateAsync(s => s with { SharedApiKeyEnabled = false }, Ct);
+
+		Assert.False((await NewStore().GetAsync(Ct)).SharedApiKeyEnabled);
+	}
+
+	[Fact]
 	public async Task Adds_an_api_key_to_an_older_settings_file()
 	{
 		await WriteFileAsync("""{ "profiles": [{ "id": "a", "name": "Old" }], "activeProfileId": "a", "apiKey": "" }""");

@@ -115,22 +115,73 @@
 				</label>
 			</section>
 
-			<section class="card">
-				<header class="card-head"><h2>Slicer upload</h2></header>
-				<p class="muted small">
-					In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type <strong>OctoPrint</strong>,
-					host <code>@Nav.BaseUri.TrimEnd('/')</code> and this API key.
-				</p>
-				<div class="field-row">
-					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="API key" />
-					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> New key</button>
-				</div>
-			</section>
-
 			<div class="save-bar">
 				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
 			</div>
 		</form>
+
+		<section class="card settings-wide" aria-labelledby="keys-title">
+			<header class="card-head"><h2 id="keys-title">Slicer upload</h2></header>
+			<p class="muted small">
+				In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type <strong>OctoPrint</strong>,
+				host <code>@Nav.BaseUri.TrimEnd('/')</code> and an API key. Give each slicer or integration its own app key,
+				so you can revoke one without touching the others. A key acts as the account that made it, with that account's role.
+			</p>
+			@if (_newKey is not null)
+			{
+				<div class="new-key" role="status">
+					<p><strong>@_newKeyName</strong>: copy this key now. PrintDeck keeps only a fingerprint of it and can't show it again.</p>
+					<div class="field-row">
+						<input class="input mono" readonly value="@_newKey" aria-label="New API key" />
+						<button type="button" class="btn btn-ghost" @onclick="() => _newKey = null"><Icon Name="check" Size="16" /> Done</button>
+					</div>
+				</div>
+			}
+			@if (_keys.Count > 0)
+			{
+				<ul class="profile-list key-list">
+					@foreach (ApiKeyInfo k in _keys)
+					{
+						bool armed = _confirmRevoke == k.Id;
+						<li class="profile-row">
+							<div class="key-name">
+								<strong>@k.Name</strong>
+								<small>…@k.Hint · @k.OwnerName · made @Format.Ago(k.CreatedAt, Time.GetUtcNow()) · @(k.LastUsedAt is { } used ? $"used {Format.Ago(used, Time.GetUtcNow())}" : "never used")</small>
+							</div>
+							<button type="button" class="btn btn-sm btn-danger @(armed ? "is-armed" : "")" title="@(armed ? "Click again to revoke" : null)"
+									@onclick="() => RevokeKeyAsync(k)">
+								<Icon Name="@(armed ? "check" : "x")" Size="14" /> @(armed ? "Confirm revoke" : "Revoke")
+							</button>
+						</li>
+					}
+				</ul>
+			}
+			<form class="field-row" @onsubmit="CreateKeyAsync" @onsubmit:preventDefault>
+				<input class="input" maxlength="@ApiKeySecret.MaxNameLength" placeholder="Name, e.g. OrcaSlicer on the laptop" aria-label="Key name" @bind="_keyName" />
+				<button class="btn btn-primary" type="submit" disabled="@_creatingKey"><Icon Name="key" Size="16" /> New app key</button>
+			</form>
+
+			<h3 class="card-subhead">Shared key</h3>
+			@if (_settings.SharedApiKeyEnabled)
+			{
+				<p class="muted small">
+					The single key from before app keys. Whoever holds it can upload and print as an admin.
+					Once every slicer has its own key, turn it off.
+				</p>
+				<div class="field-row">
+					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="Shared API key" />
+					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> New key</button>
+					<button type="button" class="btn btn-danger @(_confirmSharedOff ? "is-armed" : "")" @onclick="DisableSharedKeyAsync">
+						<Icon Name="power" Size="16" /> @(_confirmSharedOff ? "Confirm: turn off" : "Turn off")
+					</button>
+				</div>
+			}
+			else
+			{
+				<p class="muted small">Off: only app keys sign in.</p>
+				<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> Turn on with a new key</button>
+			}
+		</section>
 
 		<section class="card" aria-labelledby="backup-title">
 			<header class="card-head"><h2 id="backup-title">Backup</h2></header>
@@ -246,6 +297,13 @@
 	private IReadOnlyList<HostAction> _hostActions = [];
 	private HostAction? _confirmAction;
 	private bool _runningAction;
+	private IReadOnlyList<ApiKeyInfo> _keys = [];
+	private string _keyName = "";
+	private bool _creatingKey;
+	private string? _newKey;
+	private string? _newKeyName;
+	private string? _confirmRevoke;
+	private bool _confirmSharedOff;
 	private IBrowserFile? _restoreFile;
 	private bool _restoring;
 
@@ -260,6 +318,7 @@
 		_settings = await Mediator.Send(new GetSettingsQuery());
 		_busy = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsBusy();
 		_hostActions = await Mediator.Send(new GetHostActionsQuery());
+		_keys = await Mediator.Send(new ListApiKeysQuery());
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
 	}
@@ -398,9 +457,62 @@
 
 	private async Task RegenerateAsync()
 	{
+		bool wasOn = _settings!.SharedApiKeyEnabled;
 		Result<string> result = await Mediator.Send(new RegenerateApiKeyCommand());
-		if (!result.IsSuccess) return;
+		if (!result.IsSuccess)
+		{
+			Toasts.Error(result.Error ?? "Something went wrong.");
+			return;
+		}
 		_settings = await Mediator.Send(new GetSettingsQuery());
-		Toasts.Success("New API key — update it in your slicer.");
+		Toasts.Success(wasOn ? "New shared key — update it in your slicer." : "The shared key is on again, with a new key.");
+	}
+
+	private async Task CreateKeyAsync()
+	{
+		_creatingKey = true;
+		try
+		{
+			string name = _keyName.Trim();
+			Result<string> result = await Mediator.Send(new CreateApiKeyCommand(name));
+			if (!result.IsSuccess)
+			{
+				Toasts.Error(result.Error ?? "Something went wrong.");
+				return;
+			}
+			_newKey = result.Value;
+			_newKeyName = name;
+			_keyName = "";
+			_keys = await Mediator.Send(new ListApiKeysQuery());
+		}
+		finally
+		{
+			_creatingKey = false;
+		}
+	}
+
+	private async Task RevokeKeyAsync(ApiKeyInfo key)
+	{
+		if (_confirmRevoke != key.Id)
+		{
+			_confirmRevoke = key.Id;
+			return;
+		}
+		_confirmRevoke = null;
+		if (await Run(new RevokeApiKeyCommand(key.Id), $"Revoked {key.Name}"))
+			_keys = await Mediator.Send(new ListApiKeysQuery());
+	}
+
+	private async Task DisableSharedKeyAsync()
+	{
+		if (!_confirmSharedOff)
+		{
+			_confirmSharedOff = true;
+			_ = Task.Delay(4000).ContinueWith(_ => InvokeAsync(() => { _confirmSharedOff = false; StateHasChanged(); }));
+			return;
+		}
+		_confirmSharedOff = false;
+		if (await Run(new DisableSharedApiKeyCommand(), "Shared key turned off; only app keys sign in now."))
+			_settings = await Mediator.Send(new GetSettingsQuery());
 	}
 }

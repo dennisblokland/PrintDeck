@@ -16,7 +16,7 @@ public sealed class RegenerateApiKeyHandler(ISettingsStore settings, PrinterEven
 	public async ValueTask<Result<string>> Handle(RegenerateApiKeyCommand c, CancellationToken ct)
 	{
 		string key = NewKey();
-		await settings.UpdateAsync(s => s with { ApiKey = key }, ct);
+		await settings.UpdateAsync(s => s with { ApiKey = key, SharedApiKeyEnabled = true }, ct);
 		events.Publish(PrinterChange.Settings);
 		return Result.Success(key);
 	}

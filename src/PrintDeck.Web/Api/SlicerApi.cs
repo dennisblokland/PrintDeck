@@ -1,5 +1,6 @@
 using Mediator;
 
+using PrintDeck.Application.Behaviors;
 using PrintDeck.Application.Features.Files;
 using PrintDeck.Application.Features.Files.Commands;
 using PrintDeck.Application.Features.Files.Handlers;
@@ -40,7 +41,11 @@ public static class SlicerApi
 
 			await using Stream stream = file.OpenReadStream();
 			Result<GcodeFile> upload = await mediator.Send(new UploadGcodeCommand(file.FileName, stream), ct);
-			if (!upload.IsSuccess) return Results.BadRequest(new { error = upload.Error });
+			if (!upload.IsSuccess)
+				// A key whose owner is a viewer may look but not upload: OctoPrint answers that with 403.
+				return upload.Error == AuthorizationBehavior<UploadGcodeCommand, Result<GcodeFile>>.AdminRequired
+					? Results.Json(new { error = upload.Error }, statusCode: StatusCodes.Status403Forbidden)
+					: Results.BadRequest(new { error = upload.Error });
 
 			string name = upload.Value!.Name;
 			if (IsTrue(form["print"]))
