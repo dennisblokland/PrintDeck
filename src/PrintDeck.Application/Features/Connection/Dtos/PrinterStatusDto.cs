@@ -20,4 +20,6 @@ public sealed record PrinterStatusDto(
 	string? Firmware,
 	string? Error,
 	JobDto? Job,
-	IReadOnlyList<HeaterReading> Heaters);
+	IReadOnlyList<HeaterReading> Heaters,
+	int FeedRate = 100,
+	int FlowRate = 100);

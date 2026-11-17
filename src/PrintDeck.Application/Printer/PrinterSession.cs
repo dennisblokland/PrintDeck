@@ -96,6 +96,8 @@ public sealed class PrinterSession(
 	public HostPrompt? Prompt { get; private set; }
 	public PrinterNotification? Notification { get; private set; }
 	public bool WaitingForUser { get; private set; }
+	public int FeedRate { get; private set; } = 100;
+	public int FlowRate { get; private set; } = 100;
 
 	private DateTimeOffset Now => time.GetUtcNow();
 
@@ -122,6 +124,7 @@ public sealed class PrinterSession(
 		BaudRate = baudRate;
 		ErrorMessage = null;
 		Firmware = null;
+		FeedRate = FlowRate = 100;
 		Temperatures.Clear();
 		ResetSdCard();
 		ResetDialogs();
@@ -151,7 +154,8 @@ public sealed class PrinterSession(
 			_sender = Task.Run(() => SendLoopAsync(_cts.Token));
 			_poller = Task.Run(() => PollLoopAsync(_cts.Token));
 			// M20 rather than M21: re-initialising the card would break a print the printer runs from it.
-			Enqueue(["M115", "M155 S2", "M20 L"]);
+			// M220/M221 without S report the current factors (a board that did not reset may still have changed ones).
+			Enqueue(["M115", "M155 S2", "M220", "M221", "M20 L"]);
 
 			SetState(PrinterState.Operational);
 			Log(TerminalDirection.Info, "Connected");
@@ -766,6 +770,7 @@ public sealed class PrinterSession(
 					continue;
 				}
 
+				TrackRates(command);
 				await SendAndAwaitOkAsync(command, null, ct);
 				if (CurrentJob?.IsActive == true) events.Publish(PrinterChange.Job);
 			}
@@ -845,6 +850,20 @@ public sealed class PrinterSession(
 		}
 	}
 
+	/// <summary>Follows M220/M221 from any source: the sliders, the terminal or the file being printed.</summary>
+	private void TrackRates(string command)
+	{
+		if (RateReportParser.FeedSetBy(command) is { } feed) SetRates(feed, FlowRate);
+		else if (RateReportParser.FlowSetBy(command) is { } flow) SetRates(FeedRate, flow);
+	}
+
+	private void SetRates(int feed, int flow)
+	{
+		if (feed == FeedRate && flow == FlowRate) return;
+		(FeedRate, FlowRate) = (feed, flow);
+		events.Publish(PrinterChange.State);
+	}
+
 	internal void HandleLine(string raw)
 	{
 		string line = raw.Trim();
@@ -860,6 +879,9 @@ public sealed class PrinterSession(
 			Interlocked.Exchange(ref _pollPending, 0);
 			events.Publish(PrinterChange.Temperature);
 		}
+
+		if (RateReportParser.TryParseFeedReport(line) is { } feed) SetRates(feed, FlowRate);
+		else if (RateReportParser.TryParseFlowReport(line) is { } flow) SetRates(FeedRate, flow);
 
 		HandleSdLine(line);
 

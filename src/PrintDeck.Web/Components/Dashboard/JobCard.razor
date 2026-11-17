@@ -65,6 +65,11 @@
 			<div><dt>Lines</dt><dd>@(job.Kind == JobKind.SdPrint ? "On SD" : job.LinesSent.ToString("N0"))</dd></div>
 		</dl>
 
+		@if (job.Kind != JobKind.SdUpload && job.Status is JobStatus.Printing or JobStatus.Paused)
+		{
+			<SpeedFlowPanel Embedded="true" />
+		}
+
 		@if (CanControl && job.Status is JobStatus.Printing or JobStatus.Paused)
 		{
 			<div class="actions">

@@ -65,6 +65,25 @@ public sealed class VirtualPrinterTransportTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task Remembers_and_reports_feed_rate_and_flow()
+	{
+		Assert.Contains("FR:100%", await SendPlain("M220"));
+		Assert.Contains("echo:E0 Flow: 100%", await SendPlain("M221"));
+
+		await SendPlain("M220 S150");
+		await SendPlain("M221 S95");
+
+		Assert.Contains("FR:150%", await SendPlain("M220"));
+		Assert.Contains("echo:E0 Flow: 95%", await SendPlain("M221"));
+	}
+
+	private async Task<List<string>> SendPlain(string command)
+	{
+		await Send(command);
+		return await ReadUntil(l => l == "ok");
+	}
+
+	[Fact]
 	public async Task Accepts_numbered_lines_in_sequence()
 	{
 		await SendNumbered(0, "M110 N0");

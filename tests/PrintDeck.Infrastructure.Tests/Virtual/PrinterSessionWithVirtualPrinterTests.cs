@@ -168,6 +168,15 @@ public sealed class PrinterSessionWithVirtualPrinterTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task Feed_rate_and_flow_round_trip()
+	{
+		_session.Enqueue(["M220 S130", "M221 S92", "M220", "M221"]);
+
+		await Until(() => _session.Terminal(2000).Any(e => e.Text == "echo:E0 Flow: 92%"));
+		Assert.Equal((130, 92), (_session.FeedRate, _session.FlowRate));
+	}
+
+	[Fact]
 	public async Task Emergency_stop_puts_the_session_in_error()
 	{
 		_session.Enqueue(["M112"]);

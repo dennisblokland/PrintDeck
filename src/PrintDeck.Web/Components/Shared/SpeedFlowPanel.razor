@@ -1,0 +1,69 @@
+@inherits PrinterComponent
+
+@if (Embedded)
+{
+	<div class="rates rates-embedded">@Sliders</div>
+}
+else
+{
+	<section class="card">
+		<header class="card-head"><h2>Speed and flow</h2></header>
+		<div class="rates">@Sliders</div>
+		<p class="muted small">
+			<code>M220</code> and <code>M221</code>, also while printing. They apply to moves the printer has not planned yet,
+			and stay until changed again or the printer restarts.
+		</p>
+	</section>
+}
+
+@code {
+	/// <summary>Without its own card, for inside the job card.</summary>
+	[Parameter] public bool Embedded { get; set; }
+
+	private int _feed = 100;
+	private int _flow = 100;
+	private bool _connected;
+
+	private bool Enabled => _connected && CanControl;
+
+	protected override PrinterChange Interests => PrinterChange.State;
+
+	protected override async Task RefreshAsync()
+	{
+		PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
+		_connected = status.State.IsConnected();
+		(_feed, _flow) = (status.FeedRate, status.FlowRate);
+	}
+
+	private RenderFragment Sliders => __builder =>
+	{
+		<label class="rate">
+			<span class="rate-head"><span>Feed rate</span><span class="value">@_feed%</span></span>
+			<input class="range" type="range" min="@SetFeedRateHandler.Min" max="@SetFeedRateHandler.Max" step="5"
+				   disabled="@(!Enabled)" @bind="_feed" @bind:event="oninput" @onchange="FeedChanged" aria-label="Feed rate" />
+		</label>
+		<label class="rate">
+			<span class="rate-head"><span>Flow</span><span class="value">@_flow%</span></span>
+			<input class="range" type="range" min="@SetFlowRateHandler.Min" max="@SetFlowRateHandler.Max" step="1"
+				   disabled="@(!Enabled)" @bind="_flow" @bind:event="oninput" @onchange="FlowChanged" aria-label="Flow" />
+		</label>
+		@if (CanControl)
+		{
+			<div class="rate-actions">
+				<button type="button" class="btn btn-sm btn-ghost" disabled="@(!Enabled || (_feed == 100 && _flow == 100))" @onclick="ResetAsync">Reset to 100%</button>
+			</div>
+		}
+	};
+
+	private Task FeedChanged(ChangeEventArgs e) => Run(new SetFeedRateCommand(Parse(e, _feed)));
+
+	private Task FlowChanged(ChangeEventArgs e) => Run(new SetFlowRateCommand(Parse(e, _flow)));
+
+	private async Task ResetAsync()
+	{
+		if (_feed != 100) await Run(new SetFeedRateCommand(100));
+		if (_flow != 100) await Run(new SetFlowRateCommand(100));
+	}
+
+	private static int Parse(ChangeEventArgs e, int fallback) => int.TryParse(e.Value?.ToString(), out int v) ? v : fallback;
+}

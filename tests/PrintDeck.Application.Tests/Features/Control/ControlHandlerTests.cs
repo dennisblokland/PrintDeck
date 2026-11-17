@@ -195,6 +195,46 @@ public class ControlHandlerTests
 		}
 	}
 
+	public class Rates : ControlHandlerTests
+	{
+		[Theory]
+		[InlineData(50)]
+		[InlineData(120)]
+		[InlineData(200)]
+		public async Task Sets_the_feed_rate_even_while_printing(int percent)
+		{
+			_session.State = PrinterState.Printing;
+
+			Assert.True((await new SetFeedRateHandler(_session).Handle(new SetFeedRateCommand(percent), Ct)).IsSuccess);
+			Assert.Equal([$"M220 S{percent}"], _session.Enqueued);
+		}
+
+		[Theory]
+		[InlineData(75)]
+		[InlineData(97)]
+		[InlineData(125)]
+		public async Task Sets_the_flow(int percent)
+		{
+			Assert.True((await new SetFlowRateHandler(_session).Handle(new SetFlowRateCommand(percent), Ct)).IsSuccess);
+			Assert.Equal([$"M221 S{percent}"], _session.Enqueued);
+		}
+
+		[Theory]
+		[InlineData("feed", 49, "Feed rate is 50–200 %.")]
+		[InlineData("feed", 201, "Feed rate is 50–200 %.")]
+		[InlineData("flow", 74, "Flow is 75–125 %.")]
+		[InlineData("flow", 126, "Flow is 75–125 %.")]
+		public async Task Rejects_out_of_range(string which, int percent, string error)
+		{
+			Result r = which == "feed"
+				? await new SetFeedRateHandler(_session).Handle(new SetFeedRateCommand(percent), Ct)
+				: await new SetFlowRateHandler(_session).Handle(new SetFlowRateCommand(percent), Ct);
+
+			Assert.Equal(error, r.Error);
+			Assert.Empty(_session.Enqueued);
+		}
+	}
+
 	public class SendGcode : ControlHandlerTests
 	{
 		[Fact]
