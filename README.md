@@ -9,7 +9,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - Marlin host protocol: line numbers + checksums, resend handling, `busy:` tolerance, `M155` auto-report with `M105` polling fallback
 - Dashboard: job progress with elapsed / remaining / finish time, pause / resume / cancel, live temperatures, presets, history chart, MJPEG camera
 - **Progress on the printer's screen** while PrintDeck streams a print: `M73 P<percent> R<minutes left>` and `M117` messages (file name, `Layer 12/80`, paused, done, cancelled). Files that already contain `M73` (PrusaSlicer, OrcaSlicer) keep theirs. Switch it off in Settings
-- Control: XY/Z jog with step sizes, homing, extrude/retract (cold-extrusion guard), fan, motors off
+- Control: XY/Z jog with step sizes, homing, extrude/retract (cold-extrusion guard), fan, motors off. **Keyboard**: arrows jog X/Y, Page Up/Down jog Z, Home homes X and Y, End homes Z, 1–4 pick the step size (not while typing in a field)
 - **Speed and flow**: feed rate (`M220`, 50–200 %) and flow (`M221`, 75–125 %) sliders on the Control page and in the job card, usable while printing. PrintDeck asks the printer for both when connecting and follows `M220`/`M221` from the terminal or the file being printed (e.g. PrusaSlicer's `M221 S95` for PETG)
 - Files: drag-and-drop upload with analysis (print time, filament, layers) from OrcaSlicer, PrusaSlicer and Cura metadata
 - **Slicer thumbnails**: the preview image OrcaSlicer, PrusaSlicer or Cura embeds in the G-code (`; thumbnail begin`, PNG, JPG or QOI) shows in the file list and on the job card. The largest one is kept as `<name>.thumb.png` (QOI is converted) or `.thumb.jpg`, and is part of backups. Files uploaded before this get theirs at the next start

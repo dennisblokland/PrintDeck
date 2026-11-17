@@ -379,6 +379,11 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
     transition: background-color .12s var(--ease), border-color .12s var(--ease), transform .12s var(--ease);
 }
 .jog-btn small { font: 500 11px var(--mono); color: var(--muted); }
+.key-hint { margin-top: 12px; line-height: 1.9; }
+kbd {
+    display: inline-block; min-width: 20px; padding: 0 5px; margin: 0 1px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: var(--radius-xs); background: var(--panel-2); font: 500 11px var(--mono); text-align: center; line-height: 18px;
+}
 .jog-btn:hover:not(:disabled) { background: var(--panel-3); border-color: var(--faint); }
 .jog-btn:active:not(:disabled) { transform: scale(.97); }
 .jog-btn:disabled { cursor: not-allowed; }
