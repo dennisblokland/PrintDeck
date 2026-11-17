@@ -1,6 +1,6 @@
 # PrintDeck
 
-OctoPrint-style 3D-printer host in .NET 11 / Blazor Server, for Marlin printers over USB serial. The owner prints on a Prusa MK3S (Prusa firmware, Marlin-based but not identical). See `README.md` for features and `docs/ROADMAP.md` for what is wanted next.
+OctoPrint-style 3D-printer host in .NET 11 / Blazor Server, for Marlin printers over USB serial. The owner prints on a Prusa MK3S (Prusa firmware, Marlin-based but not identical). See `README.md` for features and the open GitHub issues labeled `enhancement` for what is wanted next.
 
 ## Build and test
 
@@ -74,4 +74,4 @@ xUnit v3 on Microsoft.Testing.Platform. Each test project mirrors the folders of
 
 ## Roadmap workflow
 
-Pick an unchecked item from `docs/ROADMAP.md`. Implement it across the layers, with tests and a virtual-printer path. Tick it off and add it to the "Done:" line, and add a feature line to `README.md`. Open a PR against `main` with a description of what changed, how it was tested, and anything that still needs checking on the real MK3S.
+The roadmap lives in GitHub issues (`gh issue list --label enhancement`). Each issue has an `area:` label; issues labeled `maybe` are not committed, so skip them unless asked. Pick an open issue and implement it across the layers, with tests and a virtual-printer path. Add a feature line to `README.md`. Open a PR against `main` that says `Closes #<issue>` and describes what changed, how it was tested, and anything that still needs checking on the real MK3S.
