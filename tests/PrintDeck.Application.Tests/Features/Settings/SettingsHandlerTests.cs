@@ -206,6 +206,17 @@ public class SettingsHandlerTests
 			Assert.False(_settings.Settings.ShowProgressOnPrinter);
 		}
 
+		[Fact]
+		public async Task Saves_the_auto_connect_switch()
+		{
+			Assert.False(_settings.Settings.AutoConnect); // off by default
+
+			await new UpdateSettingsHandler(_settings, _events.Hub).Handle(
+				new UpdateSettingsCommand([new("PLA", 205, 60)], "M84", null, AutoConnect: true), Ct);
+
+			Assert.True(_settings.Settings.AutoConnect);
+		}
+
 		public static TheoryData<string, string> InvalidSettings => new()
 		{
 			{ "nameless preset", "Presets need a name, hotend 0–320 °C and bed 0–130 °C." },

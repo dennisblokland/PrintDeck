@@ -22,10 +22,15 @@ public static class DependencyInjection
 		services.AddSingleton<PrinterSession>();
 		services.AddSingleton<IPrinterSession>(sp => sp.GetRequiredService<PrinterSession>());
 		services.AddSingleton<PrintHistoryRecorder>();
+		services.AddSingleton<AutoConnector>();
 		return services;
 	}
 
 	/// <summary>Starts recording finished prints into each file's history.</summary>
 	public static void StartPrintHistory(this IServiceProvider services) =>
 		services.GetRequiredService<PrintHistoryRecorder>().Start();
+
+	/// <summary>Starts watching for the last port, when auto-connect is on.</summary>
+	public static void StartAutoConnect(this IServiceProvider services) =>
+		services.GetRequiredService<AutoConnector>().Start();
 }

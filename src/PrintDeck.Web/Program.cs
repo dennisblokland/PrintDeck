@@ -40,6 +40,7 @@ WebApplication app = builder.Build();
 await app.Services.InitializeDatabaseAsync();
 await app.Services.InitializeSerialLogAsync();
 app.Services.StartPrintHistory();
+app.Services.StartAutoConnect();
 
 app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())

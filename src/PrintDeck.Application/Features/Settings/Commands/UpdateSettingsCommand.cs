@@ -10,5 +10,6 @@ public sealed record UpdateSettingsCommand(
 	IReadOnlyList<TemperaturePreset> Presets,
 	string CancelGcode,
 	string? WebcamStreamUrl,
-	bool ShowProgressOnPrinter = true)
+	bool ShowProgressOnPrinter = true,
+	bool AutoConnect = false)
 	: ICommand<Result>;

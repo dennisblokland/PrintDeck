@@ -5,6 +5,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 ## Features
 
 - Connect over serial (auto-discovers `/dev/ttyUSB*`, `/dev/ttyACM*`, `/dev/serial/by-id/*`) or the built-in **virtual printer**
+- **Auto-connect** (Settings → Connection, off by default): connects to the last port and baud rate when PrintDeck starts, and again whenever that port appears, e.g. when the printer is switched on or plugged back in. A failed attempt is not repeated until the port disappears and comes back, so the board is not reset over and over; a manual disconnect stays disconnected
 - Marlin host protocol: line numbers + checksums, resend handling, `busy:` tolerance, `M155` auto-report with `M105` polling fallback
 - Dashboard: job progress with elapsed / remaining / finish time, pause / resume / cancel, live temperatures, presets, history chart, MJPEG camera
 - **Progress on the printer's screen** while PrintDeck streams a print: `M73 P<percent> R<minutes left>` and `M117` messages (file name, `Layer 12/80`, paused, done, cancelled). Files that already contain `M73` (PrusaSlicer, OrcaSlicer) keep theirs. Switch it off in Settings

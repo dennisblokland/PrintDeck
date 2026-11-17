@@ -10,6 +10,10 @@ public sealed record HostSettings
 
 	public int DefaultBaudRate { get; init; } = 115200;
 	public string? LastPort { get; init; }
+
+	/// <summary>Connect to <see cref="LastPort"/> when PrintDeck starts and whenever that port appears.</summary>
+	public bool AutoConnect { get; init; }
+
 	public string? WebcamStreamUrl { get; init; }
 	public string ApiKey { get; init; } = "";
 
