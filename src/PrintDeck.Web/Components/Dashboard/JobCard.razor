@@ -23,19 +23,28 @@
 		int done = (int)Math.Floor(job.Progress * _layers);
 		string stackState = job.Status switch { JobStatus.Paused => "is-paused", JobStatus.Completed => "is-done", _ => "" };
 		<div class="job-body">
-			<div class="stack @stackState" aria-hidden="true">
-				<div class="stack-layers">
-					@for (int i = 0; i < _layers; i++)
+			@if (_thumbnail is { } thumb && job.Kind == JobKind.Print)
+			{
+				<div class="job-thumb @stackState" aria-hidden="true">
+					<img src="@thumb" alt="" />
+				</div>
+			}
+			else
+			{
+				<div class="stack @stackState" aria-hidden="true">
+					<div class="stack-layers">
+						@for (int i = 0; i < _layers; i++)
+						{
+							<i class="stack-layer @(i < done ? "is-done" : i == done && job.Status is JobStatus.Printing or JobStatus.Paused ? "is-current" : "")"></i>
+						}
+					</div>
+					<div class="stack-bed"></div>
+					@if (job.Status is JobStatus.Printing or JobStatus.Paused)
 					{
-						<i class="stack-layer @(i < done ? "is-done" : i == done && job.Status is JobStatus.Printing or JobStatus.Paused ? "is-current" : "")"></i>
+						<span class="stack-nozzle" style="transform:translateY(-@(Math.Min(done, _layers - 1) * 5)px)"></span>
 					}
 				</div>
-				<div class="stack-bed"></div>
-				@if (job.Status is JobStatus.Printing or JobStatus.Paused)
-				{
-					<span class="stack-nozzle" style="transform:translateY(-@(Math.Min(done, _layers - 1) * 5)px)"></span>
-				}
-			</div>
+			}
 
 			<div class="job-info">
 				<p class="job-file" title="@job.FileName">
@@ -79,6 +88,8 @@
 @code {
 	private const int _layers = 24;
 	private JobDto? _job;
+	private string? _thumbnailFor;
+	private string? _thumbnail;
 	private bool _confirmCancel;
 	private Timer? _ticker;
 
@@ -88,7 +99,17 @@
 	protected override void OnInitialized() =>
 		_ticker = new Timer(_ => { if (_job?.Status == JobStatus.Printing) _ = ReloadAsync(); }, null, 1000, 1000);
 
-	protected override async Task RefreshAsync() => _job = (await Mediator.Send(new GetPrinterStatusQuery())).Job;
+	protected override async Task RefreshAsync()
+	{
+		_job = (await Mediator.Send(new GetPrinterStatusQuery())).Job;
+		if (_job?.Kind == JobKind.Print && _job.FileName != _thumbnailFor)
+		{
+			_thumbnailFor = _job.FileName;
+			_thumbnail = await Mediator.Send(new GetGcodeFileQuery(_job.FileName)) is { HasThumbnail: true } file
+				? $"thumbnail/{Uri.EscapeDataString(file.Name)}?v={file.UploadedAt.UtcTicks:x}"
+				: null;
+		}
+	}
 
 	private async Task CancelAsync()
 	{

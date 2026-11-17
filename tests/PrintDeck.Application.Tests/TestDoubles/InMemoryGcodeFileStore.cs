@@ -11,6 +11,8 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 
 	private readonly Dictionary<string, List<PrintRecord>> _prints = new();
 
+	public Dictionary<string, GcodeThumbnail> Thumbnails { get; } = new();
+
 	public DateTimeOffset Now { get; set; } = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
 	public int Opens { get; private set; }
 
@@ -30,6 +32,7 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 		using MemoryStream copy = new();
 		await content.CopyToAsync(copy, ct);
 		_files[name] = (copy.ToArray(), Now, null);
+		Thumbnails.Remove(name);
 		return ToFile(name);
 	}
 
@@ -48,6 +51,7 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 	public Task<bool> DeleteAsync(string name, CancellationToken ct)
 	{
 		_prints.Remove(name);
+		Thumbnails.Remove(name);
 		return Task.FromResult(_files.Remove(name));
 	}
 
@@ -61,6 +65,15 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 		return Task.CompletedTask;
 	}
 
+	public Task SaveThumbnailAsync(string name, GcodeThumbnail thumbnail, CancellationToken ct)
+	{
+		if (_files.ContainsKey(name)) Thumbnails[name] = thumbnail;
+		return Task.CompletedTask;
+	}
+
+	public (Stream Content, string ContentType)? OpenThumbnail(string name) =>
+		Thumbnails.TryGetValue(name, out GcodeThumbnail? t) ? (new MemoryStream(t.Data, writable: false), t.ContentType) : null;
+
 	public Task<IReadOnlyList<PrintHistoryEntry>> ListPrintsAsync(CancellationToken ct) =>
 		Task.FromResult<IReadOnlyList<PrintHistoryEntry>>(
 			_prints.SelectMany(f => f.Value.Select(p => new PrintHistoryEntry(f.Key, p))).ToList());
@@ -70,6 +83,6 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 	private GcodeFile ToFile(string name)
 	{
 		(byte[] content, DateTimeOffset uploadedAt, GcodeAnalysis? analysis) = _files[name];
-		return new GcodeFile(name, content.Length, uploadedAt, analysis, PrintStats.From(PrintsOf(name)));
+		return new GcodeFile(name, content.Length, uploadedAt, analysis, PrintStats.From(PrintsOf(name)), Thumbnails.ContainsKey(name));
 	}
 }

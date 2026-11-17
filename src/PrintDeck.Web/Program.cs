@@ -41,6 +41,7 @@ await app.Services.InitializeDatabaseAsync();
 await app.Services.InitializeSerialLogAsync();
 app.Services.StartPrintHistory();
 app.Services.StartAutoConnect();
+app.Services.StartThumbnailBackfill();
 
 app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())
@@ -55,6 +56,7 @@ app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();
 app.MapSlicerApi();
 app.MapToolpathApi();
+app.MapThumbnailApi();
 app.MapLogsApi();
 app.MapBackupApi();
 app.MapAccountEndpoints();

@@ -5,6 +5,7 @@ using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
 using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Application.Files;
+using PrintDeck.Application.Files.Thumbnails;
 using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
 
@@ -23,6 +24,7 @@ public static class DependencyInjection
 		services.AddSingleton<IPrinterSession>(sp => sp.GetRequiredService<PrinterSession>());
 		services.AddSingleton<PrintHistoryRecorder>();
 		services.AddSingleton<AutoConnector>();
+		services.AddSingleton<ThumbnailBackfill>();
 		return services;
 	}
 
@@ -33,4 +35,8 @@ public static class DependencyInjection
 	/// <summary>Starts watching for the last port, when auto-connect is on.</summary>
 	public static void StartAutoConnect(this IServiceProvider services) =>
 		services.GetRequiredService<AutoConnector>().Start();
+
+	/// <summary>Reads slicer thumbnails for stored files that have none yet, in the background.</summary>
+	public static void StartThumbnailBackfill(this IServiceProvider services) =>
+		_ = services.GetRequiredService<ThumbnailBackfill>().Start();
 }

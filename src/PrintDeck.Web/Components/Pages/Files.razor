@@ -100,7 +100,17 @@ else
 		{
 			bool printing = _activeFile == f.Name;
 			bool copying = _copyingFile == f.Name;
-			<li class="file @(printing ? "is-printing" : "")" @key="f.Name">
+			<li class="file has-thumb @(printing ? "is-printing" : "")" @key="f.Name">
+				<div class="file-thumb" aria-hidden="true">
+					@if (f.HasThumbnail)
+					{
+						<img src="@ThumbnailUrl(f)" alt="" loading="lazy" />
+					}
+					else
+					{
+						<Icon Name="file" Size="18" />
+					}
+				</div>
 				<div class="file-main">
 					<span class="file-name" title="@f.Name">@f.Name</span>
 					<span class="file-sub">
@@ -413,4 +423,6 @@ else
 		_confirmDelete = null;
 		await Run(new DeleteGcodeCommand(name), $"Deleted {name}");
 	}
+
+	private static string ThumbnailUrl(GcodeFile f) => $"thumbnail/{Uri.EscapeDataString(f.Name)}?v={f.UploadedAt.UtcTicks:x}";
 }

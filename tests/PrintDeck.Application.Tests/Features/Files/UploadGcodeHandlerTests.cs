@@ -8,6 +8,8 @@ using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Files;
 
+using static PrintDeck.Application.Tests.TestDoubles.ThumbnailSamples;
+
 namespace PrintDeck.Application.Tests.Features.Files;
 
 public class UploadGcodeHandlerTests
@@ -29,6 +31,26 @@ public class UploadGcodeHandlerTests
 	[InlineData("   ", null)]
 	public void Names_are_sanitised(string raw, string? expected) =>
 		Assert.Equal(expected, UploadGcodeHandler.SanitizeName(raw));
+
+	[Fact]
+	public async Task Stores_the_slicer_thumbnail()
+	{
+		byte[] png = Png(160, 120);
+
+		Result<GcodeFile> r = await Upload("orca.gcode", Block("thumbnail", 160, 120, png) + "G28\n");
+
+		Assert.True(r.Value!.HasThumbnail);
+		Assert.Equal(png, _files.Thumbnails["orca.gcode"].Data);
+	}
+
+	[Fact]
+	public async Task Files_without_a_thumbnail_have_none()
+	{
+		Result<GcodeFile> r = await Upload("plain.gcode");
+
+		Assert.False(r.Value!.HasThumbnail);
+		Assert.Empty(_files.Thumbnails);
+	}
 
 	[Fact]
 	public async Task Stores_the_file_with_its_analysis()

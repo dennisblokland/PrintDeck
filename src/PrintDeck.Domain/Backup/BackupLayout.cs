@@ -10,8 +10,8 @@ public static class BackupLayout
 	public const string SettingsEntry = "settings.json";
 	public const string UploadsPrefix = "uploads/";
 
-	/// <summary>Sidecars kept next to an upload: its analysis and its finished prints.</summary>
-	public static readonly IReadOnlyList<string> SidecarSuffixes = [".meta.json", ".prints.json"];
+	/// <summary>Sidecars kept next to an upload: its analysis, its finished prints and its slicer thumbnail.</summary>
+	public static readonly IReadOnlyList<string> SidecarSuffixes = [".meta.json", ".prints.json", ".thumb.png", ".thumb.jpg"];
 
 	/// <summary>The download name, e.g. <c>printdeck-backup-20261117-1530.zip</c>.</summary>
 	public static string FileName(DateTimeOffset createdAt) => $"printdeck-backup-{createdAt.UtcDateTime:yyyyMMdd-HHmm}.zip";

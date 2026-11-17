@@ -242,6 +242,13 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .chart-card, .webcam-card { grid-column: 1 / -1; }
 
 .job-body { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 24px; align-items: center; }
+.job-thumb {
+    --c: var(--accent); display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden;
+    border-radius: var(--radius); background: var(--panel-2); box-shadow: inset 0 -3px 0 var(--c);
+}
+.job-thumb.is-paused { --c: var(--warn); }
+.job-thumb.is-done { --c: var(--ok); }
+.job-thumb img { width: 100%; height: 100%; object-fit: contain; }
 .job-info { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .job-file { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-file .icon { display: inline-block; vertical-align: -2px; margin-right: 6px; color: var(--muted); }
@@ -398,6 +405,12 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .file-stats { display: flex; gap: 20px; color: var(--muted); font: 12px var(--mono); font-variant-numeric: tabular-nums; }
 .file-stats span { display: inline-flex; align-items: center; gap: 8px; min-width: 64px; }
 .file-actions { display: flex; align-items: center; gap: 8px; }
+.file.has-thumb { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px 24px; }
+.file-thumb {
+    display: grid; place-items: center; width: 56px; height: 42px; overflow: hidden;
+    border-radius: 6px; background: var(--panel-2); color: var(--muted);
+}
+.file-thumb img { width: 100%; height: 100%; object-fit: contain; }
 
 .sd-section { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
 .sd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -630,6 +643,8 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
     .control-grid > .card:first-child { grid-row: auto; }
     .file { grid-template-columns: minmax(0, 1fr) auto; }
     .file-stats { grid-column: 1 / -1; grid-row: 2; }
+    .file.has-thumb { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .file.has-thumb .file-stats { grid-column: 2 / -1; }
 }
 
 @media (max-width: 760px) {
@@ -664,4 +679,12 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
     .jog-z { grid-template-rows: repeat(3, 56px); width: 56px; }
     .tl { grid-template-columns: 1fr; gap: 0; padding: 2px 12px; }
     .tl time, .tl-dir { display: none; }
+}
+
+/* Phones: the thumbnail spans name and stats; the buttons get their own row. */
+@media (max-width: 760px) {
+    .file.has-thumb { grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; }
+    .file.has-thumb .file-thumb { grid-row: 1 / 3; align-self: start; }
+    .file.has-thumb .file-stats { grid-column: 2; grid-row: 2; gap: 12px; flex-wrap: wrap; }
+    .file.has-thumb .file-actions { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
 }
