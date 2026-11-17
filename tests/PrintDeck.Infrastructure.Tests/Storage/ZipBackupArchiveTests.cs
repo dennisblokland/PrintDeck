@@ -84,6 +84,7 @@ public sealed class ZipBackupArchiveTests : IDisposable
 		await Upload(source, "cube.gcode", "G28\nG1 X10\n");
 		await source.Files.SaveAnalysisAsync("cube.gcode", Analysis(layers: 12), Ct);
 		await source.Files.RecordPrintAsync("cube.gcode", new PrintRecord(_now.AddMinutes(-5), _now, JobStatus.Completed, TimeSpan.FromMinutes(5), 1.5), Ct);
+		await source.Files.SaveThumbnailAsync("cube.gcode", new GcodeThumbnail(4, 3, GcodeThumbnail.Png, [1, 2, 3]), Ct);
 		await Upload(source, "benchy.gcode", "G28\n");
 		File.SetLastWriteTimeUtc(Path.Combine(source.Uploads, "benchy.gcode"), new DateTime(2026, 1, 2, 3, 4, 6, DateTimeKind.Utc));
 		HostSettings saved = await source.Settings.GetAsync(Ct);
@@ -106,6 +107,7 @@ public sealed class ZipBackupArchiveTests : IDisposable
 		GcodeFile cube = (await target.Files.GetAsync("cube.gcode", Ct))!;
 		Assert.Equal(12, cube.Analysis?.LayerCount);
 		Assert.Equal(1, cube.Prints?.Total);
+		Assert.True(cube.HasThumbnail);
 		Assert.Equal("G28\nG1 X10\n", await File.ReadAllTextAsync(Path.Combine(target.Uploads, "cube.gcode"), Ct));
 		GcodeFile benchy = (await target.Files.GetAsync("benchy.gcode", Ct))!;
 		Assert.Equal(new DateTimeOffset(2026, 1, 2, 3, 4, 6, TimeSpan.Zero), benchy.UploadedAt);

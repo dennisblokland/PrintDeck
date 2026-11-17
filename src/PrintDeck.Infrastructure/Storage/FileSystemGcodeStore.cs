@@ -11,12 +11,15 @@ using PrintDeck.Domain.Files;
 namespace PrintDeck.Infrastructure.Storage;
 
 /// <summary>
-/// G-code files on disk; analysis kept in a sidecar "&lt;name&gt;.meta.json" and finished prints in "&lt;name&gt;.prints.json".
+/// G-code files on disk; analysis kept in a sidecar "&lt;name&gt;.meta.json", finished prints in "&lt;name&gt;.prints.json"
+/// and the slicer thumbnail in "&lt;name&gt;.thumb.png" or ".thumb.jpg".
 /// </summary>
 public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGcodeFileStore
 {
 	private const string _metaSuffix = ".meta.json";
 	private const string _printsSuffix = ".prints.json";
+	private const string _pngSuffix = ".thumb.png";
+	private const string _jpegSuffix = ".thumb.jpg";
 	private const int _maxPrints = 100;
 	private readonly SemaphoreSlim _historyLock = new(1, 1);
 	// Status as text ("Completed"), so reordering JobStatus never rewrites history.
@@ -53,6 +56,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 			await content.CopyToAsync(file, ct);
 		File.Move(temp, path, overwrite: true);
 		File.Delete(path + _metaSuffix);
+		DeleteThumbnails(path);
 		return (await GetAsync(name, ct))!;
 	}
 
@@ -72,7 +76,38 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		File.Delete(path);
 		File.Delete(path + _metaSuffix);
 		File.Delete(path + _printsSuffix);
+		DeleteThumbnails(path);
 		return Task.FromResult(true);
+	}
+
+	public async Task SaveThumbnailAsync(string name, GcodeThumbnail thumbnail, CancellationToken ct)
+	{
+		string path = PathOf(name);
+		if (!File.Exists(path)) return;
+		string target = path + (thumbnail.ContentType == GcodeThumbnail.Jpeg ? _jpegSuffix : _pngSuffix);
+		string temp = target + ".part";
+		await File.WriteAllBytesAsync(temp, thumbnail.Data, ct);
+		DeleteThumbnails(path);
+		File.Move(temp, target, overwrite: true);
+	}
+
+	public (Stream Content, string ContentType)? OpenThumbnail(string name)
+	{
+		string path = PathOf(name);
+		foreach ((string suffix, string type) in _thumbnails)
+		{
+			try { return (File.OpenRead(path + suffix), type); }
+			catch (FileNotFoundException) { /* try the next format */ }
+		}
+		return null;
+	}
+
+	private static readonly (string Suffix, string ContentType)[] _thumbnails = [(_pngSuffix, GcodeThumbnail.Png), (_jpegSuffix, GcodeThumbnail.Jpeg)];
+
+	private static void DeleteThumbnails(string path)
+	{
+		File.Delete(path + _pngSuffix);
+		File.Delete(path + _jpegSuffix);
 	}
 
 	public async Task RecordPrintAsync(string name, PrintRecord print, CancellationToken ct)
@@ -111,6 +146,8 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 	private static bool IsGcode(string path) =>
 		!path.EndsWith(_metaSuffix, StringComparison.Ordinal)
 		&& !path.EndsWith(_printsSuffix, StringComparison.Ordinal)
+		&& !path.EndsWith(_pngSuffix, StringComparison.Ordinal)
+		&& !path.EndsWith(_jpegSuffix, StringComparison.Ordinal)
 		&& !path.EndsWith(".part", StringComparison.Ordinal);
 
 	private static async Task<IReadOnlyList<PrintRecord>> ReadPrintsAsync(string path, CancellationToken ct)
@@ -142,6 +179,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 			catch (JsonException) { /* re-analysed on next upload */ }
 		}
 		PrintStats prints = PrintStats.From(await ReadPrintsAsync(info.FullName, ct));
-		return new GcodeFile(info.Name, info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis, prints);
+		bool thumbnail = File.Exists(info.FullName + _pngSuffix) || File.Exists(info.FullName + _jpegSuffix);
+		return new GcodeFile(info.Name, info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis, prints, thumbnail);
 	}
 }

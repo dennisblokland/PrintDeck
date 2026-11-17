@@ -191,4 +191,58 @@ public sealed class FileSystemGcodeStoreTests : IDisposable
 
 		Assert.Equal((JobStatus.Completed, TimeSpan.Zero, (double?) null), (print.Status, print.PrintTime, print.FilamentMm));
 	}
+
+	private static GcodeThumbnail Thumb(string type, params byte[] data) => new(4, 3, type, data);
+
+	[Fact]
+	public async Task Stores_a_thumbnail_next_to_the_file()
+	{
+		await Save("cube.gcode");
+
+		await _store.SaveThumbnailAsync("cube.gcode", Thumb(GcodeThumbnail.Png, 1, 2, 3), Ct);
+
+		Assert.True((await _store.GetAsync("cube.gcode", Ct))!.HasThumbnail);
+		Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(Path.Combine(Uploads, "cube.gcode.thumb.png"), Ct));
+		(Stream content, string type) = _store.OpenThumbnail("cube.gcode")!.Value;
+		await using (content) Assert.Equal(3, content.Length);
+		Assert.Equal(GcodeThumbnail.Png, type);
+		Assert.Equal(["cube.gcode"], (await _store.ListAsync(Ct)).Select(f => f.Name));
+	}
+
+	[Fact]
+	public async Task A_new_thumbnail_replaces_one_in_another_format()
+	{
+		await Save("cube.gcode");
+		await _store.SaveThumbnailAsync("cube.gcode", Thumb(GcodeThumbnail.Png, 1), Ct);
+
+		await _store.SaveThumbnailAsync("cube.gcode", Thumb(GcodeThumbnail.Jpeg, 2), Ct);
+
+		Assert.False(File.Exists(Path.Combine(Uploads, "cube.gcode.thumb.png")));
+		Assert.Equal(GcodeThumbnail.Jpeg, _store.OpenThumbnail("cube.gcode")!.Value.ContentType);
+		_store.OpenThumbnail("cube.gcode")!.Value.Content.Dispose();
+	}
+
+	[Fact]
+	public async Task Delete_and_upload_again_remove_the_thumbnail()
+	{
+		await Save("a.gcode");
+		await Save("b.gcode");
+		await _store.SaveThumbnailAsync("a.gcode", Thumb(GcodeThumbnail.Png, 1), Ct);
+		await _store.SaveThumbnailAsync("b.gcode", Thumb(GcodeThumbnail.Jpeg, 1), Ct);
+
+		await _store.DeleteAsync("a.gcode", Ct);
+		await Save("b.gcode", "G28\nG1 X1\n");
+
+		Assert.Empty(Directory.EnumerateFiles(Uploads, "*.thumb.*"));
+		Assert.Null(_store.OpenThumbnail("b.gcode"));
+		Assert.False((await _store.GetAsync("b.gcode", Ct))!.HasThumbnail);
+	}
+
+	[Fact]
+	public async Task Ignores_a_thumbnail_for_a_missing_file()
+	{
+		await _store.SaveThumbnailAsync("gone.gcode", Thumb(GcodeThumbnail.Png, 1), Ct);
+
+		Assert.Empty(Directory.EnumerateFiles(Uploads));
+	}
 }

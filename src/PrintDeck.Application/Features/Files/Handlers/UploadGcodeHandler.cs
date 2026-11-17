@@ -6,6 +6,7 @@ using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Application.Features.Files.Commands;
 using PrintDeck.Application.Features.Files.Queries;
 using PrintDeck.Application.Files;
+using PrintDeck.Application.Files.Thumbnails;
 using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Domain.Common;
@@ -31,6 +32,14 @@ public sealed class UploadGcodeHandler(IGcodeFileStore files, PrinterEventHub ev
 			GcodeAnalysis analysis = await GcodeAnalyzer.AnalyzeAsync(stream, ct);
 			await files.SaveAnalysisAsync(name, analysis, ct);
 			saved = saved with { Analysis = analysis };
+		}
+		await using (Stream stream = files.OpenRead(name))
+		{
+			if (await GcodeThumbnailReader.ReadAsync(stream, ct) is { } thumbnail)
+			{
+				await files.SaveThumbnailAsync(name, thumbnail, ct);
+				saved = saved with { HasThumbnail = true };
+			}
 		}
 
 		events.Publish(PrinterChange.Files);
