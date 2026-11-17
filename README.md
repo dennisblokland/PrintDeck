@@ -22,7 +22,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - **Send from your slicer**: OctoPrint-compatible `/api/version` + `/api/files/local` — add a physical printer with host type *OctoPrint* and PrintDeck's API key (Settings page)
 - **App keys** (Settings → Slicer upload): give each slicer or integration its own API key, revoke one without touching the others, and see when each was last used. A key acts as the admin who made it and follows that account's role (a demoted owner's key can look but not upload; deleting the account deletes its keys). Keys are shown once and stored only as a SHA-256 hash. The old shared key keeps working until you turn it off
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
-- **Login rate limit per address**: after 10 failed sign-ins within 15 minutes from one address (any usernames), that address waits until the oldest failure is 15 minutes old (HTTP 429 with `Retry-After`). IPv6 counts per /64. Paused attempts aren't checked against passwords, so they don't lock accounts either. Tune or switch off (`MaxFailures: 0`) in the `LoginRateLimit` section of `appsettings.json`. Behind a reverse proxy every client has the proxy's address and shares one limit
+- **Login rate limit per address**: after 10 failed sign-ins within 15 minutes from one address (any usernames), that address waits until the oldest failure is 15 minutes old (HTTP 429 with `Retry-After`). IPv6 counts per /64. Paused attempts aren't checked against passwords, so they don't lock accounts either. Tune or switch off (`MaxFailures: 0`) in the `LoginRateLimit` section of `appsettings.json`. Behind a reverse proxy, list the proxy under `ReverseProxy` so each client keeps its own limit (see [Behind a reverse proxy](#behind-a-reverse-proxy))
 - **Backup and restore** (Settings → Backup): download one zip with the settings, printer profiles, API key and every uploaded file with its analysis and print history; restore it on this or another PrintDeck. A restore replaces the settings and overwrites files with the same name, other files stay. The whole archive is checked before anything changes, and restoring waits until no print is running. Accounts are not included. Admin accounts only
 - **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
 - Dark and light themes, mobile layout
@@ -76,6 +76,47 @@ After changing the Identity model, add a migration (the database upgrades itself
 dotnet tool restore
 dotnet ef migrations add <Name> --project src/PrintDeck.Infrastructure --startup-project src/PrintDeck.Web --output-dir Identity/Migrations
 ```
+
+### Behind a reverse proxy
+
+Behind nginx, Caddy or another reverse proxy, PrintDeck sees every request coming from the proxy. Tell it which proxy to trust, so it takes the client's address from `X-Forwarded-For` (the login rate limit then counts per client instead of pausing everyone at once) and the scheme from `X-Forwarded-Proto`. In the `ReverseProxy` section of `appsettings.json`, or as environment variables such as `ReverseProxy__KnownProxies__0=127.0.0.1`:
+
+```json
+"ReverseProxy": {
+  "KnownProxies": ["127.0.0.1"],
+  "KnownNetworks": []
+}
+```
+
+`KnownProxies` takes addresses, `KnownNetworks` CIDR ranges such as `172.18.0.0/16` for a proxy in a Docker network. Only the last hop is used: the address the proxy itself saw. With both lists empty (the default) the headers are ignored, so leave them empty when PrintDeck is reached directly; otherwise anyone could pick their own address. A malformed entry stops PrintDeck at start.
+
+nginx on the same machine, with PrintDeck on port 5000 (Blazor needs the WebSocket upgrade; the large body size lets slicers upload):
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name printdeck.local;
+    client_max_body_size 1g;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 1d;
+    }
+}
+```
+
+Caddy sets these headers itself: `reverse_proxy 127.0.0.1:5000`.
 
 ### System menu
 

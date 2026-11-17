@@ -6,7 +6,8 @@ namespace PrintDeck.Web.Auth;
 
 /// <summary>
 /// The login page's <see cref="LoginThrottle"/>, keyed by the address the request came from. Behind a reverse proxy
-/// that is the proxy's address, so everyone shares one limit unless forwarded headers are set up.
+/// that is the client's address only when the proxy is listed under <c>ReverseProxy</c> (see ReverseProxySetup);
+/// otherwise it is the proxy's, and everyone shares one limit.
 /// </summary>
 public sealed class LoginRateLimiter(IOptions<LoginRateLimitOptions> options, TimeProvider time, ILogger<LoginRateLimiter> logger)
 {

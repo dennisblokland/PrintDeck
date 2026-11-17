@@ -11,11 +11,15 @@ public sealed class PrintDeckWebFactory : WebApplicationFactory<Program>
 {
 	private readonly string _data = Directory.CreateTempSubdirectory("printdeck-web-tests-").FullName;
 
+	/// <summary>Extra host setup for one test, such as settings; runs after the defaults.</summary>
+	public Action<IWebHostBuilder>? ConfigureHost { get; init; }
+
 	protected override void ConfigureWebHost(IWebHostBuilder builder)
 	{
 		builder.UseEnvironment("Testing");
 		builder.UseSetting("Storage:DataDirectory", _data);
 		builder.UseSetting("Logging:LogLevel:Default", "Warning");
+		ConfigureHost?.Invoke(builder);
 	}
 
 	public async Task<string> ApiKeyAsync() =>
