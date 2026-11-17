@@ -1,6 +1,7 @@
 using Mediator;
 
 using PrintDeck.Application.Behaviors;
+using PrintDeck.Application.Features.Connection.Commands;
 using PrintDeck.Application.Features.Files;
 using PrintDeck.Application.Features.Files.Commands;
 using PrintDeck.Application.Features.Files.Handlers;
@@ -50,6 +51,10 @@ public static class SlicerApi
 			string name = upload.Value!.Name;
 			if (IsTrue(form["print"]))
 			{
+				// Like OctoPrint's "connect if needed": the slicer should not have to care whether the printer is connected yet.
+				Result connect = await mediator.Send(new ConnectLastPrinterCommand(), ct);
+				if (!connect.IsSuccess) return Results.Conflict(new { error = connect.Error });
+
 				Result start = await mediator.Send(new StartPrintCommand(name), ct);
 				if (!start.IsSuccess) return Results.Conflict(new { error = start.Error });
 			}

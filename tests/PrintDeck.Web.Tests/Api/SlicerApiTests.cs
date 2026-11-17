@@ -92,12 +92,12 @@ public class SlicerApiTests(PrintDeckWebFactory app) : IClassFixture<PrintDeckWe
 	}
 
 	[Fact]
-	public async Task Upload_and_print_conflicts_when_the_printer_is_offline()
+	public async Task Upload_and_print_conflicts_when_there_is_no_printer_to_connect_to()
 	{
 		HttpResponseMessage r = await Upload("print-me.gcode", print: true);
 
 		Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
-		Assert.Equal("Printer is not ready.", (await r.Content.ReadFromJsonAsync<ErrorBody>(Ct))!.Error);
+		Assert.StartsWith("Printer is not connected, and there is no last port", (await r.Content.ReadFromJsonAsync<ErrorBody>(Ct))!.Error);
 		Assert.NotNull(await app.Files.GetAsync("print-me.gcode", Ct)); // still uploaded
 	}
 
