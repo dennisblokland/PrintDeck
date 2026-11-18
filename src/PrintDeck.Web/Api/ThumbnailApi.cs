@@ -12,7 +12,7 @@ namespace PrintDeck.Web.Api;
 public static class ThumbnailApi
 {
 	public static void MapThumbnailApi(this WebApplication app) =>
-		app.MapGet("/thumbnail/{name}", async (string name, HttpContext http, IMediator mediator, CancellationToken ct) =>
+		app.MapGet("/thumbnail/{**name}", async (string name, HttpContext http, IMediator mediator, CancellationToken ct) =>
 		{
 			ThumbnailContent? thumbnail = await mediator.Send(new GetGcodeThumbnailQuery(name), ct);
 			if (thumbnail is null) return Results.NotFound();

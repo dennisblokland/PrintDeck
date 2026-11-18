@@ -78,6 +78,51 @@ internal sealed class InMemoryGcodeFileStore : IGcodeFileStore
 		Task.FromResult<IReadOnlyList<PrintHistoryEntry>>(
 			_prints.SelectMany(f => f.Value.Select(p => new PrintHistoryEntry(f.Key, p))).ToList());
 
+	public HashSet<string> Folders { get; } = new(StringComparer.Ordinal);
+
+	/// <summary>Folders made explicitly plus every folder a file sits in, with their parents.</summary>
+	public IReadOnlyList<string> ListFolders() =>
+		Folders.Concat(_files.Keys.Select(FilePath.Folder))
+			.SelectMany(Parents)
+			.Distinct()
+			.Order(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+	private static IEnumerable<string> Parents(string folder)
+	{
+		for (string f = folder; f.Length > 0; f = FilePath.Folder(f)) yield return f;
+	}
+
+	public bool CreateFolder(string path) => !ListFolders().Contains(path) && Folders.Add(path);
+
+	public Task<bool> MoveAsync(string from, string to, CancellationToken ct)
+	{
+		if (!_files.Remove(from, out (byte[] Content, DateTimeOffset UploadedAt, GcodeAnalysis? Analysis) file)) return Task.FromResult(false);
+		_files[to] = file;
+		if (_prints.Remove(from, out List<PrintRecord>? prints)) _prints[to] = prints;
+		if (Thumbnails.Remove(from, out GcodeThumbnail? thumbnail)) Thumbnails[to] = thumbnail;
+		return Task.FromResult(true);
+	}
+
+	public bool MoveFolder(string from, string to)
+	{
+		if (!ListFolders().Contains(from)) return false;
+		string Moved(string path) => to + path[from.Length..];
+		foreach (string f in Folders.Where(f => FilePath.IsWithin(f, from)).ToList()) { Folders.Remove(f); Folders.Add(Moved(f)); }
+		Folders.Add(to);
+		foreach (string name in _files.Keys.Where(n => FilePath.IsWithin(n, from)).ToList())
+			MoveAsync(name, Moved(name), CancellationToken.None);
+		return true;
+	}
+
+	public bool DeleteFolder(string path)
+	{
+		if (!ListFolders().Contains(path) || ListFolders().Any(f => f != path && FilePath.IsWithin(f, path))
+			|| _files.Keys.Any(n => FilePath.IsWithin(n, path))) return false;
+		Folders.Remove(path);
+		return true;
+	}
+
 	public IReadOnlyList<PrintRecord> PrintsOf(string name) => _prints.TryGetValue(name, out List<PrintRecord>? list) ? list : [];
 
 	private GcodeFile ToFile(string name)

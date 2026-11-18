@@ -38,10 +38,28 @@ public static class SlicerApi
 		api.MapPost("/files/local", async (HttpRequest request, IMediator mediator, CancellationToken ct) =>
 		{
 			IFormCollection form = await request.ReadFormAsync(ct);
-			if (form.Files.GetFile("file") is not { } file) return Results.BadRequest(new { error = "No file" });
+			// OctoPrint's "path" is the folder to upload into (or to create "foldername" in).
+			string? folder = form["path"].FirstOrDefault();
+
+			if (form.Files.GetFile("file") is not { } file)
+			{
+				if (form["foldername"].FirstOrDefault() is not { Length: > 0 } folderName) return Results.BadRequest(new { error = "No file" });
+				string created = string.IsNullOrWhiteSpace(folder) ? folderName : $"{folder.TrimEnd('/')}/{folderName}";
+				Result made = await mediator.Send(new CreateFolderCommand(created), ct);
+				if (!made.IsSuccess)
+					return made.Error == AuthorizationBehavior<CreateFolderCommand, Result>.AdminRequired
+						? Results.Json(new { error = made.Error }, statusCode: StatusCodes.Status403Forbidden)
+						: Results.Conflict(new { error = made.Error });
+				string path = FilePath.Normalize(created)!;
+				return Results.Created($"/api/files/local/{Escape(path)}", new
+				{
+					done = true,
+					folder = new { name = FilePath.Name(path), path, origin = "local" }
+				});
+			}
 
 			await using Stream stream = file.OpenReadStream();
-			Result<GcodeFile> upload = await mediator.Send(new UploadGcodeCommand(file.FileName, stream), ct);
+			Result<GcodeFile> upload = await mediator.Send(new UploadGcodeCommand(file.FileName, stream, folder), ct);
 			if (!upload.IsSuccess)
 				// A key whose owner is a viewer may look but not upload: OctoPrint answers that with 403.
 				return upload.Error == AuthorizationBehavior<UploadGcodeCommand, Result<GcodeFile>>.AdminRequired
@@ -59,13 +77,15 @@ public static class SlicerApi
 				if (!start.IsSuccess) return Results.Conflict(new { error = start.Error });
 			}
 
-			return Results.Created($"/api/files/local/{Uri.EscapeDataString(name)}", new
+			return Results.Created($"/api/files/local/{Escape(name)}", new
 			{
 				done = true,
-				files = new { local = new { name, origin = "local" } }
+				files = new { local = new { name = FilePath.Name(name), path = name, origin = "local" } }
 			});
 		}).DisableAntiforgery();
 	}
 
 	private static bool IsTrue(string? value) => value is "true" or "True" or "1";
+
+	private static string Escape(string path) => string.Join('/', path.Split('/').Select(Uri.EscapeDataString));
 }

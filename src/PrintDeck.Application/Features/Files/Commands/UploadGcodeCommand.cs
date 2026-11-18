@@ -13,4 +13,5 @@ using PrintDeck.Domain.Files;
 
 namespace PrintDeck.Application.Features.Files.Commands;
 
-public sealed record UploadGcodeCommand(string FileName, Stream Content) : ICommand<Result<GcodeFile>>;
+/// <param name="Folder">Where to put it, e.g. "parts/brackets"; created when missing. Null or "" for the top level.</param>
+public sealed record UploadGcodeCommand(string FileName, Stream Content, string? Folder = null) : ICommand<Result<GcodeFile>>;

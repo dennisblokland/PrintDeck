@@ -15,6 +15,8 @@ public class BackupLayoutTests
 	[InlineData("uploads/cube.gcode", "cube.gcode")]
 	[InlineData("uploads/cube.gcode.meta.json", "cube.gcode.meta.json")]
 	[InlineData("uploads/my part (2).gcode", "my part (2).gcode")]
+	[InlineData("uploads/sub/cube.gcode", "sub/cube.gcode")]
+	[InlineData("uploads/parts/brackets/cube.gcode.prints.json", "parts/brackets/cube.gcode.prints.json")]
 	public void Plain_files_under_uploads_are_uploads(string entry, string name)
 	{
 		Assert.Equal(name, BackupLayout.UploadName(entry));
@@ -25,7 +27,11 @@ public class BackupLayoutTests
 	[InlineData("uploads/")]
 	[InlineData("uploads/../settings.json")]
 	[InlineData("uploads/..")]
-	[InlineData("uploads/sub/cube.gcode")]
+	[InlineData("uploads/sub/../cube.gcode")]
+	[InlineData("uploads/.hidden/cube.gcode")]
+	[InlineData("uploads/sub//cube.gcode")]
+	[InlineData("uploads/sub/")]
+	[InlineData("uploads/a/b/c/d/e/f/g/h/i/cube.gcode")]
 	[InlineData("uploads/..\\cube.gcode")]
 	[InlineData("uploads/.hidden")]
 	[InlineData("uploads/cube.gcode.part")]

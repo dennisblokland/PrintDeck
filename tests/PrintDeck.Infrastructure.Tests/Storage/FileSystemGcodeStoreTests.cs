@@ -28,6 +28,69 @@ public sealed class FileSystemGcodeStoreTests : IDisposable
 		_store.SaveAsync(name, new MemoryStream(Encoding.UTF8.GetBytes(content)), Ct);
 
 	[Fact]
+	public async Task Saves_and_lists_files_in_folders()
+	{
+		await Save("parts/brackets/left.gcode");
+		await Save("top.gcode");
+
+		Assert.True(File.Exists(Path.Combine(Uploads, "parts", "brackets", "left.gcode")));
+		Assert.Equal(["parts/brackets/left.gcode", "top.gcode"], (await _store.ListAsync(Ct)).Select(f => f.Name).Order());
+		Assert.Equal("parts/brackets/left.gcode", (await _store.GetAsync("parts/brackets/left.gcode", Ct))!.Name);
+		Assert.Equal(["parts", "parts/brackets"], _store.ListFolders());
+	}
+
+	[Fact]
+	public async Task Hidden_folders_are_left_out()
+	{
+		Directory.CreateDirectory(Path.Combine(Uploads, ".restore-1"));
+		await File.WriteAllTextAsync(Path.Combine(Uploads, ".restore-1", "half.gcode"), "G28", Ct);
+
+		Assert.Empty(await _store.ListAsync(Ct));
+		Assert.Empty(_store.ListFolders());
+	}
+
+	[Fact]
+	public async Task Moves_a_file_with_its_sidecars()
+	{
+		await Save("cube.gcode");
+		await _store.SaveAnalysisAsync("cube.gcode", new GcodeAnalysis(null, null, null, 0, null), Ct);
+		await _store.RecordPrintAsync("cube.gcode", new PrintRecord(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddHours(1), JobStatus.Completed), Ct);
+
+		Assert.True(await _store.MoveAsync("cube.gcode", "parts/cube-v2.gcode", Ct));
+		Assert.False(await _store.MoveAsync("gone.gcode", "parts/gone.gcode", Ct));
+
+		GcodeFile moved = (await _store.GetAsync("parts/cube-v2.gcode", Ct))!;
+		Assert.NotNull(moved.Analysis);
+		Assert.Equal(1, moved.Prints!.Completed);
+		Assert.Empty(Directory.EnumerateFiles(Uploads));
+		Assert.Equal("parts/cube-v2.gcode", Assert.Single(await _store.ListPrintsAsync(Ct)).FileName);
+	}
+
+	[Fact]
+	public async Task Creates_moves_and_deletes_folders()
+	{
+		Assert.True(_store.CreateFolder("parts/brackets"));
+		Assert.False(_store.CreateFolder("parts"));
+		await Save("parts/brackets/left.gcode");
+
+		Assert.True(_store.MoveFolder("parts", "archive/parts"));
+		Assert.False(_store.MoveFolder("parts", "elsewhere"));
+		Assert.NotNull(await _store.GetAsync("archive/parts/brackets/left.gcode", Ct));
+
+		Assert.False(_store.DeleteFolder("archive/parts/brackets"));
+		await _store.DeleteAsync("archive/parts/brackets/left.gcode", Ct);
+		Assert.True(_store.DeleteFolder("archive/parts/brackets"));
+		Assert.Equal(["archive", "archive/parts"], _store.ListFolders());
+	}
+
+	[Fact]
+	public async Task Folder_operations_stay_inside_the_uploads_directory()
+	{
+		await Assert.ThrowsAsync<ArgumentException>(() => _store.GetAsync("../settings.json", Ct));
+		Assert.Throws<ArgumentException>(() => _store.CreateFolder("../outside"));
+	}
+
+	[Fact]
 	public async Task Saves_into_the_uploads_directory()
 	{
 		GcodeFile file = await Save("cube.gcode", "G28\nG1 X10\n");

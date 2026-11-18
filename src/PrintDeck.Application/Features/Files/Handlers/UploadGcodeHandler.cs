@@ -19,12 +19,18 @@ public sealed class UploadGcodeHandler(IGcodeFileStore files, PrinterEventHub ev
 {
 	private static readonly string[] _extensions = [".gcode", ".gco", ".g", ".bgcode"];
 
+	public const string NotGcode = "Only G-code files (.gcode, .gco, .g) can be uploaded.";
+
+	public static bool IsGcodeName(string name) => _extensions.Contains(Path.GetExtension(name).ToLowerInvariant());
+
 	public async ValueTask<Result<GcodeFile>> Handle(UploadGcodeCommand c, CancellationToken ct)
 	{
-		string? name = SanitizeName(c.FileName);
-		if (name is null) return Result.Failure<GcodeFile>("Invalid file name.");
-		if (!_extensions.Contains(Path.GetExtension(name).ToLowerInvariant()))
-			return Result.Failure<GcodeFile>("Only G-code files (.gcode, .gco, .g) can be uploaded.");
+		string? fileName = SanitizeName(c.FileName);
+		if (fileName is null) return Result.Failure<GcodeFile>("Invalid file name.");
+		if (!IsGcodeName(fileName)) return Result.Failure<GcodeFile>(NotGcode);
+		if (FilePath.Normalize(c.Folder) is not { } folder) return Result.Failure<GcodeFile>(FolderRules.InvalidFolder);
+		string name = FilePath.Combine(folder, fileName);
+		if (files.ListFolders().Contains(name)) return Result.Failure<GcodeFile>("A folder with that name already exists.");
 
 		GcodeFile saved = await files.SaveAsync(name, c.Content, ct);
 		await using (Stream stream = files.OpenRead(name))

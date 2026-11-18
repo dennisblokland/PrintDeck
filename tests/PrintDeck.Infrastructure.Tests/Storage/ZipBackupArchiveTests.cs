@@ -86,6 +86,8 @@ public sealed class ZipBackupArchiveTests : IDisposable
 		await source.Files.RecordPrintAsync("cube.gcode", new PrintRecord(_now.AddMinutes(-5), _now, JobStatus.Completed, TimeSpan.FromMinutes(5), 1.5), Ct);
 		await source.Files.SaveThumbnailAsync("cube.gcode", new GcodeThumbnail(4, 3, GcodeThumbnail.Png, [1, 2, 3]), Ct);
 		await Upload(source, "benchy.gcode", "G28\n");
+		await Upload(source, "parts/brackets/left.gcode", "G28\nG1 Y5\n");
+		await source.Files.RecordPrintAsync("parts/brackets/left.gcode", new PrintRecord(_now.AddMinutes(-9), _now, JobStatus.Completed), Ct);
 		File.SetLastWriteTimeUtc(Path.Combine(source.Uploads, "benchy.gcode"), new DateTime(2026, 1, 2, 3, 4, 6, DateTimeKind.Utc));
 		HostSettings saved = await source.Settings.GetAsync(Ct);
 
@@ -94,7 +96,7 @@ public sealed class ZipBackupArchiveTests : IDisposable
 
 		Assert.True(result.IsSuccess, result.Error);
 		Assert.Equal(_now, result.Value!.CreatedAt);
-		Assert.Equal(["benchy.gcode", "cube.gcode"], result.Value.Files.Order());
+		Assert.Equal(["benchy.gcode", "cube.gcode", "parts/brackets/left.gcode"], result.Value.Files.Order());
 
 		HostSettings restored = await target.Settings.GetAsync(Ct);
 		Assert.Equal(saved.ApiKey, restored.ApiKey);
@@ -111,7 +113,9 @@ public sealed class ZipBackupArchiveTests : IDisposable
 		Assert.Equal("G28\nG1 X10\n", await File.ReadAllTextAsync(Path.Combine(target.Uploads, "cube.gcode"), Ct));
 		GcodeFile benchy = (await target.Files.GetAsync("benchy.gcode", Ct))!;
 		Assert.Equal(new DateTimeOffset(2026, 1, 2, 3, 4, 6, TimeSpan.Zero), benchy.UploadedAt);
-		Assert.Empty(Directory.EnumerateDirectories(target.Uploads));
+		Assert.Equal(1, (await target.Files.GetAsync("parts/brackets/left.gcode", Ct))!.Prints?.Total);
+		// Only the restored folder is left; the hidden staging folder is gone.
+		Assert.Equal(["parts"], Directory.EnumerateDirectories(target.Uploads).Select(Path.GetFileName));
 	}
 
 	[Fact]
@@ -187,8 +191,26 @@ public sealed class ZipBackupArchiveTests : IDisposable
 		{ ZipBackupArchive.Damaged, Zip(("printdeck-backup.json", Manifest())) },
 		{ ZipBackupArchive.Damaged, Zip(("printdeck-backup.json", Manifest()), ("settings.json", "null")) },
 		{ ZipBackupArchive.InvalidName, Zip(("printdeck-backup.json", Manifest()), ("settings.json", SettingsJson()), ("uploads/../evil.gcode", "M112\n")) },
-		{ ZipBackupArchive.InvalidName, Zip(("printdeck-backup.json", Manifest()), ("settings.json", SettingsJson()), ("uploads/sub/cube.gcode", "G28\n")) },
+		{ ZipBackupArchive.InvalidName, Zip(("printdeck-backup.json", Manifest()), ("settings.json", SettingsJson()), ("uploads/.restore-x/cube.gcode", "G28\n")) },
 	};
+
+	[Fact]
+	public async Task Restores_files_in_folders()
+	{
+		Host target = HostIn(_target);
+
+		Result<BackupRestore> result = await Restore(target, Zip(
+			("printdeck-backup.json", Manifest()), ("settings.json", SettingsJson()),
+			("uploads/parts/", ""),
+			("uploads/parts/brackets/cube.gcode", "G28\n"),
+			("uploads/parts/brackets/cube.gcode.prints.json", "[]")));
+
+		Assert.True(result.IsSuccess, result.Error);
+		Assert.Equal(["parts/brackets/cube.gcode"], result.Value!.Files);
+		Assert.Equal("G28\n", await File.ReadAllTextAsync(Path.Combine(target.Uploads, "parts", "brackets", "cube.gcode"), Ct));
+		Assert.Equal(["parts/brackets/cube.gcode"], (await target.Files.ListAsync(Ct)).Select(f => f.Name));
+		Assert.Equal(["parts", "parts/brackets"], target.Files.ListFolders());
+	}
 
 	[Theory]
 	[MemberData(nameof(Refused))]

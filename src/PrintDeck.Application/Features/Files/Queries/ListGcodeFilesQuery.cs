@@ -14,6 +14,9 @@ using PrintDeck.Domain.Files.Enums;
 
 namespace PrintDeck.Application.Features.Files.Queries;
 
-/// <summary>Stored files, searched, sorted and filtered (see <see cref="FileListView"/>). The defaults list everything, newest first.</summary>
-public sealed record ListGcodeFilesQuery(string? Search = null, FileSort Sort = FileSort.Uploaded, bool HidePrinted = false)
+/// <summary>
+/// Stored files, searched, sorted and filtered (see <see cref="FileListView"/>). The defaults list everything in
+/// every folder, newest first; <paramref name="Folder"/> narrows it to one folder ("" for the top level).
+/// </summary>
+public sealed record ListGcodeFilesQuery(string? Search = null, FileSort Sort = FileSort.Uploaded, bool HidePrinted = false, string? Folder = null)
 	: IQuery<IReadOnlyList<GcodeFile>>;

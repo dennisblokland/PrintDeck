@@ -111,7 +111,7 @@
 		{
 			_thumbnailFor = _job.FileName;
 			_thumbnail = await Mediator.Send(new GetGcodeFileQuery(_job.FileName)) is { HasThumbnail: true } file
-				? $"thumbnail/{Uri.EscapeDataString(file.Name)}?v={file.UploadedAt.UtcTicks:x}"
+				? $"thumbnail/{FileUrl.Path(file.Name)}?v={file.UploadedAt.UtcTicks:x}"
 				: null;
 		}
 	}

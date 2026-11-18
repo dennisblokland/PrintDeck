@@ -1,3 +1,5 @@
+using PrintDeck.Domain.Files;
+
 namespace PrintDeck.Domain.Backup;
 
 /// <summary>
@@ -17,18 +19,17 @@ public static class BackupLayout
 	public static string FileName(DateTimeOffset createdAt) => $"printdeck-backup-{createdAt.UtcDateTime:yyyyMMdd-HHmm}.zip";
 
 	/// <summary>
-	/// The upload file name for an archive entry under <c>uploads/</c>; null for anything that is not a plain file
-	/// name there (sub-folders, "..", hidden files, half-written ".part" files).
+	/// The upload path for an archive entry under <c>uploads/</c>, folders included ("parts/cube.gcode"); null for
+	/// anything else: "..", hidden files or folders, backslashes, half-written ".part" files.
 	/// </summary>
 	public static string? UploadName(string entry)
 	{
 		if (!entry.StartsWith(UploadsPrefix, StringComparison.Ordinal)) return null;
 		string name = entry[UploadsPrefix.Length..];
-		bool plain = name.Length > 0
-			&& !name.StartsWith('.')
-			&& !name.EndsWith(".part", StringComparison.Ordinal)
-			&& name.IndexOfAny(['/', '\\', ':', '\0']) < 0
-			&& name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+		if (name.Length == 0 || name.EndsWith(".part", StringComparison.Ordinal) || name.IndexOfAny(['\\', ':', '\0']) >= 0) return null;
+		string[] parts = name.Split('/');
+		bool plain = parts.Length <= FilePath.MaxDepth + 1
+			&& parts.All(p => p.Length > 0 && !p.StartsWith('.') && p.IndexOfAny(Path.GetInvalidFileNameChars()) < 0);
 		return plain ? name : null;
 	}
 

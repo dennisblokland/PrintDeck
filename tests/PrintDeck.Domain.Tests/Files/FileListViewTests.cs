@@ -22,6 +22,36 @@ public class FileListViewTests
 	private static string[] Names(string? search = null, FileSort sort = FileSort.Uploaded, bool hidePrinted = false) =>
 		FileListView.Apply(_files, search, sort, hidePrinted).Select(f => f.Name).ToArray();
 
+	private static readonly GcodeFile[] _nested =
+	[
+		new("top.gcode", 1, _t0, null),
+		new("parts/bracket.gcode", 1, _t0, null),
+		new("parts/brackets/bracket-left.gcode", 1, _t0, null),
+		new("vases/bracket vase.gcode", 1, _t0, null)
+	];
+
+	private static string[] In(string? folder, string? search = null) =>
+		FileListView.Apply(_nested, search, FileSort.Name, false, folder).Select(f => f.Name).ToArray();
+
+	[Fact]
+	public void Without_a_folder_lists_every_file() => Assert.Equal(4, In(null).Length);
+
+	[Fact]
+	public void A_folder_lists_only_its_own_files()
+	{
+		Assert.Equal(["top.gcode"], In(""));
+		Assert.Equal(["parts/bracket.gcode"], In("parts"));
+		Assert.Equal(["parts/brackets/bracket-left.gcode"], In("parts/brackets"));
+	}
+
+	[Fact]
+	public void Searching_a_folder_looks_in_its_subfolders_too()
+	{
+		Assert.Equal(["parts/bracket.gcode", "parts/brackets/bracket-left.gcode", "vases/bracket vase.gcode"], In("", "bracket"));
+		Assert.Equal(["parts/bracket.gcode", "parts/brackets/bracket-left.gcode"], In("parts", "bracket"));
+		Assert.Equal(["vases/bracket vase.gcode"], In("", "vases bracket"));
+	}
+
 	[Fact]
 	public void Defaults_to_newest_upload_first() =>
 		Assert.Equal(["vase PETG.gcode", "bracket.gcode", "Cube.gcode", "Benchy_0.2mm_PLA.gcode"], Names());
