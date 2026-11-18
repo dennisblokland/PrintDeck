@@ -4,6 +4,7 @@ using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Common;
 using PrintDeck.Infrastructure.Virtual;
+using PrintDeck.Infrastructure.Processes;
 
 namespace PrintDeck.Infrastructure.Camera;
 

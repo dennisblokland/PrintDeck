@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using PrintDeck.Domain.Camera.Enums;
-using PrintDeck.Infrastructure.Camera;
+using PrintDeck.Infrastructure.Processes;
 
 namespace PrintDeck.Infrastructure.Virtual;
 

@@ -13,7 +13,8 @@ namespace PrintDeck.Infrastructure.Virtual;
 /// In-process Marlin imitation for development without hardware:
 /// heaters with thermal lag, M109/M190 waits, auto-reporting, checksum validation, moves that take time, an SD card, and M0/M600 waits answered through host prompts.
 /// </summary>
-public sealed partial class VirtualPrinterTransport(TimeProvider time, double speedFactor = 1) : IPrinterTransport
+public sealed partial class VirtualPrinterTransport(TimeProvider time, double speedFactor = 1, string firmwareName = VirtualPrinterOptions.DefaultFirmwareName)
+	: IPrinterTransport
 {
 	public const string PortName = "VIRTUAL";
 
@@ -131,7 +132,7 @@ public sealed partial class VirtualPrinterTransport(TimeProvider time, double sp
 				Emit("ok " + TempReport);
 				return;
 			case "M115":
-				Emit("FIRMWARE_NAME:Marlin 2.1.2 (PrintDeck Virtual) SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:Virtual EXTRUDER_COUNT:1");
+				Emit($"FIRMWARE_NAME:{firmwareName} SOURCE_CODE_URL:github.com/MarlinFirmware/Marlin PROTOCOL_VERSION:1.0 MACHINE_TYPE:Virtual EXTRUDER_COUNT:1");
 				Emit("Cap:AUTOREPORT_TEMP:1");
 				Emit("Cap:EMERGENCY_PARSER:1");
 				Emit("Cap:PROMPT_SUPPORT:1");

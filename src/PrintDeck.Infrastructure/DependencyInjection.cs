@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using PrintDeck.Infrastructure.Camera;
+using PrintDeck.Infrastructure.Health;
 using PrintDeck.Infrastructure.HostControl;
 using PrintDeck.Infrastructure.Identity;
 using PrintDeck.Infrastructure.Logging;
@@ -15,6 +16,7 @@ using PrintDeck.Infrastructure.Serial;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Infrastructure.Storage;
 using PrintDeck.Infrastructure.Virtual;
+using PrintDeck.Infrastructure.Processes;
 
 namespace PrintDeck.Infrastructure;
 
@@ -23,6 +25,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.Section));
+		services.Configure<VirtualPrinterOptions>(configuration.GetSection(VirtualPrinterOptions.Section));
 		services.AddSingleton<IPrinterTransportFactory, TransportFactory>();
 		services.AddSingleton<IPortDiscovery, PortDiscovery>();
 		services.AddSingleton<IGcodeFileStore, FileSystemGcodeStore>();
@@ -33,6 +36,8 @@ public static class DependencyInjection
 		services.AddSingleton<ISerialLog, FileSerialLog>();
 		services.AddSingleton<ILogFiles, LogDirectoryFiles>();
 		services.AddSingleton<ICameraSnapshots>(_ => new HttpCameraSnapshots());
+		services.AddSingleton<IHostHealth>(sp => new HostHealth(
+			sp.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory, new ProcessCommandRunner(), sp.GetRequiredService<TimeProvider>()));
 		services.AddSingleton<ICameraControls>(_ => new V4l2CameraControls(new ProcessCommandRunner(), new VirtualV4l2Ctl(), V4l2CameraControls.HostDevices));
 		services.AddSingleton<FileLoggerProvider>();
 		services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(sp => sp.GetRequiredService<FileLoggerProvider>());

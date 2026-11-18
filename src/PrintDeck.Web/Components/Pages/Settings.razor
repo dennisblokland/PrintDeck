@@ -382,6 +382,46 @@
 
 		<section class="card" aria-labelledby="system-title">
 			<header class="card-head"><h2 id="system-title">System</h2></header>
+			@if (_health is { } health)
+			{
+				<ul class="health-list">
+					<li>
+						<span>Disk</span>
+						@if (health.Disk is { } disk)
+						{
+							<span>@Format.Bytes(disk.FreeBytes) free of @Format.Bytes(disk.TotalBytes)</span>
+						}
+						else
+						{
+							<span class="muted">Can't be read</span>
+						}
+					</li>
+					<li>
+						<span>Raspberry Pi power</span>
+						<span>@(health.Pi switch
+						{
+							null => "Not a Raspberry Pi",
+							{ UnderVoltageNow: true } => "Under-voltage now",
+							{ LimitedNow: true } => "Throttled now",
+							{ UnderVoltageSinceBoot: true } => "Under-voltage since boot",
+							{ LimitedSinceBoot: true } => "Throttled since boot",
+							_ => "OK"
+						})</span>
+					</li>
+					<li>
+						<span>Firmware</span>
+						<span>@(health.Firmware ?? "Not connected")</span>
+					</li>
+				</ul>
+				@if (health.Warnings.Count == 0)
+				{
+					<p class="muted small"><Icon Name="check" Size="14" /> No problems found.</p>
+				}
+				@foreach (HealthWarning w in health.Warnings)
+				{
+					<p class="banner @(w.Severity == HealthSeverity.Error ? "banner-bad" : "banner-warn")"><strong>@w.Title.</strong> @w.Detail</p>
+				}
+			}
 			@if (_hostActions.Count == 0)
 			{
 				<p class="muted small">
@@ -511,6 +551,7 @@
 	private bool _restoring;
 	private bool _testingSnapshot;
 	private CameraControlsDto? _controls;
+	private HealthReport? _health;
 	private readonly Dictionary<string, long> _sliding = [];
 	private CameraSnapshot? _testSnapshot;
 
@@ -525,6 +566,7 @@
 		_settings = await Mediator.Send(new GetSettingsQuery());
 		_busy = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsBusy();
 		_hostActions = await Mediator.Send(new GetHostActionsQuery());
+		_health = await Mediator.Send(new GetHealthQuery());
 		_keys = await Mediator.Send(new ListApiKeysQuery());
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
