@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 
 using PrintDeck.Domain.Settings;
+using PrintDeck.Domain.Terminal;
 using PrintDeck.Infrastructure.Storage;
 using PrintDeck.Infrastructure.Tests.TestSupport;
 
@@ -51,13 +52,15 @@ public sealed class JsonSettingsStoreTests : IDisposable
 			LastPort = "/dev/ttyUSB0",
 			WebcamStreamUrl = "http://cam/stream",
 			ApiKey = "ABC",
-			Presets = [new TemperaturePreset("TPU", 225, 50)]
+			Presets = [new TemperaturePreset("TPU", 225, 50)],
+			TerminalFilters = [new TerminalFilter("Echo", "^echo:"), new TerminalFilter("Busy", "busy:", Enabled: false)]
 		};
 		await NewStore().UpdateAsync(_ => saved, Ct);
 
 		HostSettings loaded = await NewStore().GetAsync(Ct);
 
-		Assert.Equal(saved with { Presets = [], Profiles = [], Snippets = [] }, loaded with { Presets = [], Profiles = [], Snippets = [] });
+		Assert.Equal(saved with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [] }, loaded with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [] });
+		Assert.Equal(saved.TerminalFilters, loaded.TerminalFilters);
 		Assert.Equal(saved.Presets, loaded.Presets);
 		Assert.Equal(saved.Snippets, loaded.Snippets);
 		Assert.Equal(saved.Profiles, loaded.Profiles);
@@ -143,6 +146,8 @@ public sealed class JsonSettingsStoreTests : IDisposable
 		// A file from before G-code scripts gets the default snippets and empty scripts.
 		Assert.Equal(["disable_hotends", "disable_bed"], settings.Snippets.Select(s => s.Name));
 		Assert.Equal("", settings.BeforePrintGcode);
+		// ...and the default terminal filters.
+		Assert.Equal(TerminalFilter.Defaults, settings.TerminalFilters);
 		Assert.Equal([new TemperaturePreset("PLA", 215, 60)], settings.Presets);
 
 		string rewritten = await File.ReadAllTextAsync(Storage.SettingsFile, Ct);

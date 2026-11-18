@@ -7,10 +7,6 @@
 <header class="page-head page-head-row">
 	<h1>Terminal</h1>
 	<div class="toolbar">
-		<label class="toggle">
-			<input type="checkbox" @bind="_hideTemps" @bind:after="ReloadAsync" />
-			<span>Hide temperature polling</span>
-		</label>
 		<label class="toggle" title="Write every line to and from the printer to logs/serial.log">
 			<input type="checkbox" checked="@_logs.SerialLogEnabled" @onchange="SetSerialLogAsync" />
 			<span>Serial log to file</span>
@@ -20,6 +16,21 @@
 </header>
 
 <section class="card terminal-card">
+	<div class="terminal-filters" role="group" aria-label="Hide lines">
+		<span class="muted small">Hide</span>
+		@foreach (TerminalFilter f in _filters)
+		{
+			<label class="toggle" title="@f.Pattern" @key="f.Name">
+				<input type="checkbox" checked="@f.Enabled" @onchange="e => ToggleFilterAsync(f, e.Value is true)" />
+				<span>@f.Name</span>
+			</label>
+		}
+		@if (_filters.Count == 0)
+		{
+			<span class="muted small">nothing: no filters yet.</span>
+		}
+		<button class="btn btn-sm btn-ghost" @onclick="EditFilters"><Icon Name="sliders" Size="14" /> Edit filters</button>
+	</div>
 	<div class="terminal" role="log" aria-live="off">
 		@* column-reverse keeps the view pinned to the newest line without JS *@
 		<div class="terminal-inner">
@@ -48,6 +59,42 @@
 		}
 	</div>
 </section>
+
+@if (_editor is { } editor)
+{
+	<form class="card filters-card" aria-labelledby="filters-title" @onsubmit="SaveFiltersAsync" @onsubmit:preventDefault>
+		<header class="card-head">
+			<h2 id="filters-title">Terminal filters</h2>
+			<button type="button" class="btn btn-sm btn-ghost" @onclick="() => editor.Add(new FilterRow())">Add filter</button>
+		</header>
+		<p class="muted small">
+			Each filter hides the lines its pattern matches: a regular expression, not case-sensitive.
+			Sent lines carry their line number and checksum, e.g. <code>N12 M105*39</code>, so match a command with
+			<code>^(N\d+\s+)?M105</code>. Switch filters on and off above the terminal.
+		</p>
+		@if (editor.Count == 0)
+		{
+			<p class="muted small">No filters: the terminal shows every line.</p>
+		}
+		<div class="filter-rows">
+			@foreach (FilterRow row in editor)
+			{
+				<div class="filter-row">
+					<label class="toggle" title="On"><input type="checkbox" aria-label="Filter on" @bind="row.Enabled" /></label>
+					<input class="input filter-name" placeholder="Name" maxlength="@TerminalFilter.MaxNameLength" aria-label="Filter name" @bind="row.Name" />
+					<input class="input mono filter-pattern" placeholder="Pattern, e.g. ^echo:" maxlength="@TerminalFilter.MaxPatternLength"
+						   aria-label="Filter pattern" spellcheck="false" autocomplete="off" @bind="row.Pattern" />
+					<button type="button" class="icon-btn icon-btn-danger" title="Remove filter" @onclick="() => editor.Remove(row)"><Icon Name="x" Size="16" /></button>
+				</div>
+			}
+		</div>
+		<div class="form-actions">
+			<button type="button" class="btn btn-ghost" title="Replace the list with PrintDeck's filters" @onclick="RestoreDefaults">Restore defaults</button>
+			<button type="button" class="btn btn-ghost" @onclick="() => _editor = null">Cancel</button>
+			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save filters</button>
+		</div>
+	</form>
+}
 
 <section class="card logs-card" aria-labelledby="logs-title">
 	<header class="card-head">
@@ -83,20 +130,52 @@
 	private IReadOnlyList<TerminalEntry> _entries = [];
 	private readonly List<string> _history = [];
 	private int _historyIndex = -1;
-	private bool _hideTemps = true;
+	private IReadOnlyList<TerminalFilter> _filters = [];
+	private List<FilterRow>? _editor;
 	private bool _connected;
 	private string _command = "";
 	private LogsDto _logs = new(false, []);
 	private bool _logsLoaded;
 
-	protected override PrinterChange Interests => PrinterChange.Terminal | PrinterChange.State;
+	protected override PrinterChange Interests => PrinterChange.Terminal | PrinterChange.State | PrinterChange.Settings;
 	protected override TimeSpan Throttle => TimeSpan.FromMilliseconds(250);
 
 	protected override async Task RefreshAsync()
 	{
-		_entries = await Mediator.Send(new GetTerminalLogQuery(400, _hideTemps));
+		_filters = (await Mediator.Send(new GetSettingsQuery())).TerminalFilters;
+		_entries = await Mediator.Send(new GetTerminalLogQuery(400));
 		_connected = (await Mediator.Send(new GetPrinterStatusQuery())).State.IsConnected();
 		if (!_logsLoaded) await LoadLogsAsync();
+	}
+
+	private sealed class FilterRow
+	{
+		public string Name { get; set; } = "";
+		public string Pattern { get; set; } = "";
+		public bool Enabled { get; set; } = true;
+
+		public static FilterRow From(TerminalFilter f) => new() { Name = f.Name, Pattern = f.Pattern, Enabled = f.Enabled };
+		public TerminalFilter ToFilter() => new(Name, Pattern, Enabled);
+	}
+
+	private void EditFilters() => _editor = _filters.Select(FilterRow.From).ToList();
+
+	private void RestoreDefaults() => _editor = TerminalFilter.Defaults.Select(FilterRow.From).ToList();
+
+	private async Task ToggleFilterAsync(TerminalFilter filter, bool on)
+	{
+		List<TerminalFilter> filters = _filters.Select(f => f == filter ? f with { Enabled = on } : f).ToList();
+		if (!await Run(new UpdateTerminalFiltersCommand(filters))) return;
+		if (_editor?.FirstOrDefault(r => r.Name == filter.Name && r.Pattern == filter.Pattern) is { } row) row.Enabled = on;
+		await ReloadAsync();
+	}
+
+	private async Task SaveFiltersAsync()
+	{
+		if (_editor is null) return;
+		if (!await Run(new UpdateTerminalFiltersCommand(_editor.Select(r => r.ToFilter()).ToList()), "Filters saved")) return;
+		_editor = null;
+		await ReloadAsync();
 	}
 
 	private async Task LoadLogsAsync()

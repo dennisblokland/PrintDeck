@@ -435,7 +435,7 @@ kbd {
 .toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .terminal-card { padding: 0; gap: 0; overflow: hidden; }
 .terminal {
-    height: calc(100vh - 296px); min-height: 280px;
+    height: calc(100vh - 340px); min-height: 280px;
     overflow-y: auto; display: flex; flex-direction: column-reverse;
     background: var(--bg); padding: 12px 0;
     font: 12px/20px var(--mono);
@@ -452,6 +452,14 @@ kbd {
 .terminal-input { display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
 .terminal-input .prompt { font-family: var(--mono); color: var(--accent); font-weight: 500; padding-left: 4px; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; }
+.terminal-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.terminal-filters .btn { margin-left: auto; }
+.filters-card { margin-top: 16px; }
+.filter-rows { display: flex; flex-direction: column; gap: 8px; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filter-name { flex: 1 1 10rem; }
+.filter-pattern { flex: 3 1 16rem; }
+.filters-card .form-actions { flex-wrap: wrap; }
 
 /* ───────────────────────── settings ───────────────────────── */
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }

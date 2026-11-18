@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using PrintDeck.Domain.Terminal;
+
 namespace PrintDeck.Domain.Settings;
 
 /// <summary>Everything PrintDeck keeps in <c>settings.json</c>: the saved printer profiles plus host-wide settings.</summary>
@@ -53,6 +55,9 @@ public sealed record HostSettings
 		new("ABS", 250, 100)
 	];
 
+	/// <summary>Terminal lines to hide, by pattern; each can be switched on and off on the Terminal page.</summary>
+	public IReadOnlyList<TerminalFilter> TerminalFilters { get; init; } = TerminalFilter.Defaults;
+
 	/// <summary>The profile in use; falls back to the first one if the active id is stale.</summary>
 	[JsonIgnore]
 	public PrinterProfile ActiveProfile =>
@@ -84,7 +89,8 @@ public sealed record HostSettings
 			CancelGcode = CancelGcode ?? "",
 			PauseGcode = PauseGcode ?? "",
 			ResumeGcode = ResumeGcode ?? "",
-			Snippets = Snippets ?? []
+			Snippets = Snippets ?? [],
+			TerminalFilters = TerminalFilters ?? []
 		};
 	}
 }
