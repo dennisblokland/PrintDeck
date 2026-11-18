@@ -360,8 +360,13 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .swatch-chamber { background: var(--chamber); }
 .swatch-dashed { background: repeating-linear-gradient(90deg, var(--muted) 0 3px, transparent 3px 7px); }
 
-.webcam { border-radius: var(--radius-sm); overflow: hidden; background: #000; aspect-ratio: 16 / 9; }
-.webcam img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.webcam { position: relative; border-radius: var(--radius-sm); overflow: hidden; background: #000; aspect-ratio: 16 / 9; }
+/* size and transform (rotate / flip) come from CameraView.ImageStyle */
+.webcam img { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: contain; display: block; }
+.camera-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.camera-options select.input { width: auto; }
+.camera-test { display: flex; flex-direction: column; gap: 8px; }
+.camera-test .webcam { max-width: 360px; }
 
 /* ───────────────────────── control ───────────────────────── */
 .control-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; border: 0; padding: 0; margin: 0; min-width: 0; }

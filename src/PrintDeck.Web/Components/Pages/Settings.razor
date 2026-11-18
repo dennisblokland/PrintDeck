@@ -127,6 +127,37 @@
 				<label class="field"><span>MJPEG stream URL</span>
 					<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
 				</label>
+				<label class="field"><span>Snapshot URL</span>
+					<span class="field-row">
+						<input class="input" placeholder="http://printer.local:8080/?action=snapshot" @bind="_host.WebcamSnapshotUrl" />
+						<button type="button" class="btn btn-ghost" disabled="@_testingSnapshot" @onclick="TestSnapshotAsync">@(_testingSnapshot ? "Testing…" : "Test")</button>
+					</span>
+				</label>
+				<div class="camera-options">
+					<label class="field-inline">Rotate
+						<select class="input" aria-label="Rotate the picture" @bind="_host.WebcamRotation">
+							@foreach (CameraRotation r in Enum.GetValues<CameraRotation>())
+							{
+								<option value="@r">@((int)r)°</option>
+							}
+						</select>
+					</label>
+					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipHorizontal" /><span>Flip horizontally</span></label>
+					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipVertical" /><span>Flip vertically</span></label>
+				</div>
+				@if (_testSnapshot is { } shot)
+				{
+					<div class="camera-test">
+						<div class="webcam">
+							<img src="data:@shot.ContentType;base64,@Convert.ToBase64String(shot.Content)" alt="Test snapshot"
+								 style="@CameraView.ImageStyle(_host.WebcamRotation, _host.WebcamFlipHorizontal, _host.WebcamFlipVertical)" />
+						</div>
+					</div>
+				}
+				<p class="muted small">
+					The snapshot is a single still image, fetched by PrintDeck. The dashboard shows it, refreshed every few seconds,
+					when there is no stream. Rotate and flip apply to both.
+				</p>
 			</section>
 
 			<div class="save-bar">
@@ -345,12 +376,18 @@
 		public string? WebcamStreamUrl { get; set; }
 		public bool ShowProgressOnPrinter { get; set; } = true;
 		public bool AutoConnect { get; set; }
+		public string? WebcamSnapshotUrl { get; set; }
+		public CameraRotation WebcamRotation { get; set; }
+		public bool WebcamFlipHorizontal { get; set; }
+		public bool WebcamFlipVertical { get; set; }
 		public List<PresetRow> Presets { get; set; } = [];
 
 		public static HostForm From(HostSettings s) => new()
 		{
 			WebcamStreamUrl = s.WebcamStreamUrl, ShowProgressOnPrinter = s.ShowProgressOnPrinter,
 			AutoConnect = s.AutoConnect,
+			WebcamSnapshotUrl = s.WebcamSnapshotUrl, WebcamRotation = s.WebcamRotation,
+			WebcamFlipHorizontal = s.WebcamFlipHorizontal, WebcamFlipVertical = s.WebcamFlipVertical,
 			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
 		};
 	}
@@ -402,6 +439,8 @@
 	private bool _confirmSharedOff;
 	private IBrowserFile? _restoreFile;
 	private bool _restoring;
+	private bool _testingSnapshot;
+	private CameraSnapshot? _testSnapshot;
 
 	// A backup holds every upload, so it may be far larger than a single G-code file.
 	private const long _maxBackup = 64L << 30;
@@ -554,11 +593,28 @@
 	{
 		HostForm f = _host!;
 		UpdateSettingsCommand command = new(
-			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect);
+			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect,
+			f.WebcamSnapshotUrl, f.WebcamRotation, f.WebcamFlipHorizontal, f.WebcamFlipVertical);
 		if (await Run(command, "Settings saved"))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
+		}
+	}
+
+	private async Task TestSnapshotAsync()
+	{
+		_testingSnapshot = true;
+		_testSnapshot = null;
+		try
+		{
+			Result<CameraSnapshot> result = await Mediator.Send(new TestCameraSnapshotCommand(_host?.WebcamSnapshotUrl ?? ""));
+			if (result.IsSuccess) _testSnapshot = result.Value;
+			else Toasts.Error(result.Error ?? "Something went wrong.");
+		}
+		finally
+		{
+			_testingSnapshot = false;
 		}
 	}
 

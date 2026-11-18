@@ -1,4 +1,5 @@
 using PrintDeck.Domain.Settings;
+using PrintDeck.Domain.Settings.Enums;
 using PrintDeck.Domain.Terminal;
 
 namespace PrintDeck.Domain.Tests.Settings;
@@ -27,6 +28,13 @@ public class HostSettingsTests
 	{
 		Assert.Empty(new HostSettings { TerminalFilters = [] }.Normalized().TerminalFilters);
 		Assert.Empty(new HostSettings { TerminalFilters = null! }.Normalized().TerminalFilters);
+	}
+
+	[Fact]
+	public void Normalized_resets_a_rotation_that_is_not_a_quarter_turn()
+	{
+		Assert.Equal(CameraRotation.None, new HostSettings { WebcamRotation = (CameraRotation)45 }.Normalized().WebcamRotation);
+		Assert.Equal(CameraRotation.Half, new HostSettings { WebcamRotation = CameraRotation.Half }.Normalized().WebcamRotation);
 	}
 
 	[Fact]

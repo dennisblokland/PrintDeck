@@ -57,6 +57,7 @@ app.MapStaticAssets().AllowAnonymous();
 app.MapSlicerApi();
 app.MapToolpathApi();
 app.MapThumbnailApi();
+app.MapCameraApi();
 app.MapLogsApi();
 app.MapBackupApi();
 app.MapAccountEndpoints();
