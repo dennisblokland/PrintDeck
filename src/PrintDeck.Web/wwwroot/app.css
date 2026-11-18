@@ -607,6 +607,15 @@ kbd {
 .printer-dialog-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 200px; }
 .printer-dialog-body .muted { font-size: 12px; }
 .printer-dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.health-warning.is-warning { border-color: rgb(242 184 75 / .4); background: rgb(242 184 75 / .06); }
+.health-warning.is-warning > .icon { color: var(--warn); }
+.health-warning.is-error { border-color: rgb(229 72 77 / .4); background: var(--bad-soft); }
+.health-warning.is-error > .icon { color: var(--bad); }
+.health-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; }
+.health-list li { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.health-list li:first-child { border-top: 0; }
+.health-list li > span:first-child { color: var(--muted); }
+.banner-bad { background: var(--bad-soft); border-color: rgb(229 72 77 / .32); color: var(--bad); }
 
 /* ───────────────────────── toasts ───────────────────────── */
 .toasts { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; max-width: min(420px, calc(100vw - 32px)); }

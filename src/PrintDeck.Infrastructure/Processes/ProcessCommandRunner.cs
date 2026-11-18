@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 
-namespace PrintDeck.Infrastructure.Camera;
+namespace PrintDeck.Infrastructure.Processes;
 
 public sealed class ProcessCommandRunner : ICommandRunner
 {

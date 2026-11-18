@@ -1,0 +1,59 @@
+@inherits PrinterComponent
+
+@* Host and firmware problems for admins, above every page. A dismissed warning stays hidden until it changes. *@
+@if (CanControl)
+{
+	@foreach (HealthWarning w in _warnings.Where(w => !_dismissed.Contains(Key(w))))
+	{
+		<section class="printer-dialog health-warning is-@w.Severity.ToString().ToLowerInvariant()" role="status" @key="w.Id">
+			<Icon Name="alert" Size="18" />
+			<div class="printer-dialog-body">
+				<strong>@w.Title</strong>
+				<span class="muted">@w.Detail</span>
+			</div>
+			<button class="icon-btn" title="Dismiss" aria-label="Dismiss" @onclick="() => _dismissed.Add(Key(w))"><Icon Name="x" Size="16" /></button>
+		</section>
+	}
+}
+
+@code {
+	private static readonly TimeSpan _interval = TimeSpan.FromMinutes(1);
+
+	private IReadOnlyList<HealthWarning> _warnings = [];
+	private readonly HashSet<string> _dismissed = [];
+	private PeriodicTimer? _timer;
+
+	// Connecting reports the firmware; disk and power are checked once a minute.
+	protected override PrinterChange Interests => PrinterChange.State;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+		_timer = new PeriodicTimer(_interval, Time);
+		_ = PollAsync(_timer);
+	}
+
+	private async Task PollAsync(PeriodicTimer timer)
+	{
+		try
+		{
+			while (await timer.WaitForNextTickAsync()) await ReloadAsync();
+		}
+		catch (ObjectDisposedException) { /* page closed */ }
+	}
+
+	protected override async Task RefreshAsync()
+	{
+		if (!CanControl) return;
+		_warnings = (await Mediator.Send(new GetHealthQuery())).Warnings;
+	}
+
+	/// <summary>Severity and title together, so a warning that gets worse shows again.</summary>
+	private static string Key(HealthWarning w) => $"{w.Id}|{w.Severity}|{w.Title}";
+
+	public override void Dispose()
+	{
+		_timer?.Dispose();
+		base.Dispose();
+	}
+}

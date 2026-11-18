@@ -1,4 +1,4 @@
-namespace PrintDeck.Infrastructure.Camera;
+namespace PrintDeck.Infrastructure.Processes;
 
 /// <summary>Runs a program with arguments (no shell); null when the program isn't installed.</summary>
 public interface ICommandRunner

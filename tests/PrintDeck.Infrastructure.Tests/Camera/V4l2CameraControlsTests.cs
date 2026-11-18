@@ -2,6 +2,7 @@ using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Common;
 using PrintDeck.Infrastructure.Camera;
 using PrintDeck.Infrastructure.Virtual;
+using PrintDeck.Infrastructure.Processes;
 
 namespace PrintDeck.Infrastructure.Tests.Camera;
 
