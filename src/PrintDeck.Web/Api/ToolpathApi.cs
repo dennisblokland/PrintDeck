@@ -24,7 +24,7 @@ public static class ToolpathApi
 	private const uint Version = 1;
 
 	public static void MapToolpathApi(this WebApplication app) =>
-		app.MapGet("/toolpath/{name}", async (string name, HttpContext http, IMediator mediator, CancellationToken ct) =>
+		app.MapGet("/toolpath/{**name}", async (string name, HttpContext http, IMediator mediator, CancellationToken ct) =>
 		{
 			ToolpathResult? result = await mediator.Send(new GetGcodeToolpathQuery(name), ct);
 			if (result is null) return Results.NotFound();

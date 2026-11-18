@@ -6,6 +6,14 @@
 
 <header class="page-head">
 	<h1>Files</h1>
+	<nav class="breadcrumbs" aria-label="Breadcrumb">
+		<button class="crumb @(_folder.Length == 0 ? "is-current" : "")" @onclick='() => OpenFolderAsync("")'><Icon Name="folder" Size="14" /> All files</button>
+		@foreach (string crumb in Crumbs(_folder))
+		{
+			<span class="crumb-sep">/</span>
+			<button class="crumb @(crumb == _folder ? "is-current" : "")" @onclick="() => OpenFolderAsync(crumb)">@FilePath.Name(crumb)</button>
+		}
+	</nav>
 	<p class="muted">
 		@if (Filtered)
 		{
@@ -31,7 +39,9 @@
 		else
 		{
 			<strong>Drop G-code here or click to browse</strong>
-			<span class="muted">Or send straight from your slicer — see Settings → Slicer upload.</span>
+			<span class="muted">
+				@(_folder.Length == 0 ? "" : $"Into {_folder}. ")Or send straight from your slicer — see Settings → Slicer upload.
+			</span>
 		}
 	</label>
 }
@@ -63,7 +73,7 @@
 	</section>
 }
 
-@if (_total > 0)
+@if (_total > 0 || _subfolders.Count > 0 || CanControl)
 {
 	<div class="file-toolbar">
 		<input class="input file-search" type="search" placeholder="Search files" aria-label="Search files"
@@ -78,10 +88,62 @@
 			<input type="checkbox" checked="@_hidePrinted" @onchange="OnHidePrinted" />
 			<span>Hide printed</span>
 		</label>
+		@if (CanControl)
+		{
+			<button class="btn btn-sm btn-ghost" @onclick="ToggleNewFolder"><Icon Name="folder" Size="14" /> New folder</button>
+		}
 	</div>
 }
 
-@if (_files.Count == 0)
+@if (_newFolder is not null)
+{
+	<form class="card folder-form" @onsubmit="CreateFolderAsync" @onsubmit:preventDefault>
+		<input class="input" placeholder="Folder name" aria-label="New folder name" maxlength="@FilePath.MaxSegmentLength" @bind="_newFolder" autofocus />
+		<span class="muted small">in @(_folder.Length == 0 ? "All files" : _folder)</span>
+		<button type="button" class="btn btn-ghost" @onclick="() => _newFolder = null">Cancel</button>
+		<button class="btn btn-primary" type="submit"><Icon Name="check" Size="14" /> Create</button>
+	</form>
+}
+
+@if (!Searching && _subfolders.Count > 0)
+{
+	<ul class="file-list folder-list">
+		@foreach (string folder in _subfolders)
+		{
+			<li class="file folder-row" @key="folder">
+				@if (_renaming == folder)
+				{
+					<form class="folder-form" @onsubmit="() => RenameFolderAsync(folder)" @onsubmit:preventDefault>
+						<Icon Name="folder" Size="18" />
+						<input class="input" aria-label="Folder name" maxlength="@FilePath.MaxSegmentLength" @bind="_renameTo" autofocus />
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _renaming = null">Cancel</button>
+						<button class="btn btn-sm btn-primary" type="submit">Rename</button>
+					</form>
+				}
+				else
+				{
+					<button class="folder-open" @onclick="() => OpenFolderAsync(folder)">
+						<Icon Name="folder" Size="18" />
+						<span class="file-name">@FilePath.Name(folder)</span>
+						<span class="muted small">@FolderSummary(folder)</span>
+					</button>
+					@if (CanControl)
+					{
+						<div class="file-actions">
+							<button class="btn btn-sm btn-ghost" @onclick="() => StartRename(folder)">Rename</button>
+							<button class="icon-btn icon-btn-danger @(_confirmDelete == FolderKey(folder) ? "is-armed" : "")"
+									title="@(_confirmDelete == FolderKey(folder) ? "Click again to delete" : "Delete empty folder")" @onclick="() => DeleteFolderAsync(folder)">
+								<Icon Name="@(_confirmDelete == FolderKey(folder) ? "check" : "trash")" Size="16" />
+							</button>
+						</div>
+					}
+				}
+			</li>
+		}
+	</ul>
+}
+
+@if (_files.Count == 0 && (Filtered || _subfolders.Count == 0))
 {
 	@if (Filtered)
 	{
@@ -90,10 +152,10 @@
 	}
 	else
 	{
-		<div class="card empty"><Icon Name="folder" Size="28" /><p>No files yet</p></div>
+		<div class="card empty"><Icon Name="folder" Size="28" /><p>@(_folder.Length == 0 ? "No files yet" : "This folder is empty")</p></div>
 	}
 }
-else
+else if (_files.Count > 0)
 {
 	<ul class="file-list local-files">
 		@foreach (GcodeFile f in _files)
@@ -112,7 +174,7 @@ else
 					}
 				</div>
 				<div class="file-main">
-					<span class="file-name" title="@f.Name">@f.Name</span>
+					<span class="file-name" title="@f.Name">@(Searching ? f.Name : FilePath.Name(f.Name))</span>
 					<span class="file-sub">
 						@Format.Bytes(f.SizeBytes) · @Format.Ago(f.UploadedAt, Time.GetUtcNow())
 						@if (f.Analysis?.Slicer is { } slicer) { <text> · @slicer</text> }
@@ -129,7 +191,7 @@ else
 					<span title="Layers"><Icon Name="layers" Size="14" /> @(f.Analysis?.LayerCount?.ToString() ?? "—")</span>
 				</div>
 				<div class="file-actions">
-					<a class="icon-btn" href="viewer/@Uri.EscapeDataString(f.Name)" title="View toolpath"><Icon Name="eye" Size="16" /></a>
+					<a class="icon-btn" href="viewer/@FileUrl.Path(f.Name)" title="View toolpath"><Icon Name="eye" Size="16" /></a>
 					@if (printing)
 					{
 						<span class="chip chip-printing">Printing</span>
@@ -153,12 +215,28 @@ else
 								@onclick="() => PrintAsync(f.Name)">
 							<Icon Name="play" Size="14" /> @(_checking == f.Name ? "Checking…" : "Print")
 						</button>
+						<button class="icon-btn" title="Move or rename" @onclick="() => StartMove(f.Name)"><Icon Name="folder" Size="16" /></button>
 						<button class="icon-btn icon-btn-danger @(_confirmDelete == f.Name ? "is-armed" : "")"
 								title="@(_confirmDelete == f.Name ? "Click again to delete" : "Delete")" @onclick="() => DeleteAsync(f.Name)">
 							<Icon Name="@(_confirmDelete == f.Name ? "check" : "trash")" Size="16" />
 						</button>
 					}
 				</div>
+				@if (_moving == f.Name)
+				{
+					<form class="folder-form move-form" @onsubmit="() => MoveAsync(f.Name)" @onsubmit:preventDefault>
+						<select class="input" aria-label="Move to folder" @bind="_moveFolder">
+							<option value="">All files (top level)</option>
+							@foreach (string folder in _allFolders)
+							{
+								<option value="@folder">@folder</option>
+							}
+						</select>
+						<input class="input" aria-label="File name" @bind="_moveName" />
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _moving = null">Cancel</button>
+						<button class="btn btn-sm btn-primary" type="submit">Move</button>
+					</form>
+				}
 			</li>
 		}
 	</ul>
@@ -255,6 +333,20 @@ else
 	[SupplyParameterFromQuery(Name = "q")] private string? QueryText { get; set; }
 	[SupplyParameterFromQuery(Name = "sort")] private string? QuerySort { get; set; }
 	[SupplyParameterFromQuery(Name = "hide")] private bool QueryHide { get; set; }
+	[SupplyParameterFromQuery(Name = "folder")] private string? QueryFolder { get; set; }
+
+	private string _folder = "";
+	private IReadOnlyList<string> _allFolders = [];
+	private IReadOnlyList<string> _subfolders = [];
+	private IReadOnlyList<GcodeFile> _everything = [];
+	private string? _newFolder;
+	private string? _renaming;
+	private string _renameTo = "";
+	private string? _moving;
+	private string _moveFolder = "";
+	private string _moveName = "";
+
+	private bool Searching => !string.IsNullOrWhiteSpace(_search);
 
 	private string? _search;
 	private FileSort _sort;
@@ -263,15 +355,16 @@ else
 
 	private bool Filtered => !string.IsNullOrWhiteSpace(_search) || _hidePrinted;
 
-	private (string? Search, FileSort Sort, bool Hide) FromQuery =>
+	private (string? Search, FileSort Sort, bool Hide, string Folder) FromQuery =>
 		(string.IsNullOrWhiteSpace(QueryText) ? null : QueryText,
 		 Enum.TryParse(QuerySort, ignoreCase: true, out FileSort s) ? s : FileSort.Uploaded,
-		 QueryHide);
+		 QueryHide,
+		 FilePath.Normalize(QueryFolder) ?? "");
 
 	protected override async Task OnInitializedAsync()
 	{
 		// Before the first listing, so a reload or bookmark opens on the saved view.
-		(_search, _sort, _hidePrinted) = FromQuery;
+		(_search, _sort, _hidePrinted, _folder) = FromQuery;
 		_initialized = true;
 		await base.OnInitializedAsync();
 	}
@@ -279,9 +372,79 @@ else
 	protected override async Task OnParametersSetAsync()
 	{
 		// Back/forward or an edited address: follow it.
-		if (!_initialized || FromQuery == (_search, _sort, _hidePrinted)) return;
-		(_search, _sort, _hidePrinted) = FromQuery;
+		if (!_initialized || FromQuery == (_search, _sort, _hidePrinted, _folder)) return;
+		(_search, _sort, _hidePrinted, _folder) = FromQuery;
 		await RefreshAsync();
+	}
+
+	private Task OpenFolderAsync(string folder)
+	{
+		_folder = folder;
+		_newFolder = null;
+		_renaming = null;
+		_moving = null;
+		return ApplyAsync(null, _sort, _hidePrinted);
+	}
+
+	private static IEnumerable<string> Crumbs(string folder)
+	{
+		if (folder.Length == 0) yield break;
+		string[] parts = folder.Split('/');
+		for (int i = 1; i <= parts.Length; i++) yield return string.Join('/', parts[..i]);
+	}
+
+	private string FolderSummary(string folder)
+	{
+		int files = _everything.Count(f => FilePath.IsWithin(f.Name, folder));
+		return $"{files} file{(files == 1 ? "" : "s")}";
+	}
+
+	private static string FolderKey(string folder) => "folder:" + folder;
+
+	private void ToggleNewFolder() => _newFolder = _newFolder is null ? "" : null;
+
+	private async Task CreateFolderAsync()
+	{
+		string name = (_newFolder ?? "").Trim();
+		if (await Run(new CreateFolderCommand(FilePath.Combine(_folder, name)), $"Created folder {name}")) _newFolder = null;
+	}
+
+	private void StartRename(string folder)
+	{
+		_renaming = folder;
+		_renameTo = FilePath.Name(folder);
+	}
+
+	private async Task RenameFolderAsync(string folder)
+	{
+		string target = FilePath.Combine(FilePath.Folder(folder), _renameTo.Trim());
+		if (await Run(new MoveFolderCommand(folder, target), $"Renamed to {_renameTo.Trim()}")) _renaming = null;
+	}
+
+	private async Task DeleteFolderAsync(string folder)
+	{
+		string key = FolderKey(folder);
+		if (_confirmDelete != key)
+		{
+			_confirmDelete = key;
+			_ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { if (_confirmDelete == key) _confirmDelete = null; StateHasChanged(); }));
+			return;
+		}
+		_confirmDelete = null;
+		await Run(new DeleteFolderCommand(folder), $"Deleted folder {FilePath.Name(folder)}");
+	}
+
+	private void StartMove(string name)
+	{
+		_moving = name;
+		_moveFolder = FilePath.Folder(name);
+		_moveName = FilePath.Name(name);
+	}
+
+	private async Task MoveAsync(string name)
+	{
+		string target = FilePath.Combine(_moveFolder, _moveName.Trim());
+		if (await Run(new MoveGcodeCommand(name, target), $"Moved to {target}")) _moving = null;
 	}
 
 	private Task OnSearch(ChangeEventArgs e) => ApplyAsync(e.Value as string, _sort, _hidePrinted);
@@ -296,7 +459,8 @@ else
 		{
 			["q"] = _search,
 			["sort"] = _sort == FileSort.Uploaded ? null : _sort.ToString().ToLowerInvariant(),
-			["hide"] = _hidePrinted ? true : null
+			["hide"] = _hidePrinted ? true : null,
+			["folder"] = _folder.Length == 0 ? null : _folder
 		}), replace: true);
 		await RefreshAsync();
 	}
@@ -313,8 +477,12 @@ else
 
 	protected override async Task RefreshAsync()
 	{
-		_files = await Mediator.Send(new ListGcodeFilesQuery(_search, _sort, _hidePrinted));
-		_total = Filtered ? (await Mediator.Send(new ListGcodeFilesQuery())).Count : _files.Count;
+		_allFolders = await Mediator.Send(new ListFoldersQuery());
+		if (_folder.Length > 0 && !_allFolders.Contains(_folder)) _folder = ""; // renamed or deleted meanwhile
+		_subfolders = _allFolders.Where(f => FilePath.Folder(f) == _folder).ToList();
+		_everything = await Mediator.Send(new ListGcodeFilesQuery());
+		_files = await Mediator.Send(new ListGcodeFilesQuery(_search, _sort, _hidePrinted, _folder));
+		_total = Filtered ? _everything.Count(f => FilePath.IsWithin(f.Name, _folder)) : _files.Count;
 		PrinterStatusDto status = await Mediator.Send(new GetPrinterStatusQuery());
 		_state = status.State;
 		JobDto? active = status.Job is { Status: JobStatus.Printing or JobStatus.Paused } j ? j : null;
@@ -335,7 +503,7 @@ else
 			foreach (IBrowserFile file in files)
 			{
 				await using Stream stream = file.OpenReadStream(_maxUpload);
-				Result<GcodeFile> result = await Mediator.Send(new UploadGcodeCommand(file.Name, stream));
+				Result<GcodeFile> result = await Mediator.Send(new UploadGcodeCommand(file.Name, stream, _folder));
 				if (result.IsSuccess) Toasts.Success($"Uploaded {result.Value!.Name}");
 				else Toasts.Error(result.Error!);
 			}
@@ -424,5 +592,5 @@ else
 		await Run(new DeleteGcodeCommand(name), $"Deleted {name}");
 	}
 
-	private static string ThumbnailUrl(GcodeFile f) => $"thumbnail/{Uri.EscapeDataString(f.Name)}?v={f.UploadedAt.UtcTicks:x}";
+	private static string ThumbnailUrl(GcodeFile f) => $"thumbnail/{FileUrl.Path(f.Name)}?v={f.UploadedAt.UtcTicks:x}";
 }

@@ -27,9 +27,8 @@ public sealed class ZipBackupArchive(IOptions<StorageOptions> options, ISettings
 	public async Task WriteAsync(Stream destination, CancellationToken ct)
 	{
 		string uploads = Directory.CreateDirectory(_storage.UploadsDirectory).FullName;
-		List<string> names = Directory.EnumerateFiles(uploads)
-			.Select(Path.GetFileName)
-			.OfType<string>()
+		List<string> names = Directory.EnumerateFiles(uploads, "*", SearchOption.AllDirectories)
+			.Select(p => Path.GetRelativePath(uploads, p).Replace(Path.DirectorySeparatorChar, '/'))
 			.Where(n => BackupLayout.UploadName(BackupLayout.UploadsPrefix + n) is not null)
 			.Order(StringComparer.Ordinal)
 			.ToList();
@@ -97,7 +96,7 @@ public sealed class ZipBackupArchive(IOptions<StorageOptions> options, ISettings
 			if (!uploads.IsSuccess) return Result.Failure<BackupRestore>(uploads.Error!);
 
 			string root = Directory.CreateDirectory(_storage.UploadsDirectory).FullName;
-			// Inside uploads, so moving into place is a rename; the store lists files only, so it never sees this folder.
+			// Inside uploads, so moving into place is a rename; hidden, so the store never lists what is in it.
 			string staging = Directory.CreateDirectory(Path.Combine(root, $".restore-{Guid.NewGuid():N}")).FullName;
 			try
 			{
@@ -105,7 +104,9 @@ public sealed class ZipBackupArchive(IOptions<StorageOptions> options, ISettings
 				{
 					try
 					{
-						await ExtractAsync(entry, Path.Combine(staging, name), ct);
+						string staged = Path.Combine(staging, name);
+						Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+						await ExtractAsync(entry, staged, ct);
 					}
 					catch (InvalidDataException)
 					{
@@ -142,7 +143,8 @@ public sealed class ZipBackupArchive(IOptions<StorageOptions> options, ISettings
 		Dictionary<string, ZipArchiveEntry> found = new(StringComparer.Ordinal);
 		foreach (ZipArchiveEntry entry in zip.Entries)
 		{
-			if (!entry.FullName.StartsWith(BackupLayout.UploadsPrefix, StringComparison.Ordinal) || entry.FullName == BackupLayout.UploadsPrefix)
+			// Folder entries ("uploads/parts/") carry nothing; their files bring the folders along.
+			if (!entry.FullName.StartsWith(BackupLayout.UploadsPrefix, StringComparison.Ordinal) || entry.FullName.EndsWith('/'))
 				continue;
 			if (BackupLayout.UploadName(entry.FullName) is not { } name)
 				return Result.Failure<List<(string, ZipArchiveEntry)>>(InvalidName);
@@ -155,11 +157,13 @@ public sealed class ZipBackupArchive(IOptions<StorageOptions> options, ISettings
 		return Result.Success(uploads);
 	}
 
+	/// <summary>Where an upload goes, its folder created; never outside the uploads folder.</summary>
 	private static string PathIn(string root, string name)
 	{
 		string full = Path.GetFullPath(Path.Combine(root, name));
 		if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
 			throw new InvalidOperationException($"Refusing to write outside the uploads folder: {name}");
+		Directory.CreateDirectory(Path.GetDirectoryName(full)!);
 		return full;
 	}
 

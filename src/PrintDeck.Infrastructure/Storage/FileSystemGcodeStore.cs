@@ -11,8 +11,9 @@ using PrintDeck.Domain.Files;
 namespace PrintDeck.Infrastructure.Storage;
 
 /// <summary>
-/// G-code files on disk; analysis kept in a sidecar "&lt;name&gt;.meta.json", finished prints in "&lt;name&gt;.prints.json"
-/// and the slicer thumbnail in "&lt;name&gt;.thumb.png" or ".thumb.jpg".
+/// G-code files on disk, in folders under the uploads folder; analysis kept in a sidecar "&lt;name&gt;.meta.json",
+/// finished prints in "&lt;name&gt;.prints.json" and the slicer thumbnail in "&lt;name&gt;.thumb.png" or ".thumb.jpg".
+/// Hidden folders (".restore-…" while a backup is restored) are skipped.
 /// </summary>
 public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGcodeFileStore
 {
@@ -34,10 +35,18 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		return full;
 	}
 
+	/// <summary>"parts/benchy.gcode" for a full path inside the uploads folder.</summary>
+	private string NameOf(string fullPath) => Path.GetRelativePath(_root, fullPath).Replace(Path.DirectorySeparatorChar, '/');
+
+	/// <summary>Files in every folder except hidden ones.</summary>
+	private IEnumerable<string> AllFiles(string pattern = "*") =>
+		Directory.EnumerateFiles(_root, pattern, SearchOption.AllDirectories)
+			.Where(p => !NameOf(p).Split('/').Any(part => part.StartsWith('.')));
+
 	public async Task<IReadOnlyList<GcodeFile>> ListAsync(CancellationToken ct)
 	{
 		List<GcodeFile> result = new();
-		foreach (string? path in Directory.EnumerateFiles(_root).Where(IsGcode))
+		foreach (string path in AllFiles().Where(IsGcode))
 			result.Add(await LoadAsync(new FileInfo(path), ct));
 		return result;
 	}
@@ -51,6 +60,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 	public async Task<GcodeFile> SaveAsync(string name, Stream content, CancellationToken ct)
 	{
 		string path = PathOf(name);
+		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		string temp = path + ".part";
 		await using (FileStream file = File.Create(temp))
 			await content.CopyToAsync(file, ct);
@@ -132,16 +142,69 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 	public async Task<IReadOnlyList<PrintHistoryEntry>> ListPrintsAsync(CancellationToken ct)
 	{
 		List<PrintHistoryEntry> result = [];
-		foreach (string sidecar in Directory.EnumerateFiles(_root, "*" + _printsSuffix))
+		foreach (string sidecar in AllFiles("*" + _printsSuffix))
 		{
 			string path = sidecar[..^_printsSuffix.Length];
 			if (!File.Exists(path)) continue; // left behind by a file deleted outside PrintDeck
-			string name = Path.GetFileName(path);
+			string name = NameOf(path);
 			foreach (PrintRecord print in await ReadPrintsAsync(path, ct))
 				result.Add(new PrintHistoryEntry(name, print));
 		}
 		return result;
 	}
+
+	public IReadOnlyList<string> ListFolders() =>
+		Directory.EnumerateDirectories(_root, "*", SearchOption.AllDirectories)
+			.Select(NameOf)
+			.Where(n => !n.Split('/').Any(part => part.StartsWith('.')))
+			.Order(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+	public bool CreateFolder(string path)
+	{
+		string full = PathOf(path);
+		if (Directory.Exists(full)) return false;
+		Directory.CreateDirectory(full);
+		return true;
+	}
+
+	public async Task<bool> MoveAsync(string from, string to, CancellationToken ct)
+	{
+		string source = PathOf(from), target = PathOf(to);
+		await _historyLock.WaitAsync(ct);
+		try
+		{
+			if (!File.Exists(source)) return false;
+			Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+			File.Move(source, target);
+			foreach (string suffix in _sidecars)
+				if (File.Exists(source + suffix)) File.Move(source + suffix, target + suffix, overwrite: true);
+			return true;
+		}
+		finally
+		{
+			_historyLock.Release();
+		}
+	}
+
+	public bool MoveFolder(string from, string to)
+	{
+		string source = PathOf(from), target = PathOf(to);
+		if (!Directory.Exists(source)) return false;
+		Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+		Directory.Move(source, target);
+		return true;
+	}
+
+	public bool DeleteFolder(string path)
+	{
+		string full = PathOf(path);
+		if (!Directory.Exists(full) || Directory.EnumerateFileSystemEntries(full).Any()) return false;
+		Directory.Delete(full);
+		return true;
+	}
+
+	private static readonly string[] _sidecars = [_metaSuffix, _printsSuffix, _pngSuffix, _jpegSuffix];
 
 	private static bool IsGcode(string path) =>
 		!path.EndsWith(_metaSuffix, StringComparison.Ordinal)
@@ -165,7 +228,7 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		}
 	}
 
-	private static async Task<GcodeFile> LoadAsync(FileInfo info, CancellationToken ct)
+	private async Task<GcodeFile> LoadAsync(FileInfo info, CancellationToken ct)
 	{
 		GcodeAnalysis? analysis = null;
 		string meta = info.FullName + _metaSuffix;
@@ -180,6 +243,6 @@ public sealed class FileSystemGcodeStore(IOptions<StorageOptions> options) : IGc
 		}
 		PrintStats prints = PrintStats.From(await ReadPrintsAsync(info.FullName, ct));
 		bool thumbnail = File.Exists(info.FullName + _pngSuffix) || File.Exists(info.FullName + _jpegSuffix);
-		return new GcodeFile(info.Name, info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis, prints, thumbnail);
+		return new GcodeFile(NameOf(info.FullName), info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), analysis, prints, thumbnail);
 	}
 }

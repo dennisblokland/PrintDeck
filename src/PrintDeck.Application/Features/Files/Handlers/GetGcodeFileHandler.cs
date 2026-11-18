@@ -9,5 +9,5 @@ namespace PrintDeck.Application.Features.Files.Handlers;
 public sealed class GetGcodeFileHandler(IGcodeFileStore files) : IQueryHandler<GetGcodeFileQuery, GcodeFile?>
 {
 	public async ValueTask<GcodeFile?> Handle(GetGcodeFileQuery query, CancellationToken ct) =>
-		UploadGcodeHandler.SanitizeName(query.Name) == query.Name ? await files.GetAsync(query.Name, ct) : null;
+		FilePath.Normalize(query.Name) == query.Name ? await files.GetAsync(query.Name, ct) : null;
 }

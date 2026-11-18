@@ -11,7 +11,7 @@ public sealed class GetGcodeThumbnailHandler(IGcodeFileStore files) : IQueryHand
 {
 	public async ValueTask<ThumbnailContent?> Handle(GetGcodeThumbnailQuery query, CancellationToken ct)
 	{
-		if (UploadGcodeHandler.SanitizeName(query.Name) != query.Name) return null;
+		if (FilePath.Normalize(query.Name) is not { Length: > 0 } name || name != query.Name) return null;
 		if (await files.GetAsync(query.Name, ct) is not { HasThumbnail: true } file) return null;
 		return files.OpenThumbnail(file.Name) is { } image ? new ThumbnailContent(image.Content, image.ContentType, file) : null;
 	}

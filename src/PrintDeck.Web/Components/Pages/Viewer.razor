@@ -1,5 +1,5 @@
 @page "/viewer"
-@page "/viewer/{FileName}"
+@page "/viewer/{*FileName}"
 @inherits PrinterComponent
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -229,7 +229,7 @@ else
             StateHasChanged();
             try
             {
-                _info = await _viewer.InvokeAsync<ToolpathInfo>("load", $"toolpath/{Uri.EscapeDataString(_shown)}");
+                _info = await _viewer.InvokeAsync<ToolpathInfo>("load", $"toolpath/{FileUrl.Path(_shown)}");
                 _layer = Math.Max(0, _info.Layers - 1);
                 _moves = 1000;
                 _follow = true;
@@ -273,7 +273,7 @@ else
     private void Select(string? name)
     {
         if (string.IsNullOrEmpty(name)) return;
-        Nav.NavigateTo($"viewer/{Uri.EscapeDataString(name)}");
+        Nav.NavigateTo($"viewer/{FileUrl.Path(name)}");
     }
 
     private async Task OnLayerInput(ChangeEventArgs e)
