@@ -1,4 +1,5 @@
 using PrintDeck.Domain.Settings;
+using PrintDeck.Domain.Terminal;
 
 namespace PrintDeck.Domain.Tests.Settings;
 
@@ -13,6 +14,19 @@ public class HostSettingsTests
 		HostSettings s = new();
 		Assert.Single(s.Profiles);
 		Assert.Equal(PrinterProfile.DefaultId, s.ActiveProfile.Id);
+	}
+
+	[Fact]
+	public void Defaults_include_the_terminal_filters()
+	{
+		Assert.Equal(TerminalFilter.Defaults, new HostSettings().TerminalFilters);
+	}
+
+	[Fact]
+	public void Normalized_keeps_an_emptied_filter_list_and_repairs_a_missing_one()
+	{
+		Assert.Empty(new HostSettings { TerminalFilters = [] }.Normalized().TerminalFilters);
+		Assert.Empty(new HostSettings { TerminalFilters = null! }.Normalized().TerminalFilters);
 	}
 
 	[Fact]
