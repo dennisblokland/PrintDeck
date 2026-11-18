@@ -31,6 +31,12 @@ public class HostSettingsTests
 	}
 
 	[Fact]
+	public void Normalized_repairs_missing_camera_controls()
+	{
+		Assert.Empty(new HostSettings { CameraControls = null! }.Normalized().CameraControls);
+	}
+
+	[Fact]
 	public void Normalized_resets_a_rotation_that_is_not_a_quarter_turn()
 	{
 		Assert.Equal(CameraRotation.None, new HostSettings { WebcamRotation = (CameraRotation)45 }.Normalized().WebcamRotation);

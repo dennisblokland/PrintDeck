@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 
+using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Domain.Terminal;
 using PrintDeck.Infrastructure.Storage;
@@ -53,13 +54,18 @@ public sealed class JsonSettingsStoreTests : IDisposable
 			WebcamStreamUrl = "http://cam/stream",
 			ApiKey = "ABC",
 			Presets = [new TemperaturePreset("TPU", 225, 50)],
-			TerminalFilters = [new TerminalFilter("Echo", "^echo:"), new TerminalFilter("Busy", "busy:", Enabled: false)]
+			TerminalFilters = [new TerminalFilter("Echo", "^echo:"), new TerminalFilter("Busy", "busy:", Enabled: false)],
+			CameraDevice = "/dev/video0",
+			CameraControls = [new CameraControlValue("brightness", 140), new CameraControlValue("focus_absolute", 25)]
 		};
 		await NewStore().UpdateAsync(_ => saved, Ct);
 
 		HostSettings loaded = await NewStore().GetAsync(Ct);
 
-		Assert.Equal(saved with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [] }, loaded with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [] });
+		Assert.Equal(
+			saved with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [] },
+			loaded with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [] });
+		Assert.Equal(saved.CameraControls, loaded.CameraControls);
 		Assert.Equal(saved.TerminalFilters, loaded.TerminalFilters);
 		Assert.Equal(saved.Presets, loaded.Presets);
 		Assert.Equal(saved.Snippets, loaded.Snippets);

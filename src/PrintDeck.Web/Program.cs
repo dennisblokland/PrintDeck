@@ -42,6 +42,7 @@ await app.Services.InitializeSerialLogAsync();
 app.Services.StartPrintHistory();
 app.Services.StartAutoConnect();
 app.Services.StartThumbnailBackfill();
+app.Services.StartCameraControls();
 
 app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())

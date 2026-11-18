@@ -165,6 +165,76 @@
 			</div>
 		</form>
 
+		@if (_controls is { } cam)
+		{
+			<section class="card settings-wide" aria-labelledby="controls-title">
+				<header class="card-head">
+					<h2 id="controls-title">Camera controls</h2>
+					@if (cam.Controls.Count > 0)
+					{
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="ResetControlsAsync"><Icon Name="refresh" Size="14" /> Reset to defaults</button>
+					}
+				</header>
+				<label class="field camera-device"><span>Camera</span>
+					<select class="input" value="@(cam.Device ?? "")" @onchange="SelectCameraAsync">
+						<option value="">None</option>
+						@foreach (string d in cam.Devices)
+						{
+							<option value="@d">@(d == "VIRTUAL" ? "VIRTUAL (pretend webcam)" : d)</option>
+						}
+						@if (cam.Device is { } chosen && !cam.Devices.Contains(chosen))
+						{
+							<option value="@chosen">@chosen (not connected)</option>
+						}
+					</select>
+				</label>
+				@if (cam.Error is { } error)
+				{
+					<p class="auth-error" role="alert">@error</p>
+				}
+				@if (cam.Controls.Count > 0)
+				{
+					<div class="camera-controls">
+						@foreach (CameraControl c in cam.Controls)
+						{
+							<div class="camera-control @(c.Inactive ? "is-inactive" : "")" @key="c.Name"
+								 title="@(c.Inactive ? "Set by the camera's automatic mode; switch that off first" : null)">
+								@switch (c.Type)
+								{
+									case CameraControlType.Integer:
+										long shown = _sliding.TryGetValue(c.Name, out long v) ? v : c.Value;
+										<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span><output class="mono">@shown</output></label>
+										<input id="ctl-@c.Name" class="range" type="range" min="@c.Min" max="@c.Max" step="@c.Step" value="@c.Value" disabled="@c.Inactive"
+											   @oninput="e => Slide(c, e)" @onchange="e => SetControlAsync(c, e.Value)" />
+										break;
+									case CameraControlType.Boolean:
+										<label class="toggle">
+											<input type="checkbox" checked="@(c.Value != 0)" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value is true ? 1 : 0)" />
+											<span>@c.Label</span>
+										</label>
+										break;
+									default:
+										<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span></label>
+										<select id="ctl-@c.Name" class="input" value="@c.Value" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value)">
+											@foreach (CameraMenuItem m in c.Menu)
+											{
+												<option value="@m.Value">@m.Label</option>
+											}
+										</select>
+										break;
+								}
+							</div>
+						}
+					</div>
+				}
+				<p class="muted small">
+					Brightness, focus, exposure and the other controls your camera offers, through <code>v4l2-ctl</code>
+					(install <code>v4l-utils</code> on the host). Changes apply right away and are applied again when PrintDeck starts,
+					since most cameras forget them when they lose power. Greyed-out controls follow an automatic mode; switch that off first.
+				</p>
+			</section>
+		}
+
 		@if (_scripts is { } scripts)
 		{
 			<form class="card settings-wide" aria-labelledby="scripts-title" @onsubmit="SaveScriptsAsync" @onsubmit:preventDefault>
@@ -440,6 +510,8 @@
 	private IBrowserFile? _restoreFile;
 	private bool _restoring;
 	private bool _testingSnapshot;
+	private CameraControlsDto? _controls;
+	private readonly Dictionary<string, long> _sliding = [];
 	private CameraSnapshot? _testSnapshot;
 
 	// A backup holds every upload, so it may be far larger than a single G-code file.
@@ -457,6 +529,8 @@
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
 		_scripts ??= ScriptsForm.From(_settings);
+		_controls = await Mediator.Send(new GetCameraControlsQuery());
+		_sliding.Clear();
 	}
 
 	private static string HostActionLabel(HostAction action) => action switch
@@ -600,6 +674,36 @@
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
 		}
+	}
+
+	private async Task SelectCameraAsync(ChangeEventArgs e)
+	{
+		string? device = e.Value as string;
+		if (await Run(new SelectCameraDeviceCommand(device), string.IsNullOrEmpty(device) ? "No camera chosen" : $"Using {device}")) return;
+		await ReloadAsync();
+	}
+
+	private void Slide(CameraControl c, ChangeEventArgs e)
+	{
+		if (long.TryParse(e.Value as string, System.Globalization.CultureInfo.InvariantCulture, out long value)) _sliding[c.Name] = value;
+	}
+
+	private async Task SetControlAsync(CameraControl c, object? raw)
+	{
+		long? value = raw switch
+		{
+			long l => l,
+			int i => i,
+			string text when long.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out long parsed) => parsed,
+			_ => null
+		};
+		// On success the Settings change re-reads the controls (another may have turned (in)active); on failure, show the camera's value again.
+		if (value is null || !await Run(new SetCameraControlCommand(c.Name, value.Value))) await ReloadAsync();
+	}
+
+	private async Task ResetControlsAsync()
+	{
+		if (!await Run(new ResetCameraControlsCommand(), "Camera controls back to their defaults")) await ReloadAsync();
 	}
 
 	private async Task TestSnapshotAsync()
