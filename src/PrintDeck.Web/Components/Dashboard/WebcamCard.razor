@@ -1,17 +1,53 @@
 @inherits PrinterComponent
 
-@if (!string.IsNullOrWhiteSpace(_url))
+@if (_camera is { } c && (_stream is not null || _snapshot))
 {
 	<section class="card webcam-card">
-		<header class="card-head"><h2>Camera</h2></header>
+		<header class="card-head">
+			<h2>Camera</h2>
+			@if (_snapshot)
+			{
+				<a class="btn btn-sm btn-ghost" href="camera/snapshot?download=true" download title="Save a still image"><Icon Name="down" Size="14" /> Snapshot</a>
+			}
+		</header>
 		<div class="webcam">
-			<img src="@_url" alt="Printer camera stream" loading="lazy" />
+			<img src="@(_stream ?? $"camera/snapshot?t={_tick}")" alt="@(_stream is null ? "Printer camera snapshot" : "Printer camera stream")" loading="lazy"
+				 style="@CameraView.ImageStyle(c.WebcamRotation, c.WebcamFlipHorizontal, c.WebcamFlipVertical)" />
 		</div>
 	</section>
 }
 
 @code {
-	private string? _url;
+	// Without a stream, the snapshot is shown and refreshed every few seconds.
+	private static readonly TimeSpan _snapshotInterval = TimeSpan.FromSeconds(3);
+
+	private HostSettings? _camera;
+	private string? _stream;
+	private bool _snapshot;
+	private long _tick;
+	private Timer? _timer;
+
 	protected override PrinterChange Interests => PrinterChange.Settings;
-	protected override async Task RefreshAsync() => _url = (await Mediator.Send(new GetSettingsQuery())).WebcamStreamUrl;
+
+	protected override async Task RefreshAsync()
+	{
+		_camera = await Mediator.Send(new GetSettingsQuery());
+		_stream = string.IsNullOrWhiteSpace(_camera.WebcamStreamUrl) ? null : _camera.WebcamStreamUrl;
+		_snapshot = !string.IsNullOrWhiteSpace(_camera.WebcamSnapshotUrl);
+
+		bool poll = _stream is null && _snapshot;
+		if (poll && _timer is null)
+			_timer = new Timer(_ => InvokeAsync(() => { _tick++; StateHasChanged(); }), null, _snapshotInterval, _snapshotInterval);
+		else if (!poll && _timer is not null)
+		{
+			_timer.Dispose();
+			_timer = null;
+		}
+	}
+
+	public override void Dispose()
+	{
+		_timer?.Dispose();
+		base.Dispose();
+	}
 }

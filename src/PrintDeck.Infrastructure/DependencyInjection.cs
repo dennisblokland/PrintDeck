@@ -7,6 +7,7 @@ using PrintDeck.Application.Abstractions.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
+using PrintDeck.Infrastructure.Camera;
 using PrintDeck.Infrastructure.HostControl;
 using PrintDeck.Infrastructure.Identity;
 using PrintDeck.Infrastructure.Logging;
@@ -30,6 +31,7 @@ public static class DependencyInjection
 		services.AddSingleton<IHostCommands, ShellHostCommands>();
 		services.AddSingleton<ISerialLog, FileSerialLog>();
 		services.AddSingleton<ILogFiles, LogDirectoryFiles>();
+		services.AddSingleton<ICameraSnapshots>(_ => new HttpCameraSnapshots());
 		services.AddSingleton<FileLoggerProvider>();
 		services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(sp => sp.GetRequiredService<FileLoggerProvider>());
 		services.AddDbContext<PrintDeckDbContext>((sp, o) =>

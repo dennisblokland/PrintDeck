@@ -7,6 +7,7 @@ using PrintDeck.Application.Tests.TestDoubles;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Printer.Enums;
 using PrintDeck.Domain.Settings;
+using PrintDeck.Domain.Settings.Enums;
 
 namespace PrintDeck.Application.Tests.Features.Settings;
 
@@ -224,6 +225,9 @@ public class SettingsHandlerTests
 			{ "hot bed preset", "Presets need a name, hotend 0–320 °C and bed 0–130 °C." },
 			{ "duplicate preset", "Preset names must be unique." },
 			{ "relative webcam url", "Webcam URL is not a valid URL." },
+			{ "relative snapshot url", "Snapshot URL must be an http or https URL." },
+			{ "file snapshot url", "Snapshot URL must be an http or https URL." },
+			{ "odd rotation", "Rotation must be 0, 90, 180 or 270 degrees." },
 		};
 
 		private ValueTask<Result> UpdateInvalid(string reason) => reason switch
@@ -233,6 +237,9 @@ public class SettingsHandlerTests
 			"hot bed preset" => UpdateHost(presets: [new("PC", 300, 131)]),
 			"duplicate preset" => UpdateHost(presets: [new("PLA", 200, 60), new("pla", 210, 60)]),
 			"relative webcam url" => UpdateHost(webcam: "camera/stream"),
+			"relative snapshot url" => UpdateCamera("camera/snapshot"),
+			"file snapshot url" => UpdateCamera("file:///etc/passwd"),
+			"odd rotation" => UpdateCamera(null, (CameraRotation)45),
 			_ => throw new ArgumentOutOfRangeException(nameof(reason))
 		};
 
@@ -260,6 +267,25 @@ public class SettingsHandlerTests
 			Assert.Equal(before.Profiles, s.Profiles);
 			Assert.Equal(before.ActiveProfileId, s.ActiveProfileId);
 			Assert.Contains(PrinterChange.Settings, _events.Published);
+		}
+
+		private ValueTask<Result> UpdateCamera(string? snapshot, CameraRotation rotation = CameraRotation.None, bool flipH = false, bool flipV = false) =>
+			new UpdateSettingsHandler(_settings, _events.Hub).Handle(
+				new UpdateSettingsCommand([new("PLA", 205, 60)], null, WebcamSnapshotUrl: snapshot, WebcamRotation: rotation,
+					WebcamFlipHorizontal: flipH, WebcamFlipVertical: flipV), Ct);
+
+		[Fact]
+		public async Task Update_saves_the_snapshot_url_rotation_and_flips()
+		{
+			Assert.True((await UpdateCamera(" http://cam.local/?action=snapshot ", CameraRotation.Clockwise90, flipH: true)).IsSuccess);
+
+			HostSettings s = _settings.Settings;
+			Assert.Equal(("http://cam.local/?action=snapshot", CameraRotation.Clockwise90, true, false),
+				(s.WebcamSnapshotUrl, s.WebcamRotation, s.WebcamFlipHorizontal, s.WebcamFlipVertical));
+
+			Assert.True((await UpdateCamera(" ")).IsSuccess);
+			Assert.Null(_settings.Settings.WebcamSnapshotUrl);
+			Assert.Equal(CameraRotation.None, _settings.Settings.WebcamRotation);
 		}
 
 		[Fact]

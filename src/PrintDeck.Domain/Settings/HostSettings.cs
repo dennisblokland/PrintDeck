@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using PrintDeck.Domain.Settings.Enums;
 using PrintDeck.Domain.Terminal;
 
 namespace PrintDeck.Domain.Settings;
@@ -17,6 +18,18 @@ public sealed record HostSettings
 	public bool AutoConnect { get; init; }
 
 	public string? WebcamStreamUrl { get; init; }
+
+	/// <summary>A URL that returns one still image (JPEG or PNG), e.g. mjpg-streamer's <c>?action=snapshot</c>.</summary>
+	public string? WebcamSnapshotUrl { get; init; }
+
+	/// <summary>Turns the stream and snapshots clockwise; for a camera mounted sideways or upside down.</summary>
+	public CameraRotation WebcamRotation { get; init; }
+
+	/// <summary>Mirrors the picture left to right; applied before <see cref="WebcamRotation"/>.</summary>
+	public bool WebcamFlipHorizontal { get; init; }
+
+	/// <summary>Mirrors the picture top to bottom; applied before <see cref="WebcamRotation"/>.</summary>
+	public bool WebcamFlipVertical { get; init; }
 	public string ApiKey { get; init; } = "";
 
 	/// <summary>Whether <see cref="ApiKey"/>, the one key shared by every slicer, still signs in. App keys replace it.</summary>
@@ -84,6 +97,7 @@ public sealed record HostSettings
 			Profiles = profiles,
 			ActiveProfileId = active,
 			Presets = Presets ?? [],
+			WebcamRotation = Enum.IsDefined(WebcamRotation) ? WebcamRotation : CameraRotation.None,
 			BeforePrintGcode = BeforePrintGcode ?? "",
 			AfterPrintGcode = AfterPrintGcode ?? "",
 			CancelGcode = CancelGcode ?? "",
