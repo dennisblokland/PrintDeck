@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Settings.Enums;
 using PrintDeck.Domain.Terminal;
 
@@ -30,6 +31,12 @@ public sealed record HostSettings
 
 	/// <summary>Mirrors the picture top to bottom; applied before <see cref="WebcamRotation"/>.</summary>
 	public bool WebcamFlipVertical { get; init; }
+
+	/// <summary>The v4l2 device whose controls (brightness, focus, exposure) PrintDeck adjusts, e.g. <c>/dev/video0</c>.</summary>
+	public string? CameraDevice { get; init; }
+
+	/// <summary>Control values chosen in PrintDeck for <see cref="CameraDevice"/>; applied again when PrintDeck starts.</summary>
+	public IReadOnlyList<CameraControlValue> CameraControls { get; init; } = [];
 	public string ApiKey { get; init; } = "";
 
 	/// <summary>Whether <see cref="ApiKey"/>, the one key shared by every slicer, still signs in. App keys replace it.</summary>
@@ -104,7 +111,8 @@ public sealed record HostSettings
 			PauseGcode = PauseGcode ?? "",
 			ResumeGcode = ResumeGcode ?? "",
 			Snippets = Snippets ?? [],
-			TerminalFilters = TerminalFilters ?? []
+			TerminalFilters = TerminalFilters ?? [],
+			CameraControls = CameraControls ?? []
 		};
 	}
 }

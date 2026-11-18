@@ -367,6 +367,12 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .camera-options select.input { width: auto; }
 .camera-test { display: flex; flex-direction: column; gap: 8px; }
 .camera-test .webcam { max-width: 360px; }
+.camera-device { max-width: 420px; margin-bottom: 12px; }
+.camera-controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px 32px; margin-bottom: 12px; }
+.camera-control { display: flex; flex-direction: column; gap: 6px; justify-content: flex-end; }
+.camera-control.is-inactive { opacity: .5; }
+.camera-control-head { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; }
+.camera-control-head output { color: var(--text); }
 
 /* ───────────────────────── control ───────────────────────── */
 .control-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; border: 0; padding: 0; margin: 0; min-width: 0; }

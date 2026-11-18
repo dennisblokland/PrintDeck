@@ -14,6 +14,7 @@ using PrintDeck.Infrastructure.Logging;
 using PrintDeck.Infrastructure.Serial;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Infrastructure.Storage;
+using PrintDeck.Infrastructure.Virtual;
 
 namespace PrintDeck.Infrastructure;
 
@@ -32,6 +33,7 @@ public static class DependencyInjection
 		services.AddSingleton<ISerialLog, FileSerialLog>();
 		services.AddSingleton<ILogFiles, LogDirectoryFiles>();
 		services.AddSingleton<ICameraSnapshots>(_ => new HttpCameraSnapshots());
+		services.AddSingleton<ICameraControls>(_ => new V4l2CameraControls(new ProcessCommandRunner(), new VirtualV4l2Ctl(), V4l2CameraControls.HostDevices));
 		services.AddSingleton<FileLoggerProvider>();
 		services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(sp => sp.GetRequiredService<FileLoggerProvider>());
 		services.AddDbContext<PrintDeckDbContext>((sp, o) =>
