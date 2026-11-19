@@ -1,23 +1,24 @@
 @page "/terminal"
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inherits PrinterComponent
+@inject IStringLocalizer<Terminal> L
 
-<PageTitle>Terminal · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head page-head-row">
-	<h1>Terminal</h1>
+	<h1>@L["Title"]</h1>
 	<div class="toolbar">
-		<label class="toggle" title="Write every line to and from the printer to logs/serial.log">
+		<label class="toggle" title="@L["SerialLogTitle"]">
 			<input type="checkbox" checked="@_logs.SerialLogEnabled" @onchange="SetSerialLogAsync" />
-			<span>Serial log to file</span>
+			<span>@L["SerialLog"]</span>
 		</label>
-		<button class="btn btn-sm btn-ghost" @onclick="() => Run(new ClearTerminalCommand())"><Icon Name="trash" Size="14" /> Clear</button>
+		<button class="btn btn-sm btn-ghost" @onclick="() => Run(new ClearTerminalCommand())"><Icon Name="trash" Size="14" /> @L["Clear"]</button>
 	</div>
 </header>
 
 <section class="card terminal-card">
-	<div class="terminal-filters" role="group" aria-label="Hide lines">
-		<span class="muted small">Hide</span>
+	<div class="terminal-filters" role="group" aria-label="@L["HideLines"]">
+		<span class="muted small">@L["Hide"]</span>
 		@foreach (TerminalFilter f in _filters)
 		{
 			<label class="toggle" title="@f.Pattern" @key="f.Name">
@@ -27,9 +28,9 @@
 		}
 		@if (_filters.Count == 0)
 		{
-			<span class="muted small">nothing: no filters yet.</span>
+			<span class="muted small">@L["NoFiltersYet"]</span>
 		}
-		<button class="btn btn-sm btn-ghost" @onclick="EditFilters"><Icon Name="sliders" Size="14" /> Edit filters</button>
+		<button class="btn btn-sm btn-ghost" @onclick="EditFilters"><Icon Name="sliders" Size="14" /> @L["EditFilters"]</button>
 	</div>
 	<div class="terminal" role="log" aria-live="off">
 		@* column-reverse keeps the view pinned to the newest line without JS *@
@@ -47,13 +48,13 @@
 
 	<form class="terminal-input" @onsubmit="SendAsync" @onsubmit:preventDefault>
 		<span class="prompt">›</span>
-		<input class="input mono" placeholder="@(_connected ? "G-code, e.g. M114 — ↑/↓ for history" : "Connect to send commands")"
+		<input class="input mono" placeholder="@(_connected ? L["CommandPlaceholder"] : L["ConnectToSend"])"
 			   disabled="@(!_connected)" @bind="_command" @bind:event="oninput" @onkeydown="OnKey" autocomplete="off" spellcheck="false" />
-		<button class="btn btn-primary" type="submit" disabled="@(!_connected || string.IsNullOrWhiteSpace(_command))"><Icon Name="send" Size="16" /> Send</button>
+		<button class="btn btn-primary" type="submit" disabled="@(!_connected || string.IsNullOrWhiteSpace(_command))"><Icon Name="send" Size="16" /> @L["Send"]</button>
 	</form>
 
 	<div class="quick">
-		@foreach ((string cmd, string label) in _quick)
+		@foreach ((string cmd, string label) in Quick)
 		{
 			<button class="btn btn-sm btn-ghost mono" disabled="@(!_connected)" title="@label" @onclick="() => Send(cmd)">@cmd</button>
 		}
@@ -64,46 +65,42 @@
 {
 	<form class="card filters-card" aria-labelledby="filters-title" @onsubmit="SaveFiltersAsync" @onsubmit:preventDefault>
 		<header class="card-head">
-			<h2 id="filters-title">Terminal filters</h2>
-			<button type="button" class="btn btn-sm btn-ghost" @onclick="() => editor.Add(new FilterRow())">Add filter</button>
+			<h2 id="filters-title">@L["FiltersTitle"]</h2>
+			<button type="button" class="btn btn-sm btn-ghost" @onclick="() => editor.Add(new FilterRow())">@L["AddFilter"]</button>
 		</header>
-		<p class="muted small">
-			Each filter hides the lines its pattern matches: a regular expression, not case-sensitive.
-			Sent lines carry their line number and checksum, e.g. <code>N12 M105*39</code>, so match a command with
-			<code>^(N\d+\s+)?M105</code>. Switch filters on and off above the terminal.
-		</p>
+		<p class="muted small">@L.Html("FiltersHintHtml")</p>
 		@if (editor.Count == 0)
 		{
-			<p class="muted small">No filters: the terminal shows every line.</p>
+			<p class="muted small">@L["NoFilters"]</p>
 		}
 		<div class="filter-rows">
 			@foreach (FilterRow row in editor)
 			{
 				<div class="filter-row">
-					<label class="toggle" title="On"><input type="checkbox" aria-label="Filter on" @bind="row.Enabled" /></label>
-					<input class="input filter-name" placeholder="Name" maxlength="@TerminalFilter.MaxNameLength" aria-label="Filter name" @bind="row.Name" />
-					<input class="input mono filter-pattern" placeholder="Pattern, e.g. ^echo:" maxlength="@TerminalFilter.MaxPatternLength"
-						   aria-label="Filter pattern" spellcheck="false" autocomplete="off" @bind="row.Pattern" />
-					<button type="button" class="icon-btn icon-btn-danger" title="Remove filter" @onclick="() => editor.Remove(row)"><Icon Name="x" Size="16" /></button>
+					<label class="toggle" title="@L["On"]"><input type="checkbox" aria-label="@L["FilterOn"]" @bind="row.Enabled" /></label>
+					<input class="input filter-name" placeholder="@L["Name"]" maxlength="@TerminalFilter.MaxNameLength" aria-label="@L["FilterName"]" @bind="row.Name" />
+					<input class="input mono filter-pattern" placeholder="@L["PatternPlaceholder"]" maxlength="@TerminalFilter.MaxPatternLength"
+						   aria-label="@L["FilterPattern"]" spellcheck="false" autocomplete="off" @bind="row.Pattern" />
+					<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveFilter"]" @onclick="() => editor.Remove(row)"><Icon Name="x" Size="16" /></button>
 				</div>
 			}
 		</div>
 		<div class="form-actions">
-			<button type="button" class="btn btn-ghost" title="Replace the list with PrintDeck's filters" @onclick="RestoreDefaults">Restore defaults</button>
-			<button type="button" class="btn btn-ghost" @onclick="() => _editor = null">Cancel</button>
-			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save filters</button>
+			<button type="button" class="btn btn-ghost" title="@L["RestoreDefaultsTitle"]" @onclick="RestoreDefaults">@L["RestoreDefaults"]</button>
+			<button type="button" class="btn btn-ghost" @onclick="() => _editor = null">@Shared["Cancel"]</button>
+			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveFilters"]</button>
 		</div>
 	</form>
 }
 
 <section class="card logs-card" aria-labelledby="logs-title">
 	<header class="card-head">
-		<h2 id="logs-title">Log files</h2>
-		<button class="icon-btn" title="Refresh list" @onclick="LoadLogsAsync"><Icon Name="refresh" Size="16" /></button>
+		<h2 id="logs-title">@L["LogFiles"]</h2>
+		<button class="icon-btn" title="@L["RefreshList"]" @onclick="LoadLogsAsync"><Icon Name="refresh" Size="16" /></button>
 	</header>
 	@if (_logs.Files.Count == 0)
 	{
-		<p class="muted small">No log files yet.</p>
+		<p class="muted small">@L["NoLogs"]</p>
 	}
 	else
 	{
@@ -113,7 +110,7 @@
 				<li @key="f.Name">
 					<span class="mono">@f.Name</span>
 					<span class="muted small">@Format.Bytes(f.SizeBytes) · @Format.Ago(f.ModifiedAt, Time.GetUtcNow())</span>
-					<a class="btn btn-sm btn-ghost" href="logs/@Uri.EscapeDataString(f.Name)" download="@f.Name"><Icon Name="down" Size="14" /> Download</a>
+					<a class="btn btn-sm btn-ghost" href="logs/@Uri.EscapeDataString(f.Name)" download="@f.Name"><Icon Name="down" Size="14" /> @Shared["Download"]</a>
 				</li>
 			}
 		</ul>
@@ -121,10 +118,10 @@
 </section>
 
 @code {
-	private static readonly (string, string)[] _quick =
+	private (string, string)[] Quick =>
 	[
-		("M114", "Report position"), ("M105", "Report temperatures"), ("M503", "Report settings"),
-		("M119", "Endstop states"), ("M115", "Firmware info"), ("G28", "Home all axes")
+		("M114", L["QuickPosition"]), ("M105", L["QuickTemperatures"]), ("M503", L["QuickSettings"]),
+		("M119", L["QuickEndstops"]), ("M115", L["QuickFirmware"]), ("G28", L["QuickHome"])
 	];
 
 	private IReadOnlyList<TerminalEntry> _entries = [];
@@ -173,7 +170,7 @@
 	private async Task SaveFiltersAsync()
 	{
 		if (_editor is null) return;
-		if (!await Run(new UpdateTerminalFiltersCommand(_editor.Select(r => r.ToFilter()).ToList()), "Filters saved")) return;
+		if (!await Run(new UpdateTerminalFiltersCommand(_editor.Select(r => r.ToFilter()).ToList()), L["FiltersSaved"])) return;
 		_editor = null;
 		await ReloadAsync();
 	}
@@ -187,7 +184,7 @@
 	private async Task SetSerialLogAsync(ChangeEventArgs e)
 	{
 		bool on = e.Value is true;
-		await Run(new SetSerialLogCommand(on), on ? "Serial log on: logs/serial.log" : "Serial log off");
+		await Run(new SetSerialLogCommand(on), on ? L["SerialLogOn"] : L["SerialLogOff"]);
 		await LoadLogsAsync();
 	}
 

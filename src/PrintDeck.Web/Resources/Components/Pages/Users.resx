@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Users</value>
+	</data>
+	<data name="Intro" xml:space="preserve">
+		<value>Admins run the printer and change settings. Viewers can watch the dashboard, camera, files and toolpaths.</value>
+	</data>
+	<data name="Accounts" xml:space="preserve">
+		<value>Accounts</value>
+	</data>
+	<data name="You" xml:space="preserve">
+		<value>You</value>
+	</data>
+	<data name="LockedOutTitle" xml:space="preserve">
+		<value>Too many wrong passwords; resetting the password unlocks it</value>
+	</data>
+	<data name="LockedOut" xml:space="preserve">
+		<value>Locked out</value>
+	</data>
+	<data name="RoleFor" xml:space="preserve">
+		<value>Role for {0}</value>
+	</data>
+	<data name="OwnRole" xml:space="preserve">
+		<value>You can't change your own role</value>
+	</data>
+	<data name="ResetPassword" xml:space="preserve">
+		<value>Reset password</value>
+	</data>
+	<data name="DeleteSelf" xml:space="preserve">
+		<value>You can't delete yourself</value>
+	</data>
+	<data name="NewPasswordFor" xml:space="preserve">
+		<value>New password for {0}</value>
+	</data>
+	<data name="SetPassword" xml:space="preserve">
+		<value>Set password</value>
+	</data>
+	<data name="AddSomeone" xml:space="preserve">
+		<value>Add someone</value>
+	</data>
+	<data name="Role" xml:space="preserve">
+		<value>Role</value>
+	</data>
+	<data name="AddUser" xml:space="preserve">
+		<value>Add user</value>
+	</data>
+	<data name="PasswordHint" xml:space="preserve">
+		<value>Passwords need at least 8 characters. Share it with them; they can change it under their name in the sidebar.</value>
+	</data>
+	<data name="NowAdmin" xml:space="preserve">
+		<value>{0} is now an admin</value>
+	</data>
+	<data name="NowViewer" xml:space="preserve">
+		<value>{0} is now a viewer</value>
+	</data>
+	<data name="PasswordSet" xml:space="preserve">
+		<value>New password set for {0}</value>
+	</data>
+	<data name="Deleted" xml:space="preserve">
+		<value>Deleted {0}</value>
+	</data>
+	<data name="Added" xml:space="preserve">
+		<value>Added {0}</value>
+	</data>
+</root>

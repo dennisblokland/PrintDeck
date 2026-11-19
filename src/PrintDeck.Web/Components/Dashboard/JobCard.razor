@@ -1,11 +1,12 @@
 @inherits PrinterComponent
+@inject IStringLocalizer<JobCard> L
 
 <section class="card job-card">
 	<header class="card-head">
-		<h2>@(_job?.Kind == JobKind.SdUpload ? "Copying to SD card" : "Current print")</h2>
+		<h2>@(_job?.Kind == JobKind.SdUpload ? L["CopyingToSd"] : L["CurrentPrint"])</h2>
 		@if (_job is { } j)
 		{
-			<span class="chip chip-@j.Status.ToString().ToLowerInvariant()">@j.Status</span>
+			<span class="chip chip-@j.Status.ToString().ToLowerInvariant()">@Shared.JobStatusName(j.Status)</span>
 		}
 	</header>
 
@@ -13,8 +14,8 @@
 	{
 		<div class="empty">
 			<Icon Name="file" Size="28" />
-			<p>No print yet</p>
-			<a class="btn btn-ghost" href="files"><Icon Name="folder" Size="16" /> Pick a file</a>
+			<p>@L["NoPrint"]</p>
+			<a class="btn btn-ghost" href="files"><Icon Name="folder" Size="16" /> @L["PickFile"]</a>
 		</div>
 	}
 	else
@@ -59,10 +60,10 @@
 		</div>
 
 		<dl class="stats">
-			<div><dt>Elapsed</dt><dd>@Format.Duration(job.Elapsed)</dd></div>
-			<div><dt>Remaining</dt><dd>@(job.Status is JobStatus.Printing or JobStatus.Paused ? Format.Duration(job.Remaining) : "—")</dd></div>
-			<div><dt>Finishes</dt><dd>@Eta(job)</dd></div>
-			<div><dt>Lines</dt><dd>@(job.Kind == JobKind.SdPrint ? "On SD" : job.LinesSent.ToString("N0"))</dd></div>
+			<div><dt>@L["Elapsed"]</dt><dd>@Format.Duration(job.Elapsed)</dd></div>
+			<div><dt>@L["Remaining"]</dt><dd>@(job.Status is JobStatus.Printing or JobStatus.Paused ? Format.Duration(job.Remaining) : "—")</dd></div>
+			<div><dt>@L["Finishes"]</dt><dd>@Eta(job)</dd></div>
+			<div><dt>@L["Lines"]</dt><dd>@(job.Kind == JobKind.SdPrint ? L["OnSd"] : job.LinesSent.ToString("N0"))</dd></div>
 		</dl>
 
 		@if (job.Kind != JobKind.SdUpload && job.Status is JobStatus.Printing or JobStatus.Paused)
@@ -76,14 +77,14 @@
 				@* An upload to the SD card can only be cancelled. *@
 				@if (job.Kind != JobKind.SdUpload && job.Status == JobStatus.Printing)
 				{
-					<button class="btn" @onclick="() => Run(new PauseJobCommand())"><Icon Name="pause" Size="16" /> Pause</button>
+					<button class="btn" @onclick="() => Run(new PauseJobCommand())"><Icon Name="pause" Size="16" /> @L["Pause"]</button>
 				}
 				else if (job.Kind != JobKind.SdUpload)
 				{
-					<button class="btn btn-primary" @onclick="() => Run(new ResumeJobCommand())"><Icon Name="play" Size="16" /> Resume</button>
+					<button class="btn btn-primary" @onclick="() => Run(new ResumeJobCommand())"><Icon Name="play" Size="16" /> @L["Resume"]</button>
 				}
 				<button class="btn btn-danger @(_confirmCancel ? "is-armed" : "")" @onclick="CancelAsync">
-					<Icon Name="stop" Size="16" /> @(_confirmCancel ? "Confirm cancel" : "Cancel")
+					<Icon Name="stop" Size="16" /> @(_confirmCancel ? L["ConfirmCancel"] : Shared["Cancel"])
 				</button>
 			</div>
 		}
@@ -125,13 +126,13 @@
 			return;
 		}
 		_confirmCancel = false;
-		await Run(new CancelJobCommand(), _job?.Kind == JobKind.SdUpload ? "SD card upload cancelled" : "Print cancelled");
+		await Run(new CancelJobCommand(), _job?.Kind == JobKind.SdUpload ? L["UploadCancelled"] : L["PrintCancelled"]);
 	}
 
 	private string Eta(JobDto j) => j.Status switch
 	{
 		JobStatus.Printing or JobStatus.Paused when j.Remaining is { } r => (Time.GetLocalNow() + r).ToString("HH:mm"),
-		JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed => "Done",
+		JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed => L["Done"],
 		_ => "—"
 	};
 

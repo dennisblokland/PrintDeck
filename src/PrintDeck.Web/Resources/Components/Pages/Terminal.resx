@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Terminal</value>
+	</data>
+	<data name="SerialLogTitle" xml:space="preserve">
+		<value>Write every line to and from the printer to logs/serial.log</value>
+	</data>
+	<data name="SerialLog" xml:space="preserve">
+		<value>Serial log to file</value>
+	</data>
+	<data name="Clear" xml:space="preserve">
+		<value>Clear</value>
+	</data>
+	<data name="HideLines" xml:space="preserve">
+		<value>Hide lines</value>
+	</data>
+	<data name="Hide" xml:space="preserve">
+		<value>Hide</value>
+	</data>
+	<data name="NoFiltersYet" xml:space="preserve">
+		<value>nothing: no filters yet.</value>
+	</data>
+	<data name="EditFilters" xml:space="preserve">
+		<value>Edit filters</value>
+	</data>
+	<data name="CommandPlaceholder" xml:space="preserve">
+		<value>G-code, e.g. M114 — ↑/↓ for history</value>
+	</data>
+	<data name="ConnectToSend" xml:space="preserve">
+		<value>Connect to send commands</value>
+	</data>
+	<data name="Send" xml:space="preserve">
+		<value>Send</value>
+	</data>
+	<data name="FiltersTitle" xml:space="preserve">
+		<value>Terminal filters</value>
+	</data>
+	<data name="AddFilter" xml:space="preserve">
+		<value>Add filter</value>
+	</data>
+	<data name="FiltersHintHtml" xml:space="preserve">
+		<value>Each filter hides the lines its pattern matches: a regular expression, not case-sensitive. Sent lines carry their line number and checksum, e.g. &lt;code&gt;N12 M105*39&lt;/code&gt;, so match a command with &lt;code&gt;^(N\d+\s+)?M105&lt;/code&gt;. Switch filters on and off above the terminal.</value>
+	</data>
+	<data name="NoFilters" xml:space="preserve">
+		<value>No filters: the terminal shows every line.</value>
+	</data>
+	<data name="On" xml:space="preserve">
+		<value>On</value>
+	</data>
+	<data name="FilterOn" xml:space="preserve">
+		<value>Filter on</value>
+	</data>
+	<data name="Name" xml:space="preserve">
+		<value>Name</value>
+	</data>
+	<data name="FilterName" xml:space="preserve">
+		<value>Filter name</value>
+	</data>
+	<data name="PatternPlaceholder" xml:space="preserve">
+		<value>Pattern, e.g. ^echo:</value>
+	</data>
+	<data name="FilterPattern" xml:space="preserve">
+		<value>Filter pattern</value>
+	</data>
+	<data name="RemoveFilter" xml:space="preserve">
+		<value>Remove filter</value>
+	</data>
+	<data name="RestoreDefaultsTitle" xml:space="preserve">
+		<value>Replace the list with PrintDeck's filters</value>
+	</data>
+	<data name="RestoreDefaults" xml:space="preserve">
+		<value>Restore defaults</value>
+	</data>
+	<data name="SaveFilters" xml:space="preserve">
+		<value>Save filters</value>
+	</data>
+	<data name="LogFiles" xml:space="preserve">
+		<value>Log files</value>
+	</data>
+	<data name="RefreshList" xml:space="preserve">
+		<value>Refresh list</value>
+	</data>
+	<data name="NoLogs" xml:space="preserve">
+		<value>No log files yet.</value>
+	</data>
+	<data name="QuickPosition" xml:space="preserve">
+		<value>Report position</value>
+	</data>
+	<data name="QuickTemperatures" xml:space="preserve">
+		<value>Report temperatures</value>
+	</data>
+	<data name="QuickSettings" xml:space="preserve">
+		<value>Report settings</value>
+	</data>
+	<data name="QuickEndstops" xml:space="preserve">
+		<value>Endstop states</value>
+	</data>
+	<data name="QuickFirmware" xml:space="preserve">
+		<value>Firmware info</value>
+	</data>
+	<data name="QuickHome" xml:space="preserve">
+		<value>Home all axes</value>
+	</data>
+	<data name="FiltersSaved" xml:space="preserve">
+		<value>Filters saved</value>
+	</data>
+	<data name="SerialLogOn" xml:space="preserve">
+		<value>Serial log on: logs/serial.log</value>
+	</data>
+	<data name="SerialLogOff" xml:space="preserve">
+		<value>Serial log off</value>
+	</data>
+</root>

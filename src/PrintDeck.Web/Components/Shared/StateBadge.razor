@@ -2,18 +2,20 @@
 	<span class="state-dot"></span>@Label
 </span>
 
+@inject IStringLocalizer<StateBadge> L
+
 @code {
 	[Parameter] public PrinterState State { get; set; }
 
 	private string Label => State switch
 	{
-		PrinterState.Offline => "Offline",
-		PrinterState.Connecting => "Connecting…",
-		PrinterState.Operational => "Ready",
-		PrinterState.Printing => "Printing",
-		PrinterState.Paused => "Paused",
-		PrinterState.Cancelling => "Cancelling",
-		PrinterState.Transferring => "Copying to SD",
-		_ => "Error"
+		PrinterState.Offline => L["Offline"],
+		PrinterState.Connecting => L["Connecting"],
+		PrinterState.Operational => L["Ready"],
+		PrinterState.Printing => L["Printing"],
+		PrinterState.Paused => L["Paused"],
+		PrinterState.Cancelling => L["Cancelling"],
+		PrinterState.Transferring => L["Transferring"],
+		_ => L["Error"]
 	};
 }

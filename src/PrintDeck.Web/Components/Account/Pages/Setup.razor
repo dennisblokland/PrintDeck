@@ -5,11 +5,13 @@
 @inject SignInManager<PrintDeckUser> SignInManager
 @inject IMediator Mediator
 @inject NavigationManager Nav
+@inject IStringLocalizer<Setup> L
+@inject IStringLocalizer<SharedText> Shared
 
-<PageTitle>Set up · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
-<h1 class="auth-title">Set up PrintDeck</h1>
-<p class="muted small">Create the admin account. Everyone on your network needs to sign in from now on; you can add more people under Users.</p>
+<h1 class="auth-title">@L["Heading"]</h1>
+<p class="muted small">@L["Intro"]</p>
 
 @if (_error is not null)
 {
@@ -19,21 +21,21 @@
 <EditForm Model="Input" method="post" OnValidSubmit="CreateAsync" FormName="setup" class="auth-form">
 	<DataAnnotationsValidator />
 	<label class="field">
-		<span>Username</span>
+		<span>@Shared["Username"]</span>
 		<InputText class="input" @bind-Value="Input!.UserName" autocomplete="username" autofocus />
 		<ValidationMessage For="() => Input!.UserName" />
 	</label>
 	<label class="field">
-		<span>Password</span>
+		<span>@Shared["Password"]</span>
 		<InputText class="input" type="password" @bind-Value="Input!.Password" autocomplete="new-password" />
 		<ValidationMessage For="() => Input!.Password" />
 	</label>
 	<label class="field">
-		<span>Repeat password</span>
+		<span>@L["RepeatPassword"]</span>
 		<InputText class="input" type="password" @bind-Value="Input!.ConfirmPassword" autocomplete="new-password" />
 		<ValidationMessage For="() => Input!.ConfirmPassword" />
 	</label>
-	<button class="btn btn-primary btn-block" type="submit">Create admin and sign in</button>
+	<button class="btn btn-primary btn-block" type="submit">@L["Create"]</button>
 </EditForm>
 
 @code {

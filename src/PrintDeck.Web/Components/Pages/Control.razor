@@ -2,26 +2,27 @@
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inherits PrinterComponent
 @inject IJSRuntime JS
+@inject IStringLocalizer<Control> L
 
-<PageTitle>Control · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head">
-	<h1>Control</h1>
+	<h1>@L["Title"]</h1>
 	@if (_state == PrinterState.Printing)
 	{
-		<p class="banner banner-warn">Motion is locked while printing. Pause the print to move the printer.</p>
+		<p class="banner banner-warn">@L["LockedWhilePrinting"]</p>
 	}
 	else if (!_state.IsConnected())
 	{
-		<p class="banner">Connect the printer to use these controls.</p>
+		<p class="banner">@L["ConnectFirst"]</p>
 	}
 </header>
 
 <fieldset class="control-grid" disabled="@(!_canMove)">
 	<section class="card">
 		<header class="card-head">
-			<h2>Move</h2>
-			<div class="seg" role="group" aria-label="Step size">
+			<h2>@L["Move"]</h2>
+			<div class="seg" role="group" aria-label="@L["StepSize"]">
 				@foreach (double s in _steps)
 				{
 					<button type="button" class="seg-btn @(_step == s ? "is-active" : "")" @onclick="() => _step = s">@s mm</button>
@@ -35,7 +36,7 @@
 				<button class="jog-btn" title="Y+" @onclick="() => Jog(Axis.Y, 1)"><Icon Name="up" /><small>Y</small></button>
 				<span></span>
 				<button class="jog-btn" title="X−" @onclick="() => Jog(Axis.X, -1)"><Icon Name="left" /><small>X</small></button>
-				<button class="jog-btn jog-home" title="Home X and Y" @onclick="() => Run(new HomeCommand(Axis.X | Axis.Y))"><Icon Name="home" /></button>
+				<button class="jog-btn jog-home" title="@L["HomeXY"]" @onclick="() => Run(new HomeCommand(Axis.X | Axis.Y))"><Icon Name="home" /></button>
 				<button class="jog-btn" title="X+" @onclick="() => Jog(Axis.X, 1)"><Icon Name="right" /><small>X</small></button>
 				<span></span>
 				<button class="jog-btn" title="Y−" @onclick="() => Jog(Axis.Y, -1)"><Icon Name="down" /><small>Y</small></button>
@@ -43,42 +44,39 @@
 			</div>
 			<div class="jog-z">
 				<button class="jog-btn" title="Z+" @onclick="() => Jog(Axis.Z, 1)"><Icon Name="up" /><small>Z</small></button>
-				<button class="jog-btn jog-home" title="Home Z" @onclick="() => Run(new HomeCommand(Axis.Z))"><Icon Name="home" /></button>
+				<button class="jog-btn jog-home" title="@L["HomeZ"]" @onclick="() => Run(new HomeCommand(Axis.Z))"><Icon Name="home" /></button>
 				<button class="jog-btn" title="Z−" @onclick="() => Jog(Axis.Z, -1)"><Icon Name="down" /><small>Z</small></button>
 			</div>
 		</div>
 
 		<div class="actions">
-			<button class="btn" @onclick="() => Run(new HomeCommand(Axis.All))"><Icon Name="home" Size="16" /> Home all</button>
-			<button class="btn btn-ghost" @onclick='() => Run(new MotorsOffCommand(), "Motors off")'><Icon Name="power" Size="16" /> Motors off</button>
+			<button class="btn" @onclick="() => Run(new HomeCommand(Axis.All))"><Icon Name="home" Size="16" /> @L["HomeAll"]</button>
+			<button class="btn btn-ghost" @onclick='() => Run(new MotorsOffCommand(), L["MotorsOff"])'><Icon Name="power" Size="16" /> @L["MotorsOff"]</button>
 		</div>
-		<p class="muted small key-hint">
-			Keyboard: <kbd>←</kbd><kbd>→</kbd> X, <kbd>↑</kbd><kbd>↓</kbd> Y, <kbd>PgUp</kbd><kbd>PgDn</kbd> Z,
-			<kbd>Home</kbd> homes X and Y, <kbd>End</kbd> homes Z, <kbd>1</kbd>–<kbd>4</kbd> step size.
-		</p>
+		<p class="muted small key-hint">@L.Html("KeyboardHtml")</p>
 	</section>
 
 	<section class="card">
-		<header class="card-head"><h2>Extruder</h2></header>
+		<header class="card-head"><h2>@L["Extruder"]</h2></header>
 		<label class="field">
-			<span>Length (mm)</span>
+			<span>@L["Length"]</span>
 			<input class="input input-num" type="number" min="1" max="200" step="1" @bind="_extrude" />
 		</label>
 		<div class="actions">
-			<button class="btn" @onclick="() => Run(new ExtrudeCommand(_extrude))"><Icon Name="down" Size="16" /> Extrude</button>
-			<button class="btn btn-ghost" @onclick="() => Run(new ExtrudeCommand(-_extrude))"><Icon Name="up" Size="16" /> Retract</button>
+			<button class="btn" @onclick="() => Run(new ExtrudeCommand(_extrude))"><Icon Name="down" Size="16" /> @L["Extrude"]</button>
+			<button class="btn btn-ghost" @onclick="() => Run(new ExtrudeCommand(-_extrude))"><Icon Name="up" Size="16" /> @L["Retract"]</button>
 		</div>
-		<p class="muted small">Needs the hotend at 170 °C or more</p>
+		<p class="muted small">@L["NeedsHeat"]</p>
 	</section>
 
 	<section class="card">
 		<header class="card-head">
-			<h2>Part fan</h2>
+			<h2>@L["PartFan"]</h2>
 			<span class="value">@_fan%</span>
 		</header>
-		<input class="range" type="range" min="0" max="100" step="5" @bind="_fan" @bind:event="oninput" @onchange="FanChanged" aria-label="Fan speed" />
+		<input class="range" type="range" min="0" max="100" step="5" @bind="_fan" @bind:event="oninput" @onchange="FanChanged" aria-label="@L["FanSpeed"]" />
 		<div class="actions">
-			<button class="btn btn-sm btn-ghost" @onclick="() => SetFan(0)">Off</button>
+			<button class="btn btn-sm btn-ghost" @onclick="() => SetFan(0)">@L["FanOff"]</button>
 			<button class="btn btn-sm btn-ghost" @onclick="() => SetFan(50)">50%</button>
 			<button class="btn btn-sm btn-ghost" @onclick="() => SetFan(100)">100%</button>
 		</div>
@@ -91,7 +89,7 @@
 	@if (_buttons.Count > 0)
 	{
 		<section class="card" aria-labelledby="custom-title">
-			<header class="card-head"><h2 id="custom-title">Custom</h2></header>
+			<header class="card-head"><h2 id="custom-title">@L["Custom"]</h2></header>
 			<div class="custom-buttons">
 				@for (int i = 0; i < _buttons.Count; i++)
 				{
@@ -100,17 +98,17 @@
 					bool allowed = b.IdleOnly ? _canMove : _state.IsConnected();
 					bool armed = _armed == index;
 					<button type="button" class="btn @(armed ? "btn-primary" : "")" disabled="@(!allowed)" @key="(index, b.Label)"
-							title="@(allowed ? b.Gcode : b.IdleOnly && _state.IsBusy() ? "Not while printing" : "Connect the printer first")"
+							title="@(allowed ? b.Gcode : b.IdleOnly && _state.IsBusy() ? L["NotWhilePrinting"] : L["ConnectPrinterFirst"])"
 							@onclick="() => PressAsync(index, b)">
 						@if (b.Icon is { } icon)
 						{
 							<Icon Name="@icon" Size="16" />
 						}
-						@(armed ? $"Send {b.Label}?" : b.Label)
+						@(armed ? L["SendButton", b.Label] : b.Label)
 					</button>
 				}
 			</div>
-			<p class="muted small">Change them under <a href="settings">Settings → Custom buttons</a>.</p>
+			<p class="muted small">@L.Html("ChangeButtonsHtml")</p>
 		</section>
 	}
 </div>
@@ -149,7 +147,7 @@
 			return;
 		}
 		_armed = null;
-		await Run(new RunCustomButtonCommand(index, b.Label), $"Sent {b.Label}");
+		await Run(new RunCustomButtonCommand(index, b.Label), L["SentButton", b.Label]);
 	}
 
 	private Task Jog(Axis axis, int direction) => Run(new JogCommand(axis, direction * _step));

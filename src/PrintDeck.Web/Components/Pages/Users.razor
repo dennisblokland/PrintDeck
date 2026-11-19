@@ -2,17 +2,19 @@
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inject IMediator Mediator
 @inject ToastService Toasts
+@inject IStringLocalizer<Users> L
+@inject IStringLocalizer<SharedText> Shared
 
-<PageTitle>Users · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head">
-	<h1>Users</h1>
-	<p class="muted">Admins run the printer and change settings. Viewers can watch the dashboard, camera, files and toolpaths.</p>
+	<h1>@L["Title"]</h1>
+	<p class="muted">@L["Intro"]</p>
 </header>
 
 <div class="users">
 	<section class="card">
-		<header class="card-head"><h2>Accounts</h2><span class="value">@_users.Count</span></header>
+		<header class="card-head"><h2>@L["Accounts"]</h2><span class="value">@_users.Count</span></header>
 		<ul class="user-list">
 			@foreach (UserAccount u in _users)
 			{
@@ -23,21 +25,21 @@
 						<strong>@u.UserName</strong>
 						@if (me)
 						{
-							<span class="chip">You</span>
+							<span class="chip">@L["You"]</span>
 						}
 						@if (u.IsLockedOut)
 						{
-							<span class="chip chip-failed" title="Too many wrong passwords; resetting the password unlocks it">Locked out</span>
+							<span class="chip chip-failed" title="@L["LockedOutTitle"]">@L["LockedOut"]</span>
 						}
 					</div>
-					<select class="input input-role" aria-label="@($"Role for {u.UserName}")" disabled="@me"
-							title="@(me ? "You can't change your own role" : null)" value="@u.Role" @onchange="e => SetRoleAsync(u, e)">
-						<option value="@UserRole.Admin">Admin</option>
-						<option value="@UserRole.Viewer">Viewer</option>
+					<select class="input input-role" aria-label="@L["RoleFor", u.UserName]" disabled="@me"
+							title="@(me ? L["OwnRole"].Value : null)" value="@u.Role" @onchange="e => SetRoleAsync(u, e)">
+						<option value="@UserRole.Admin">@Shared["RoleAdmin"]</option>
+						<option value="@UserRole.Viewer">@Shared["RoleViewer"]</option>
 					</select>
-					<button class="btn btn-sm btn-ghost" @onclick="() => StartReset(u)"><Icon Name="key" Size="14" /> Reset password</button>
+					<button class="btn btn-sm btn-ghost" @onclick="() => StartReset(u)"><Icon Name="key" Size="14" /> @L["ResetPassword"]</button>
 					<button class="icon-btn icon-btn-danger @(_confirmDelete == u.UserName ? "is-armed" : "")" disabled="@me"
-							title="@(me ? "You can't delete yourself" : _confirmDelete == u.UserName ? "Click again to delete" : "Delete")"
+							title="@(me ? L["DeleteSelf"] : _confirmDelete == u.UserName ? Shared["ClickAgainToDelete"] : Shared["Delete"])"
 							@onclick="() => DeleteAsync(u)">
 						<Icon Name="@(_confirmDelete == u.UserName ? "check" : "trash")" Size="16" />
 					</button>
@@ -46,10 +48,10 @@
 				{
 					<li>
 						<form class="user-reset" @onsubmit="ResetAsync" @onsubmit:preventDefault>
-							<input class="input" type="password" autocomplete="new-password" placeholder="New password for @u.UserName"
-								   aria-label="@($"New password for {u.UserName}")" @bind="_resetPassword" />
-							<button class="btn btn-sm btn-primary" type="submit">Set password</button>
-							<button class="btn btn-sm btn-ghost" type="button" @onclick="() => _resetFor = null">Cancel</button>
+							<input class="input" type="password" autocomplete="new-password" placeholder="@L["NewPasswordFor", u.UserName]"
+								   aria-label="@L["NewPasswordFor", u.UserName]" @bind="_resetPassword" />
+							<button class="btn btn-sm btn-primary" type="submit">@L["SetPassword"]</button>
+							<button class="btn btn-sm btn-ghost" type="button" @onclick="() => _resetFor = null">@Shared["Cancel"]</button>
 						</form>
 					</li>
 				}
@@ -58,20 +60,20 @@
 	</section>
 
 	<section class="card">
-		<header class="card-head"><h2>Add someone</h2></header>
+		<header class="card-head"><h2>@L["AddSomeone"]</h2></header>
 		<form class="user-add" @onsubmit="AddAsync" @onsubmit:preventDefault>
-			<label class="field"><span>Username</span><input class="input" autocomplete="off" @bind="_newName" /></label>
-			<label class="field"><span>Password</span><input class="input" type="password" autocomplete="new-password" @bind="_newPassword" /></label>
+			<label class="field"><span>@Shared["Username"]</span><input class="input" autocomplete="off" @bind="_newName" /></label>
+			<label class="field"><span>@Shared["Password"]</span><input class="input" type="password" autocomplete="new-password" @bind="_newPassword" /></label>
 			<label class="field">
-				<span>Role</span>
+				<span>@L["Role"]</span>
 				<select class="input" @bind="_newRole">
-					<option value="@UserRole.Viewer">Viewer</option>
-					<option value="@UserRole.Admin">Admin</option>
+					<option value="@UserRole.Viewer">@Shared["RoleViewer"]</option>
+					<option value="@UserRole.Admin">@Shared["RoleAdmin"]</option>
 				</select>
 			</label>
-			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Add user</button>
+			<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["AddUser"]</button>
 		</form>
-		<p class="muted small">Passwords need at least 8 characters. Share it with them; they can change it under their name in the sidebar.</p>
+		<p class="muted small">@L["PasswordHint"]</p>
 	</section>
 </div>
 
@@ -101,7 +103,7 @@
 	{
 		Result result = await Mediator.Send(command);
 		if (result.IsSuccess) Toasts.Success(success);
-		else Toasts.Error(result.Error ?? "Something went wrong.");
+		else Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 		await LoadAsync();
 		return result.IsSuccess;
 	}
@@ -109,7 +111,7 @@
 	private async Task SetRoleAsync(UserAccount u, ChangeEventArgs e)
 	{
 		if (!Enum.TryParse(e.Value?.ToString(), out UserRole role)) return;
-		await Send(new SetUserRoleCommand(u.UserName, role), $"{u.UserName} is now {(role == UserRole.Admin ? "an admin" : "a viewer")}");
+		await Send(new SetUserRoleCommand(u.UserName, role), (role == UserRole.Admin ? L["NowAdmin", u.UserName] : L["NowViewer", u.UserName]));
 	}
 
 	private void StartReset(UserAccount u)
@@ -121,7 +123,7 @@
 	private async Task ResetAsync()
 	{
 		if (_resetFor is not { } name) return;
-		if (await Send(new ResetUserPasswordCommand(name, _resetPassword), $"New password set for {name}"))
+		if (await Send(new ResetUserPasswordCommand(name, _resetPassword), L["PasswordSet", name]))
 			_resetFor = null;
 		_resetPassword = "";
 	}
@@ -134,12 +136,12 @@
 			return;
 		}
 		_confirmDelete = null;
-		await Send(new DeleteUserCommand(u.UserName), $"Deleted {u.UserName}");
+		await Send(new DeleteUserCommand(u.UserName), L["Deleted", u.UserName]);
 	}
 
 	private async Task AddAsync()
 	{
-		if (await Send(new CreateUserCommand(_newName, _newPassword, _newRole), $"Added {_newName.Trim()}"))
+		if (await Send(new CreateUserCommand(_newName, _newPassword, _newRole), L["Added", _newName.Trim()]))
 		{
 			_newName = "";
 			_newRole = UserRole.Viewer;

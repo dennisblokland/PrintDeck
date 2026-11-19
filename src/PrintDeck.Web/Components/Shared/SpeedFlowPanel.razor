@@ -1,4 +1,5 @@
 @inherits PrinterComponent
+@inject IStringLocalizer<SpeedFlowPanel> L
 
 @if (Embedded)
 {
@@ -7,12 +8,9 @@
 else
 {
 	<section class="card">
-		<header class="card-head"><h2>Speed and flow</h2></header>
+		<header class="card-head"><h2>@L["Title"]</h2></header>
 		<div class="rates">@Sliders</div>
-		<p class="muted small">
-			<code>M220</code> and <code>M221</code>, also while printing. They apply to moves the printer has not planned yet,
-			and stay until changed again or the printer restarts.
-		</p>
+		<p class="muted small">@L.Html("HintHtml")</p>
 	</section>
 }
 
@@ -38,19 +36,19 @@ else
 	private RenderFragment Sliders => __builder =>
 	{
 		<label class="rate">
-			<span class="rate-head"><span>Feed rate</span><span class="value">@_feed%</span></span>
+			<span class="rate-head"><span>@L["FeedRate"]</span><span class="value">@_feed%</span></span>
 			<input class="range" type="range" min="@SetFeedRateHandler.Min" max="@SetFeedRateHandler.Max" step="5"
-				   disabled="@(!Enabled)" @bind="_feed" @bind:event="oninput" @onchange="FeedChanged" aria-label="Feed rate" />
+				   disabled="@(!Enabled)" @bind="_feed" @bind:event="oninput" @onchange="FeedChanged" aria-label="@L["FeedRate"]" />
 		</label>
 		<label class="rate">
-			<span class="rate-head"><span>Flow</span><span class="value">@_flow%</span></span>
+			<span class="rate-head"><span>@L["Flow"]</span><span class="value">@_flow%</span></span>
 			<input class="range" type="range" min="@SetFlowRateHandler.Min" max="@SetFlowRateHandler.Max" step="1"
-				   disabled="@(!Enabled)" @bind="_flow" @bind:event="oninput" @onchange="FlowChanged" aria-label="Flow" />
+				   disabled="@(!Enabled)" @bind="_flow" @bind:event="oninput" @onchange="FlowChanged" aria-label="@L["Flow"]" />
 		</label>
 		@if (CanControl)
 		{
 			<div class="rate-actions">
-				<button type="button" class="btn btn-sm btn-ghost" disabled="@(!Enabled || (_feed == 100 && _flow == 100))" @onclick="ResetAsync">Reset to 100%</button>
+				<button type="button" class="btn btn-sm btn-ghost" disabled="@(!Enabled || (_feed == 100 && _flow == 100))" @onclick="ResetAsync">@L["Reset"]</button>
 			</div>
 		}
 	};

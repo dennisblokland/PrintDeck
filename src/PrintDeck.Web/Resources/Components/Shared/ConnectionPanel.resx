@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="AdminCanConnect" xml:space="preserve">
+		<value>Not connected. An admin can connect the printer.</value>
+	</data>
+	<data name="AutoConnects" xml:space="preserve">
+		<value>Auto-connects to {0} when it next appears.</value>
+	</data>
+	<data name="SerialPort" xml:space="preserve">
+		<value>Serial port</value>
+	</data>
+	<data name="Rescan" xml:space="preserve">
+		<value>Rescan ports</value>
+	</data>
+	<data name="PrinterProfile" xml:space="preserve">
+		<value>Printer profile</value>
+	</data>
+	<data name="BaudRate" xml:space="preserve">
+		<value>Baud rate</value>
+	</data>
+	<data name="Baud" xml:space="preserve">
+		<value>{0} baud</value>
+	</data>
+	<data name="Connect" xml:space="preserve">
+		<value>Connect</value>
+	</data>
+	<data name="Waiting" xml:space="preserve">
+		<value>Waiting for the printer to answer…</value>
+	</data>
+	<data name="Profile" xml:space="preserve">
+		<value>Profile</value>
+	</data>
+	<data name="Firmware" xml:space="preserve">
+		<value>Firmware</value>
+	</data>
+	<data name="Unknown" xml:space="preserve">
+		<value>Unknown</value>
+	</data>
+	<data name="BaudHeading" xml:space="preserve">
+		<value>Baud</value>
+	</data>
+	<data name="StopPrintFirst" xml:space="preserve">
+		<value>Stop the print first</value>
+	</data>
+	<data name="Disconnect" xml:space="preserve">
+		<value>Disconnect</value>
+	</data>
+</root>

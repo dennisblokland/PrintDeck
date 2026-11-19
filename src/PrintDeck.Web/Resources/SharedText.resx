@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="PageTitle" xml:space="preserve">
+		<value>{0} · PrintDeck</value>
+	</data>
+	<data name="Dismiss" xml:space="preserve">
+		<value>Dismiss</value>
+	</data>
+	<data name="SomethingWentWrong" xml:space="preserve">
+		<value>Something went wrong.</value>
+	</data>
+	<data name="Username" xml:space="preserve">
+		<value>Username</value>
+	</data>
+	<data name="Password" xml:space="preserve">
+		<value>Password</value>
+	</data>
+	<data name="RoleAdmin" xml:space="preserve">
+		<value>Admin</value>
+	</data>
+	<data name="RoleViewer" xml:space="preserve">
+		<value>Viewer</value>
+	</data>
+	<data name="JobStatusPrinting" xml:space="preserve">
+		<value>Printing</value>
+	</data>
+	<data name="JobStatusPaused" xml:space="preserve">
+		<value>Paused</value>
+	</data>
+	<data name="JobStatusCancelled" xml:space="preserve">
+		<value>Cancelled</value>
+	</data>
+	<data name="JobStatusCompleted" xml:space="preserve">
+		<value>Completed</value>
+	</data>
+	<data name="JobStatusFailed" xml:space="preserve">
+		<value>Failed</value>
+	</data>
+	<data name="Cancel" xml:space="preserve">
+		<value>Cancel</value>
+	</data>
+	<data name="Download" xml:space="preserve">
+		<value>Download</value>
+	</data>
+	<data name="ClickAgainToDelete" xml:space="preserve">
+		<value>Click again to delete</value>
+	</data>
+	<data name="Delete" xml:space="preserve">
+		<value>Delete</value>
+	</data>
+</root>

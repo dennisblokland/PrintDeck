@@ -29,6 +29,9 @@ builder.Services.AddMediator(options =>
 builder.Services.AddPrintDeckReverseProxy();
 builder.Services.AddPrintDeckAuthentication();
 builder.Services.AddScoped<ToastService>();
+// UI text lives in Resources/*.resx (see SharedText). There is one language for now, so no request localization yet:
+// dates and numbers keep the host's culture.
+builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
 builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = MaxUploadBytes);
 builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = MaxUploadBytes);
 

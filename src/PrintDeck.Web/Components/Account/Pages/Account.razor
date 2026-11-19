@@ -6,11 +6,13 @@
 @inject SignInManager<PrintDeckUser> SignInManager
 @inject UserManager<PrintDeckUser> UserManager
 @inject IMediator Mediator
+@inject IStringLocalizer<Account> L
+@inject IStringLocalizer<SharedText> Shared
 
-<PageTitle>Account · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
-<h1 class="auth-title">Your account</h1>
-<p class="muted small">Signed in as <strong>@HttpContext.User.Identity?.Name</strong> · @(HttpContext.User.IsInRole(nameof(UserRole.Admin)) ? "Admin" : "Viewer")</p>
+<h1 class="auth-title">@L["Heading"]</h1>
+<p class="muted small">@L.Html("SignedInAsHtml", HttpContext.User.Identity?.Name) · @(HttpContext.User.IsInRole(nameof(UserRole.Admin)) ? Shared["RoleAdmin"] : Shared["RoleViewer"])</p>
 
 @if (_error is not null)
 {
@@ -18,35 +20,35 @@
 }
 @if (_done)
 {
-	<p class="auth-ok" role="status">Password changed. Your other devices are signed out.</p>
+	<p class="auth-ok" role="status">@L["Changed"]</p>
 }
 
 <EditForm Model="Input" method="post" OnValidSubmit="ChangeAsync" FormName="change-password" class="auth-form">
 	<DataAnnotationsValidator />
 	<label class="field">
-		<span>Current password</span>
+		<span>@L["CurrentPassword"]</span>
 		<InputText class="input" type="password" @bind-Value="Input!.CurrentPassword" autocomplete="current-password" />
 		<ValidationMessage For="() => Input!.CurrentPassword" />
 	</label>
 	<label class="field">
-		<span>New password</span>
+		<span>@L["NewPassword"]</span>
 		<InputText class="input" type="password" @bind-Value="Input!.NewPassword" autocomplete="new-password" />
 		<ValidationMessage For="() => Input!.NewPassword" />
 	</label>
 	<label class="field">
-		<span>Repeat new password</span>
+		<span>@L["RepeatNewPassword"]</span>
 		<InputText class="input" type="password" @bind-Value="Input!.ConfirmPassword" autocomplete="new-password" />
 		<ValidationMessage For="() => Input!.ConfirmPassword" />
 	</label>
-	<button class="btn btn-primary btn-block" type="submit">Change password</button>
+	<button class="btn btn-primary btn-block" type="submit">@L["ChangePassword"]</button>
 </EditForm>
 
 <form class="auth-signout" method="post" action="account/logout">
 	<AntiforgeryToken />
-	<button class="btn btn-ghost btn-block" type="submit"><Icon Name="logout" Size="16" /> Sign out</button>
+	<button class="btn btn-ghost btn-block" type="submit"><Icon Name="logout" Size="16" /> @L["SignOut"]</button>
 </form>
 
-<a class="auth-back" href="">← Back to PrintDeck</a>
+<a class="auth-back" href="">@L["Back"]</a>
 
 @code {
 	[CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
@@ -72,12 +74,12 @@
 
 	private sealed class ChangePasswordInput
 	{
-		[Required(ErrorMessage = "Enter your current password.")] public string CurrentPassword { get; set; } = "";
+		[Required(ErrorMessageResourceType = typeof(AccountText), ErrorMessageResourceName = nameof(AccountText.EnterCurrentPassword))] public string CurrentPassword { get; set; } = "";
 
-		[Required(ErrorMessage = "Choose a new password.")]
-		[StringLength(128, MinimumLength = 8, ErrorMessage = "Use at least 8 characters.")]
+		[Required(ErrorMessageResourceType = typeof(AccountText), ErrorMessageResourceName = nameof(AccountText.ChooseNewPassword))]
+		[StringLength(128, MinimumLength = 8, ErrorMessageResourceType = typeof(AccountText), ErrorMessageResourceName = nameof(AccountText.PasswordTooShort))]
 		public string NewPassword { get; set; } = "";
 
-		[Compare(nameof(NewPassword), ErrorMessage = "The passwords don't match.")] public string ConfirmPassword { get; set; } = "";
+		[Compare(nameof(NewPassword), ErrorMessageResourceType = typeof(AccountText), ErrorMessageResourceName = nameof(AccountText.PasswordsDiffer))] public string ConfirmPassword { get; set; } = "";
 	}
 }

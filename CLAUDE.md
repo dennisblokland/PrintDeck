@@ -50,6 +50,12 @@ Clean Architecture with CQRS through source-generated Mediator (`martinothamar/M
 - One type per file. Enums go in an `Enums/` folder next to the code that uses them.
 - Tabs, file-scoped namespaces, explicit types rather than `var` (see `.editorconfig`). Use primary constructors where they fit.
 - Line endings: `*.cs` and `*.razor` are CRLF, everything else LF (`.editorconfig`). There is no `.gitattributes`, so scripted edits must keep the existing endings: in Python, read and write with `newline=''`, and give new C#/Razor files CRLF.
+- UI text goes in resource files, never in markup:
+  - A component injects `IStringLocalizer<ItsType> L` and uses `@L["Key"]`. Its text lives in `Resources/<same path as the component>.resx`.
+  - Words many pages share (Save, Cancel, Delete, Download…) go in `Resources/SharedText.resx`, used as `Shared["Key"]` (`PrinterComponent` injects it).
+  - Placeholders use `{0}`: `L["Deleted", name]`. Plurals get two keys.
+  - Text with markup goes in a key ending in `Html` and is rendered with `L.Html("KeyHtml", args)`, which HTML-encodes the args.
+  - `ResourceKeyTests` fails on missing or unused keys and on misplaced markup.
 - Results, not exceptions, for expected failures: `Result.Failure("Printer is not connected.")`, `Result<T>`. Error messages are short user-facing sentences; tests assert on them.
 - `PrinterSession` changes:
   - Take `_gate` for job and state changes.

@@ -1,5 +1,6 @@
 @implements IDisposable
 @inject ToastService Service
+@inject IStringLocalizer<SharedText> Shared
 
 <div class="toasts" role="status" aria-live="polite">
 	@foreach (Toast t in Service.Items)
@@ -7,7 +8,7 @@
 		<div class="toast toast-@t.Kind.ToString().ToLowerInvariant()" @key="t.Id">
 			<Icon Name="@(t.Kind switch { ToastKind.Error => "x", ToastKind.Success => "check", _ => "send" })" Size="16" />
 			<span>@t.Message</span>
-			<button class="icon-btn" title="Dismiss" @onclick="() => Service.Dismiss(t.Id)"><Icon Name="x" Size="14" /></button>
+			<button class="icon-btn" title="@Shared["Dismiss"]" @onclick="() => Service.Dismiss(t.Id)"><Icon Name="x" Size="14" /></button>
 		</div>
 	}
 </div>

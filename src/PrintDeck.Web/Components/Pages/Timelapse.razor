@@ -1,11 +1,12 @@
 @page "/timelapse"
 @inherits PrinterComponent
+@inject IStringLocalizer<Timelapse> L
 
-<PageTitle>Timelapse · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head">
-	<h1>Timelapse</h1>
-	<p class="muted">Videos of your prints, from the camera's snapshot URL. Rendered with ffmpeg when a print ends.</p>
+	<h1>@L["Title"]</h1>
+	<p class="muted">@L["Intro"]</p>
 </header>
 
 @if (_data is { } d)
@@ -15,14 +16,14 @@
 	{
 		<div class="banner timelapse-status" role="status">
 			<span class="rec-dot" aria-hidden="true"></span>
-			<span>Recording <strong>@recording</strong>: @Frames(s.Frames)</span>
+			<span>@L.Html("RecordingHtml", recording, Frames(s.Frames))</span>
 		</div>
 	}
 	@if (s.Rendering is { } rendering)
 	{
 		<div class="banner timelapse-status" role="status">
 			<span class="spinner" aria-hidden="true"></span>
-			<span>Rendering the timelapse of <strong>@rendering</strong> (@Frames(s.Frames))</span>
+			<span>@L.Html("RenderingHtml", rendering, Frames(s.Frames))</span>
 		</div>
 	}
 	@if (s.LastError is { } error)
@@ -32,17 +33,17 @@
 	@if (_mode == TimelapseMode.Off && s.Recording is null)
 	{
 		<p class="muted small timelapse-hint">
-			Timelapses are off.
+			@L["Off"]
 			@if (CanControl)
 			{
-				<text>Switch them on under <a href="settings">Settings → Camera</a>.</text>
+				@L.Html("SwitchOnHtml")
 			}
 		</p>
 	}
 
 	@if (d.Videos.Count == 0)
 	{
-		<div class="card empty"><Icon Name="camera" Size="28" /><p>No timelapses yet</p></div>
+		<div class="card empty"><Icon Name="camera" Size="28" /><p>@L["Empty"]</p></div>
 	}
 	else
 	{
@@ -60,11 +61,11 @@
 						</div>
 					</div>
 					<div class="timelapse-actions">
-						<a class="btn btn-sm btn-ghost" href="@($"{url}?download=true")" download title="Save the video"><Icon Name="down" Size="14" /> Download</a>
+						<a class="btn btn-sm btn-ghost" href="@($"{url}?download=true")" download title="@L["SaveVideo"]"><Icon Name="down" Size="14" /> @Shared["Download"]</a>
 						@if (CanControl)
 						{
 							<button class="icon-btn icon-btn-danger @(_confirmDelete == v.Name ? "is-armed" : "")"
-									title="@(_confirmDelete == v.Name ? "Click again to delete" : "Delete")" @onclick="() => DeleteAsync(v.Name)">
+									title="@(_confirmDelete == v.Name ? Shared["ClickAgainToDelete"] : Shared["Delete"])" @onclick="() => DeleteAsync(v.Name)">
 								<Icon Name="@(_confirmDelete == v.Name ? "check" : "trash")" Size="16" />
 							</button>
 						}
@@ -89,7 +90,7 @@
 		_mode = (await Mediator.Send(new GetSettingsQuery())).Timelapse.Mode;
 	}
 
-	private static string Frames(int n) => n == 1 ? "1 frame" : $"{n} frames";
+	private string Frames(int n) => n == 1 ? L["OneFrame"] : L["Frames", n];
 
 	private async Task DeleteAsync(string name)
 	{
@@ -99,6 +100,6 @@
 			return;
 		}
 		_confirmDelete = null;
-		if (await Run(new DeleteTimelapseCommand(name), "Timelapse deleted")) await RefreshAsync();
+		if (await Run(new DeleteTimelapseCommand(name), L["Deleted"])) await RefreshAsync();
 	}
 }

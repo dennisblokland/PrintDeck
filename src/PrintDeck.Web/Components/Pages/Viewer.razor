@@ -3,18 +3,19 @@
 @inherits PrinterComponent
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IStringLocalizer<Viewer> L
 
-<PageTitle>Viewer · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head page-head-row">
-    <h1>Viewer</h1>
+    <h1>@L["Title"]</h1>
     @if (_files.Count > 0)
     {
-        <select class="input viewer-file" value="@_selected" @onchange="e => Select(e.Value as string)" aria-label="File">
-            @if (_selected is null) { <option value="">Pick a file…</option> }
+        <select class="input viewer-file" value="@_selected" @onchange="e => Select(e.Value as string)" aria-label="@L["File"]">
+            @if (_selected is null) { <option value="">@L["PickFile"]</option> }
             @foreach (GcodeFile f in _files)
             {
-                <option value="@f.Name">@f.Name@(f.Name == _jobFile ? " — printing" : "")</option>
+                <option value="@f.Name">@(f.Name == _jobFile ? L["FilePrinting", f.Name] : f.Name)</option>
             }
         </select>
     }
@@ -24,8 +25,8 @@
 {
     <div class="card empty">
         <Icon Name="cube" Size="28" />
-        <p>Upload a file to see its toolpath</p>
-        <a class="btn btn-ghost" href="files"><Icon Name="folder" Size="16" /> Files</a>
+        <p>@L["Empty"]</p>
+        <a class="btn btn-ghost" href="files"><Icon Name="folder" Size="16" /> @L["Files"]</a>
     </div>
 }
 else
@@ -33,12 +34,12 @@ else
     <div class="viewer">
         <section class="card viewer-stage">
             <div class="viewer-canvas-wrap">
-                <canvas class="viewer-canvas" @ref="_canvas" hidden="@(_mode == "3d")" aria-label="Toolpath of the selected layer"></canvas>
-                <canvas class="viewer-canvas" @ref="_canvas3d" hidden="@(_mode != "3d")" aria-label="3D toolpath up to the selected layer"></canvas>
+                <canvas class="viewer-canvas" @ref="_canvas" hidden="@(_mode == "3d")" aria-label="@L["Canvas2d"]"></canvas>
+                <canvas class="viewer-canvas" @ref="_canvas3d" hidden="@(_mode != "3d")" aria-label="@L["Canvas3d"]"></canvas>
 
                 @if (_loading)
                 {
-                    <div class="viewer-overlay"><span class="spinner"></span> Reading toolpath…</div>
+                    <div class="viewer-overlay"><span class="spinner"></span> @L["Reading"]</div>
                 }
                 else if (_error is not null)
                 {
@@ -46,22 +47,22 @@ else
                 }
                 else if (_info is { Layers: 0 })
                 {
-                    <div class="viewer-overlay">No extrusion moves in this file</div>
+                    <div class="viewer-overlay">@L["NoMoves"]</div>
                 }
 
                 <div class="viewer-tools">
-                    <div class="seg" role="group" aria-label="View">
+                    <div class="seg" role="group" aria-label="@L["View"]">
                         <button class="seg-btn @(_mode == "2d" ? "is-active" : "")" @onclick='() => SetMode("2d")'>2D</button>
                         <button class="seg-btn @(_mode == "3d" ? "is-active" : "")" @onclick='() => SetMode("3d")'>3D</button>
                     </div>
-                    <button class="icon-btn" title="Fit model" @onclick='() => Call("fit", "model")'><Icon Name="scan" Size="16" /></button>
-                    <button class="icon-btn" title="Whole bed" @onclick='() => Call("fit", "bed")'><Icon Name="maximize" Size="16" /></button>
+                    <button class="icon-btn" title="@L["FitModel"]" @onclick='() => Call("fit", "model")'><Icon Name="scan" Size="16" /></button>
+                    <button class="icon-btn" title="@L["WholeBed"]" @onclick='() => Call("fit", "bed")'><Icon Name="maximize" Size="16" /></button>
                 </div>
 
                 @if (_info is { Layers: > 0 } info)
                 {
                     <input class="range viewer-layer-range" type="range" min="0" max="@(info.Layers - 1)" step="1"
-                           value="@_layer" @oninput="OnLayerInput" aria-label="Layer" orient="vertical" />
+                           value="@_layer" @oninput="OnLayerInput" aria-label="@L["Layer"]" orient="vertical" />
                 }
             </div>
 
@@ -69,7 +70,7 @@ else
             {
                 <div class="viewer-moves">
                     <Icon Name="play" Size="14" />
-                    <input class="range" type="range" min="0" max="1000" step="1" value="@_moves" @oninput="OnMovesInput" aria-label="Moves within layer" />
+                    <input class="range" type="range" min="0" max="1000" step="1" value="@_moves" @oninput="OnMovesInput" aria-label="@L["MovesWithinLayer"]" />
                 </div>
             }
         </section>
@@ -77,12 +78,12 @@ else
         <aside class="viewer-side">
             <section class="card">
                 <header class="card-head">
-                    <h2>Layer</h2>
+                    <h2>@L["Layer"]</h2>
                     @if (_progressLayer >= 0)
                     {
                         <button class="btn btn-sm @(_follow ? "btn-primary" : "btn-ghost")" @onclick="ToggleFollow"
-                                title="Jump to the layer that is printing">
-                            <Icon Name="crosshair" Size="14" /> Follow print
+                                title="@L["FollowTitle"]">
+                            <Icon Name="crosshair" Size="14" /> @L["Follow"]
                         </button>
                     }
                 </header>
@@ -93,11 +94,11 @@ else
                         <span class="muted mono">Z @li.Zs[_layer].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) mm</span>
                     </div>
                     <div class="viewer-steps">
-                        <button class="btn btn-sm" disabled="@(_layer == 0)" @onclick="() => Step(-1)" title="Layer down"><Icon Name="down" Size="14" /></button>
-                        <button class="btn btn-sm" disabled="@(_layer >= li.Layers - 1)" @onclick="() => Step(1)" title="Layer up"><Icon Name="up" Size="14" /></button>
+                        <button class="btn btn-sm" disabled="@(_layer == 0)" @onclick="() => Step(-1)" title="@L["LayerDown"]"><Icon Name="down" Size="14" /></button>
+                        <button class="btn btn-sm" disabled="@(_layer >= li.Layers - 1)" @onclick="() => Step(1)" title="@L["LayerUp"]"><Icon Name="up" Size="14" /></button>
                         @if (_progressLayer >= 0)
                         {
-                            <span class="muted small">Printing layer @(_progressLayer + 1)</span>
+                            <span class="muted small">@L["PrintingLayer", _progressLayer + 1]</span>
                         }
                     </div>
                 }
@@ -108,7 +109,7 @@ else
             </section>
 
             <section class="card">
-                <header class="card-head"><h2>Show</h2></header>
+                <header class="card-head"><h2>@L["Show"]</h2></header>
                 @if (_info is { } i && i.Kinds.Length > 0)
                 {
                     <ul class="viewer-legend">
@@ -126,20 +127,20 @@ else
                     </ul>
                 }
                 <div class="viewer-opts">
-                    <label class="toggle"><input type="checkbox" checked="@_head" @onchange="e => SetHead((bool)e.Value!)" /> Nozzle</label>
+                    <label class="toggle"><input type="checkbox" checked="@_head" @onchange="e => SetHead((bool)e.Value!)" /> @L["Nozzle"]</label>
                     @if (_mode == "2d")
                     {
-                        <label class="toggle"><input type="checkbox" checked="@_previous" @onchange="e => SetPrevious((bool)e.Value!)" /> Layer below</label>
-                        <label class="toggle"><input type="checkbox" checked="@_travel" @onchange="e => SetTravel((bool)e.Value!)" /> Travel moves</label>
+                        <label class="toggle"><input type="checkbox" checked="@_previous" @onchange="e => SetPrevious((bool)e.Value!)" /> @L["LayerBelow"]</label>
+                        <label class="toggle"><input type="checkbox" checked="@_travel" @onchange="e => SetTravel((bool)e.Value!)" /> @L["Travel"]</label>
                     }
                 </div>
                 @if (_mode == "2d")
                 {
-                    <p class="muted small">Drag to pan, scroll or pinch to zoom, double-click to fit.</p>
+                    <p class="muted small">@L["Hint2d"]</p>
                 }
                 else
                 {
-                    <p class="muted small">Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom, double-click to fit.</p>
+                    <p class="muted small">@L["Hint3d"]</p>
                 }
             </section>
         </aside>
@@ -264,10 +265,10 @@ else
         try
         {
             if (await _viewer.InvokeAsync<bool>("setMode", mode)) _mode = mode;
-            else Toasts.Error("3D view needs a browser with WebGL 2.");
+            else Toasts.Error(L["NeedsWebGl"]);
         }
         catch (JSDisconnectedException) { }
-        catch (JSException ex) { Toasts.Error($"3D view failed: {ex.Message.Split('\n')[0]}"); }
+        catch (JSException ex) { Toasts.Error(L["View3dFailed", ex.Message.Split('\n')[0]]); }
     }
 
     private void Select(string? name)
@@ -334,15 +335,15 @@ else
         catch (JSDisconnectedException) { }
     }
 
-    private static string KindName(int kind) => kind switch
+    private string KindName(int kind) => kind switch
     {
-        1 => "Outer wall",
-        2 => "Inner wall",
-        3 => "Infill",
-        4 => "Solid infill",
-        5 => "Support",
-        6 => "Skirt / brim",
-        _ => "Other"
+        1 => L["KindOuterWall"],
+        2 => L["KindInnerWall"],
+        3 => L["KindInfill"],
+        4 => L["KindSolidInfill"],
+        5 => L["KindSupport"],
+        6 => L["KindSkirt"],
+        _ => L["KindOther"]
     };
 
     public override void Dispose()
