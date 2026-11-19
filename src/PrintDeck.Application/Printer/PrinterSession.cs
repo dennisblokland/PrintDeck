@@ -975,9 +975,13 @@ public sealed class PrinterSession(
 		events.Publish(PrinterChange.Terminal);
 	}
 
+	/// <summary>
+	/// Safe to call more than once: the host disposes the session once for each service it is registered as
+	/// (<see cref="PrinterSession"/> and <see cref="IPrinterSession"/>).
+	/// </summary>
 	public async ValueTask DisposeAsync()
 	{
 		await TeardownAsync();
-		_cts?.Dispose();
+		Interlocked.Exchange(ref _cts, null)?.Dispose();
 	}
 }

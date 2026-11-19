@@ -1,0 +1,49 @@
+@inherits PrinterComponent
+@inject IStringLocalizer<AppKeyRequestBanner> L
+
+@* An app (e.g. Home Assistant) asking for its own key; admins allow or deny it here, on every page. *@
+@if (CanControl)
+{
+	@foreach (AppKeyRequest r in _requests)
+	{
+		<section class="printer-dialog is-prompt" role="alertdialog" aria-labelledby="appkey-@r.Token" @key="r.Token">
+			<Icon Name="key" Size="18" />
+			<div class="printer-dialog-body">
+				<strong id="appkey-@r.Token">@L["Asks", r.App]</strong>
+				<span class="muted">@(r.User is { } user ? L["ForAccount", user] : L["ForYou"])</span>
+			</div>
+			<div class="printer-dialog-actions">
+				<button class="btn btn-sm" disabled="@_busy" @onclick="() => DenyAsync(r)">@L["Deny"]</button>
+				<button class="btn btn-sm btn-primary" disabled="@_busy" @onclick="() => AllowAsync(r)">@L["Allow"]</button>
+			</div>
+		</section>
+	}
+}
+
+@code {
+	private IReadOnlyList<AppKeyRequest> _requests = [];
+	private bool _busy;
+
+	protected override PrinterChange Interests => PrinterChange.Settings;
+
+	protected override async Task RefreshAsync()
+	{
+		if (CanControl) _requests = await Mediator.Send(new ListAppKeyRequestsQuery());
+	}
+
+	private async Task AllowAsync(AppKeyRequest r)
+	{
+		_busy = true;
+		try { await Run(new ApproveAppKeyRequestCommand(r.Token), L["Allowed", r.App]); }
+		finally { _busy = false; }
+		await RefreshAsync();
+	}
+
+	private async Task DenyAsync(AppKeyRequest r)
+	{
+		_busy = true;
+		try { await Run(new DenyAppKeyRequestCommand(r.Token)); }
+		finally { _busy = false; }
+		await RefreshAsync();
+	}
+}
