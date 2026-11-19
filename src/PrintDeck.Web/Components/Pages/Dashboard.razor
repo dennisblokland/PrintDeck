@@ -1,9 +1,11 @@
 @page "/"
+@inject IStringLocalizer<Dashboard> L
+@inject IStringLocalizer<SharedText> Shared
 
-<PageTitle>Dashboard · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head">
-	<h1>Dashboard</h1>
+	<h1>@L["Title"]</h1>
 </header>
 
 <div class="mobile-conn"><ConnectionPanel /></div>

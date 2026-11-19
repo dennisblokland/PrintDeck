@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Files</value>
+	</data>
+	<data name="Breadcrumb" xml:space="preserve">
+		<value>Breadcrumb</value>
+	</data>
+	<data name="AllFiles" xml:space="preserve">
+		<value>All files</value>
+	</data>
+	<data name="CountOfTotal" xml:space="preserve">
+		<value>{0} of {1}</value>
+	</data>
+	<data name="OneFile" xml:space="preserve">
+		<value>1 file</value>
+	</data>
+	<data name="FileCount" xml:space="preserve">
+		<value>{0} files</value>
+	</data>
+	<data name="Uploading" xml:space="preserve">
+		<value>Uploading {0}…</value>
+	</data>
+	<data name="Analysing" xml:space="preserve">
+		<value>Large files take a moment while they are analysed.</value>
+	</data>
+	<data name="Drop" xml:space="preserve">
+		<value>Drop G-code here or click to browse</value>
+	</data>
+	<data name="IntoFolder" xml:space="preserve">
+		<value>Into {0}.</value>
+	</data>
+	<data name="SlicerHint" xml:space="preserve">
+		<value>Or send straight from your slicer — see Settings → Slicer upload.</value>
+	</data>
+	<data name="OneProblemInHtml" xml:space="preserve">
+		<value>1 problem in &lt;span class="mono"&gt;{0}&lt;/span&gt;</value>
+	</data>
+	<data name="ProblemsInHtml" xml:space="preserve">
+		<value>{0} problems in &lt;span class="mono"&gt;{1}&lt;/span&gt;</value>
+	</data>
+	<data name="Error" xml:space="preserve">
+		<value>Error</value>
+	</data>
+	<data name="Warning" xml:space="preserve">
+		<value>Warning</value>
+	</data>
+	<data name="PrintAnyway" xml:space="preserve">
+		<value>Print anyway</value>
+	</data>
+	<data name="Search" xml:space="preserve">
+		<value>Search files</value>
+	</data>
+	<data name="SortBy" xml:space="preserve">
+		<value>Sort by</value>
+	</data>
+	<data name="SortUploaded" xml:space="preserve">
+		<value>Newest upload</value>
+	</data>
+	<data name="SortName" xml:space="preserve">
+		<value>Name</value>
+	</data>
+	<data name="SortLastPrinted" xml:space="preserve">
+		<value>Last printed</value>
+	</data>
+	<data name="SortSize" xml:space="preserve">
+		<value>Size</value>
+	</data>
+	<data name="HidePrinted" xml:space="preserve">
+		<value>Hide printed</value>
+	</data>
+	<data name="NewFolder" xml:space="preserve">
+		<value>New folder</value>
+	</data>
+	<data name="FolderName" xml:space="preserve">
+		<value>Folder name</value>
+	</data>
+	<data name="NewFolderName" xml:space="preserve">
+		<value>New folder name</value>
+	</data>
+	<data name="InFolder" xml:space="preserve">
+		<value>in {0}</value>
+	</data>
+	<data name="Create" xml:space="preserve">
+		<value>Create</value>
+	</data>
+	<data name="Rename" xml:space="preserve">
+		<value>Rename</value>
+	</data>
+	<data name="DeleteEmptyFolder" xml:space="preserve">
+		<value>Delete empty folder</value>
+	</data>
+	<data name="NoMatch" xml:space="preserve">
+		<value>No files match</value>
+	</data>
+	<data name="ShowAll" xml:space="preserve">
+		<value>Show all files</value>
+	</data>
+	<data name="NoFiles" xml:space="preserve">
+		<value>No files yet</value>
+	</data>
+	<data name="FolderEmpty" xml:space="preserve">
+		<value>This folder is empty</value>
+	</data>
+	<data name="PrintedAgo" xml:space="preserve">
+		<value>printed {0}</value>
+	</data>
+	<data name="CancelledAgo" xml:space="preserve">
+		<value>cancelled {0}</value>
+	</data>
+	<data name="FailedAgo" xml:space="preserve">
+		<value>failed {0}</value>
+	</data>
+	<data name="EstimatedTime" xml:space="preserve">
+		<value>Estimated print time</value>
+	</data>
+	<data name="Filament" xml:space="preserve">
+		<value>Filament</value>
+	</data>
+	<data name="Layers" xml:space="preserve">
+		<value>Layers</value>
+	</data>
+	<data name="ViewToolpath" xml:space="preserve">
+		<value>View toolpath</value>
+	</data>
+	<data name="Printing" xml:space="preserve">
+		<value>Printing</value>
+	</data>
+	<data name="CopyingToSd" xml:space="preserve">
+		<value>Copying to SD</value>
+	</data>
+	<data name="MustBeIdle" xml:space="preserve">
+		<value>Printer must be connected and idle</value>
+	</data>
+	<data name="CopyToSd" xml:space="preserve">
+		<value>Copy to SD card</value>
+	</data>
+	<data name="CheckThenPrint" xml:space="preserve">
+		<value>Check the file, then print</value>
+	</data>
+	<data name="Checking" xml:space="preserve">
+		<value>Checking…</value>
+	</data>
+	<data name="Print" xml:space="preserve">
+		<value>Print</value>
+	</data>
+	<data name="MoveOrRename" xml:space="preserve">
+		<value>Move or rename</value>
+	</data>
+	<data name="MoveToFolder" xml:space="preserve">
+		<value>Move to folder</value>
+	</data>
+	<data name="TopLevel" xml:space="preserve">
+		<value>All files (top level)</value>
+	</data>
+	<data name="FileName" xml:space="preserve">
+		<value>File name</value>
+	</data>
+	<data name="Move" xml:space="preserve">
+		<value>Move</value>
+	</data>
+	<data name="SdCard" xml:space="preserve">
+		<value>SD card</value>
+	</data>
+	<data name="RefreshList" xml:space="preserve">
+		<value>Refresh list</value>
+	</data>
+	<data name="SdInUse" xml:space="preserve">
+		<value>The SD card is in use</value>
+	</data>
+	<data name="ReleaseTitle" xml:space="preserve">
+		<value>Unmount the card so you can remove it</value>
+	</data>
+	<data name="Released" xml:space="preserve">
+		<value>SD card released</value>
+	</data>
+	<data name="Release" xml:space="preserve">
+		<value>Release</value>
+	</data>
+	<data name="Initialise" xml:space="preserve">
+		<value>Initialise card</value>
+	</data>
+	<data name="CheckingSd" xml:space="preserve">
+		<value>Checking for an SD card…</value>
+	</data>
+	<data name="NoSd" xml:space="preserve">
+		<value>No SD card. Insert one and initialise it.</value>
+	</data>
+	<data name="SdEmpty" xml:space="preserve">
+		<value>No G-code on the SD card</value>
+	</data>
+	<data name="SizeUnknown" xml:space="preserve">
+		<value>size unknown</value>
+	</data>
+	<data name="PrintFromSd" xml:space="preserve">
+		<value>Print from the SD card</value>
+	</data>
+	<data name="PrintingFromSd" xml:space="preserve">
+		<value>Printing {0} from the SD card</value>
+	</data>
+	<data name="ConfirmDeleteFromSd" xml:space="preserve">
+		<value>Click again to delete from the SD card</value>
+	</data>
+	<data name="DeleteFromSd" xml:space="preserve">
+		<value>Delete from the SD card</value>
+	</data>
+	<data name="FolderCreated" xml:space="preserve">
+		<value>Created folder {0}</value>
+	</data>
+	<data name="RenamedTo" xml:space="preserve">
+		<value>Renamed to {0}</value>
+	</data>
+	<data name="FolderDeleted" xml:space="preserve">
+		<value>Deleted folder {0}</value>
+	</data>
+	<data name="MovedTo" xml:space="preserve">
+		<value>Moved to {0}</value>
+	</data>
+	<data name="OneSuccessfulPrint" xml:space="preserve">
+		<value>1 successful print</value>
+	</data>
+	<data name="SuccessfulPrints" xml:space="preserve">
+		<value>{0} successful prints</value>
+	</data>
+	<data name="Unsuccessful" xml:space="preserve">
+		<value>, {0} cancelled or failed</value>
+	</data>
+	<data name="PrintingTime" xml:space="preserve">
+		<value> · {0} printing</value>
+	</data>
+	<data name="FilamentUsed" xml:space="preserve">
+		<value> · {0} filament</value>
+	</data>
+	<data name="Uploaded" xml:space="preserve">
+		<value>Uploaded {0}</value>
+	</data>
+	<data name="UploadFailed" xml:space="preserve">
+		<value>Upload failed: {0}</value>
+	</data>
+	<data name="SdNotAvailable" xml:space="preserve">
+		<value>not available</value>
+	</data>
+	<data name="SdUnknown" xml:space="preserve">
+		<value>unknown</value>
+	</data>
+	<data name="CopyingTo" xml:space="preserve">
+		<value>Copying {0} to the SD card as {1}</value>
+	</data>
+	<data name="DeletedFromSd" xml:space="preserve">
+		<value>Deleted {0} from the SD card</value>
+	</data>
+	<data name="NotFound" xml:space="preserve">
+		<value>File {0} not found.</value>
+	</data>
+	<data name="PrintingFile" xml:space="preserve">
+		<value>Printing {0}</value>
+	</data>
+	<data name="Line" xml:space="preserve">
+		<value>line {0:N0}</value>
+	</data>
+	<data name="LineAndMore" xml:space="preserve">
+		<value>line {0:N0} and {1:N0} more</value>
+	</data>
+	<data name="Deleted" xml:space="preserve">
+		<value>Deleted {0}</value>
+	</data>
+</root>

@@ -1,4 +1,5 @@
 @inherits PrinterComponent
+@inject IStringLocalizer<ConnectionPanel> L
 
 <div class="conn">
 	<div class="conn-row">
@@ -11,7 +12,7 @@
 
 	@if (!CanControl && _status.State is PrinterState.Offline or PrinterState.Error)
 	{
-		<p class="muted small">Not connected. An admin can connect the printer.</p>
+		<p class="muted small">@L["AdminCanConnect"]</p>
 	}
 	else if (_status.State is PrinterState.Offline or PrinterState.Error)
 	{
@@ -21,52 +22,52 @@
 		}
 		@if (_settings is { AutoConnect: true, LastPort: { } autoPort })
 		{
-			<p class="muted small">Auto-connects to @ShortPort(autoPort) when it next appears.</p>
+			<p class="muted small">@L["AutoConnects", ShortPort(autoPort)]</p>
 		}
 		<div class="field-row">
-			<select class="input" @bind="_port" aria-label="Serial port">
+			<select class="input" @bind="_port" aria-label="@L["SerialPort"]">
 				@foreach (string p in _ports)
 				{
 					<option value="@p">@ShortPort(p)</option>
 				}
 			</select>
-			<button class="icon-btn" title="Rescan ports" @onclick="LoadPortsAsync"><Icon Name="refresh" Size="16" /></button>
+			<button class="icon-btn" title="@L["Rescan"]" @onclick="LoadPortsAsync"><Icon Name="refresh" Size="16" /></button>
 		</div>
 		@if (_settings is { Profiles.Count: > 1 })
 		{
-			<select class="input" value="@_settings.ActiveProfileId" aria-label="Printer profile" title="Printer profile" @onchange="SelectProfileAsync">
+			<select class="input" value="@_settings.ActiveProfileId" aria-label="@L["PrinterProfile"]" title="@L["PrinterProfile"]" @onchange="SelectProfileAsync">
 				@foreach (PrinterProfile p in _settings.Profiles)
 				{
 					<option value="@p.Id">@p.Name</option>
 				}
 			</select>
 		}
-		<select class="input" @bind="_baud" aria-label="Baud rate">
+		<select class="input" @bind="_baud" aria-label="@L["BaudRate"]">
 			@foreach (int b in ConnectPrinterHandler.SupportedBaudRates)
 			{
-				<option value="@b">@b baud</option>
+				<option value="@b">@L["Baud", b]</option>
 			}
 		</select>
 		<button class="btn btn-primary btn-block" disabled="@(_busy || string.IsNullOrEmpty(_port))" @onclick="ConnectAsync">
-			<Icon Name="plug" Size="16" /> Connect
+			<Icon Name="plug" Size="16" /> @L["Connect"]
 		</button>
 	}
 	else if (_status.State == PrinterState.Connecting)
 	{
-		<p class="muted small">Waiting for the printer to answer…</p>
+		<p class="muted small">@L["Waiting"]</p>
 	}
 	else
 	{
 		<dl class="conn-meta">
-			<dt>Profile</dt><dd title="@_settings?.ActiveProfile.Name">@_settings?.ActiveProfile.Name</dd>
-			<dt>Firmware</dt><dd>@(_status.Firmware ?? "Unknown")</dd>
-			<dt>Baud</dt><dd>@_status.BaudRate</dd>
+			<dt>@L["Profile"]</dt><dd title="@_settings?.ActiveProfile.Name">@_settings?.ActiveProfile.Name</dd>
+			<dt>@L["Firmware"]</dt><dd>@(_status.Firmware ?? L["Unknown"])</dd>
+			<dt>@L["BaudHeading"]</dt><dd>@_status.BaudRate</dd>
 		</dl>
 		@if (CanControl)
 		{
 			<button class="btn btn-ghost btn-block" disabled="@(_busy || _status.State.IsBusy())"
-					title="@(_status.State.IsBusy() ? "Stop the print first" : null)" @onclick="DisconnectAsync">
-				<Icon Name="power" Size="16" /> Disconnect
+					title="@(_status.State.IsBusy() ? L["StopPrintFirst"].Value : null)" @onclick="DisconnectAsync">
+				<Icon Name="power" Size="16" /> @L["Disconnect"]
 			</button>
 		}
 	}

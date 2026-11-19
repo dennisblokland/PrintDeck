@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@inject IStringLocalizer<MainLayout> L
+@inject IStringLocalizer<SharedText> Shared
 
 <div class="shell">
 	<aside class="sidebar">
@@ -7,19 +9,19 @@
 			<span class="brand-name">PrintDeck</span>
 		</a>
 
-		<nav class="nav" aria-label="Main">
-			<NavLink class="nav-link" href="" Match="NavLinkMatch.All"><Icon Name="gauge" /> <span>Dashboard</span></NavLink>
+		<nav class="nav" aria-label="@L["MainNavigation"]">
+			<NavLink class="nav-link" href="" Match="NavLinkMatch.All"><Icon Name="gauge" /> <span>@L["Dashboard"]</span></NavLink>
 			<AuthorizeView Roles="@nameof(UserRole.Admin)">
-				<NavLink class="nav-link" href="control"><Icon Name="move" /> <span>Control</span></NavLink>
+				<NavLink class="nav-link" href="control"><Icon Name="move" /> <span>@L["Control"]</span></NavLink>
 			</AuthorizeView>
-			<NavLink class="nav-link" href="files"><Icon Name="folder" /> <span>Files</span></NavLink>
-			<NavLink class="nav-link" href="history"><Icon Name="clock" /> <span>History</span></NavLink>
-			<NavLink class="nav-link" href="timelapse"><Icon Name="camera" /> <span>Timelapse</span></NavLink>
-			<NavLink class="nav-link" href="viewer"><Icon Name="cube" /> <span>Viewer</span></NavLink>
+			<NavLink class="nav-link" href="files"><Icon Name="folder" /> <span>@L["Files"]</span></NavLink>
+			<NavLink class="nav-link" href="history"><Icon Name="clock" /> <span>@L["History"]</span></NavLink>
+			<NavLink class="nav-link" href="timelapse"><Icon Name="camera" /> <span>@L["Timelapse"]</span></NavLink>
+			<NavLink class="nav-link" href="viewer"><Icon Name="cube" /> <span>@L["Viewer"]</span></NavLink>
 			<AuthorizeView Roles="@nameof(UserRole.Admin)">
-				<NavLink class="nav-link" href="terminal"><Icon Name="terminal" /> <span>Terminal</span></NavLink>
-				<NavLink class="nav-link" href="settings"><Icon Name="sliders" /> <span>Settings</span></NavLink>
-				<NavLink class="nav-link" href="users"><Icon Name="users" /> <span>Users</span></NavLink>
+				<NavLink class="nav-link" href="terminal"><Icon Name="terminal" /> <span>@L["Terminal"]</span></NavLink>
+				<NavLink class="nav-link" href="settings"><Icon Name="sliders" /> <span>@L["Settings"]</span></NavLink>
+				<NavLink class="nav-link" href="users"><Icon Name="users" /> <span>@L["Users"]</span></NavLink>
 			</AuthorizeView>
 		</nav>
 
@@ -27,13 +29,13 @@
 
 		<AuthorizeView>
 			<div class="user-box">
-				<a class="user-name" href="account" title="Your account and password">
+				<a class="user-name" href="account" title="@L["AccountTitle"]">
 					<Icon Name="user" Size="16" />
 					<span>@context.User.Identity?.Name</span>
 				</a>
 				<form method="post" action="account/logout">
 					<AntiforgeryToken />
-					<button class="icon-btn" type="submit" title="Sign out" aria-label="Sign out"><Icon Name="logout" Size="16" /></button>
+					<button class="icon-btn" type="submit" title="@L["SignOut"]" aria-label="@L["SignOut"]"><Icon Name="logout" Size="16" /></button>
 				</form>
 			</div>
 		</AuthorizeView>
@@ -49,6 +51,6 @@
 <Toasts />
 
 <div id="blazor-error-ui" data-nosnippet>
-	Something broke. <a href="." class="reload">Reload</a>
-	<span class="dismiss" title="Dismiss"><Icon Name="x" Size="16" /></span>
+	@L["SomethingBroke"] <a href="." class="reload">@L["Reload"]</a>
+	<span class="dismiss" title="@Shared["Dismiss"]"><Icon Name="x" Size="16" /></span>
 </div>

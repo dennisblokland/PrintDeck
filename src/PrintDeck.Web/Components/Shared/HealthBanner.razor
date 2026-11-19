@@ -11,7 +11,7 @@
 				<strong>@w.Title</strong>
 				<span class="muted">@w.Detail</span>
 			</div>
-			<button class="icon-btn" title="Dismiss" aria-label="Dismiss" @onclick="() => _dismissed.Add(Key(w))"><Icon Name="x" Size="16" /></button>
+			<button class="icon-btn" title="@Shared["Dismiss"]" aria-label="@Shared["Dismiss"]" @onclick="() => _dismissed.Add(Key(w))"><Icon Name="x" Size="16" /></button>
 		</section>
 	}
 }

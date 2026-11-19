@@ -36,6 +36,7 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
 - **Health checks**: admins get a warning above every page, re-checked each minute, for low disk space where PrintDeck keeps its data (below 1 GB; an error below 256 MB), Raspberry Pi under-voltage or throttling (now or since boot, from `get_throttled` in sysfs or `vcgencmd`), and old firmware (Marlin before 1.1.0, often without thermal runaway protection). Dismiss one until it changes. Settings → System shows disk space, Pi power and firmware. To try the firmware warning, start PrintDeck with `VirtualPrinter:FirmwareName` set to `Marlin 1.0.2` and connect to VIRTUAL
 - Dark and light themes, mobile layout
+- **UI text in resource files**: every label, button, hint and message the web UI shows lives in `src/PrintDeck.Web/Resources/`, one `.resx` per component (mirroring `Components/`) plus `SharedText.resx` for words many pages use. English is the only language so far; a translation is a set of `<name>.nl.resx` files next to them plus switching on request localization in `Program.cs`. Error messages from the printer logic are still English in code
 
 ## Architecture
 

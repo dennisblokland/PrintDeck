@@ -2,18 +2,19 @@
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inherits PrinterComponent
 @inject NavigationManager Nav
+@inject IStringLocalizer<Settings> L
 
-<PageTitle>Settings · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
-<header class="page-head"><h1>Settings</h1></header>
+<header class="page-head"><h1>@L["Title"]</h1></header>
 
 @if (_settings is not null && _profile is not null && _host is not null)
 {
 	<div class="settings">
 		<section class="card">
 			<header class="card-head">
-				<h2>Printer profiles</h2>
-				<button type="button" class="btn btn-sm btn-ghost" @onclick="NewProfile">New profile</button>
+				<h2>@L["Profiles"]</h2>
+				<button type="button" class="btn btn-sm btn-ghost" @onclick="NewProfile">@L["NewProfile"]</button>
 			</header>
 			<ul class="profile-list">
 				@foreach (PrinterProfile p in _settings.Profiles)
@@ -25,7 +26,7 @@
 								<strong>@p.Name</strong>
 								@if (active)
 								{
-									<span class="chip chip-printing">Active</span>
+									<span class="chip chip-printing">@L["Active"]</span>
 								}
 							</span>
 							<small>@Summary(p)</small>
@@ -33,164 +34,152 @@
 						@if (!active)
 						{
 							<button type="button" class="btn btn-sm btn-ghost" disabled="@_busy"
-									title="@(_busy ? "Finish the print first" : null)" @onclick="() => SelectAsync(p)">Use</button>
+									title="@(_busy ? L["FinishPrintFirst"].Value : null)" @onclick="() => SelectAsync(p)">@L["Use"]</button>
 						}
-						<button type="button" class="icon-btn" title="Duplicate" @onclick="() => Duplicate(p)"><Icon Name="copy" Size="16" /></button>
+						<button type="button" class="icon-btn" title="@L["Duplicate"]" @onclick="() => Duplicate(p)"><Icon Name="copy" Size="16" /></button>
 						<button type="button" class="icon-btn icon-btn-danger @(_confirmDelete == p.Id ? "is-armed" : "")" disabled="@active"
-								title="@(active ? "The active profile can't be deleted" : _confirmDelete == p.Id ? "Click again to delete" : "Delete")"
+								title="@(active ? L["ActiveCantBeDeleted"] : _confirmDelete == p.Id ? Shared["ClickAgainToDelete"] : Shared["Delete"])"
 								@onclick="() => DeleteAsync(p)">
 							<Icon Name="@(_confirmDelete == p.Id ? "check" : "trash")" Size="16" />
 						</button>
 					</li>
 				}
 			</ul>
-			<p class="muted small">Build volume, extruders and heated bed belong to a profile. Switch profiles when you move PrintDeck to another printer.</p>
+			<p class="muted small">@L["ProfilesHint"]</p>
 		</section>
 
 		<form class="card" @onsubmit="SaveProfileAsync" @onsubmit:preventDefault>
 			<header class="card-head">
-				<h2>@(_profile.Id.Length == 0 ? "New profile" : $"Edit {_profileName}")</h2>
+				<h2>@(_profile.Id.Length == 0 ? L["NewProfile"] : L["EditProfile", _profileName])</h2>
 			</header>
 			<div class="form-grid">
-				<label class="field span-2"><span>Name</span><input class="input" maxlength="64" @bind="_profile.Name" /></label>
-				<label class="field"><span>Bed width (mm)</span><input class="input" type="number" @bind="_profile.BedWidth" /></label>
-				<label class="field"><span>Bed depth (mm)</span><input class="input" type="number" @bind="_profile.BedDepth" /></label>
-				<label class="field"><span>Max height (mm)</span><input class="input" type="number" @bind="_profile.MaxHeight" /></label>
-				<label class="field"><span>Extruders</span><input class="input" type="number" min="1" max="8" @bind="_profile.ExtruderCount" /></label>
-				<label class="toggle span-2"><input type="checkbox" @bind="_profile.HasHeatedBed" /><span>Heated bed</span></label>
-				<label class="field"><span>Jog XY (mm/min)</span><input class="input" type="number" @bind="_profile.JogFeedrateXY" /></label>
-				<label class="field"><span>Jog Z (mm/min)</span><input class="input" type="number" @bind="_profile.JogFeedrateZ" /></label>
-				<label class="field"><span>Extrude (mm/min)</span><input class="input" type="number" @bind="_profile.ExtrudeFeedrate" /></label>
+				<label class="field span-2"><span>@L["Name"]</span><input class="input" maxlength="64" @bind="_profile.Name" /></label>
+				<label class="field"><span>@L["BedWidth"]</span><input class="input" type="number" @bind="_profile.BedWidth" /></label>
+				<label class="field"><span>@L["BedDepth"]</span><input class="input" type="number" @bind="_profile.BedDepth" /></label>
+				<label class="field"><span>@L["MaxHeight"]</span><input class="input" type="number" @bind="_profile.MaxHeight" /></label>
+				<label class="field"><span>@L["Extruders"]</span><input class="input" type="number" min="1" max="8" @bind="_profile.ExtruderCount" /></label>
+				<label class="toggle span-2"><input type="checkbox" @bind="_profile.HasHeatedBed" /><span>@L["HeatedBed"]</span></label>
+				<label class="field"><span>@L["JogXY"]</span><input class="input" type="number" @bind="_profile.JogFeedrateXY" /></label>
+				<label class="field"><span>@L["JogZ"]</span><input class="input" type="number" @bind="_profile.JogFeedrateZ" /></label>
+				<label class="field"><span>@L["ExtrudeRate"]</span><input class="input" type="number" @bind="_profile.ExtrudeFeedrate" /></label>
 			</div>
 			<div class="form-actions">
 				@if (_profile.Id.Length == 0)
 				{
-					<button type="button" class="btn btn-ghost" @onclick="() => Edit(_settings.ActiveProfile)">Cancel</button>
+					<button type="button" class="btn btn-ghost" @onclick="() => Edit(_settings.ActiveProfile)">@Shared["Cancel"]</button>
 				}
-				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @(_profile.Id.Length == 0 ? "Add profile" : "Save profile")</button>
+				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @(_profile.Id.Length == 0 ? L["AddProfile"] : L["SaveProfile"])</button>
 			</div>
 		</form>
 
 		<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
 			<section class="card">
 				<header class="card-head">
-					<h2>Temperature presets</h2>
-					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _host.Presets.Add(new PresetRow())">Add preset</button>
+					<h2>@L["Presets"]</h2>
+					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _host.Presets.Add(new PresetRow())">@L["AddPreset"]</button>
 				</header>
 				<div class="preset-rows">
 					@foreach (PresetRow p in _host.Presets)
 					{
 						<div class="preset-row">
-							<input class="input" placeholder="Name" aria-label="Preset name" @bind="p.Name" />
-							<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="Hotend" @bind="p.Hotend" />°</label>
-							<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="Bed" @bind="p.Bed" />°</label>
-							<button type="button" class="icon-btn icon-btn-danger" title="Remove" @onclick="() => _host.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
+							<input class="input" placeholder="@L["Name"]" aria-label="@L["PresetName"]" @bind="p.Name" />
+							<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="@L["Hotend"]" @bind="p.Hotend" />°</label>
+							<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="@L["Bed"]" @bind="p.Bed" />°</label>
+							<button type="button" class="icon-btn icon-btn-danger" title="@L["Remove"]" @onclick="() => _host.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
 						</div>
 					}
 				</div>
 			</section>
 
 			<section class="card">
-				<header class="card-head"><h2>Connection</h2></header>
+				<header class="card-head"><h2>@L["Connection"]</h2></header>
 				<label class="toggle">
 					<input type="checkbox" @bind="_host.AutoConnect" />
-					<span>Connect automatically</span>
+					<span>@L["AutoConnect"]</span>
 				</label>
 				<p class="muted small">
 					@if (_settings.LastPort is { } lastPort)
 					{
-						<text>Connects to <code>@lastPort</code> at @_settings.DefaultBaudRate baud, the last port used, </text>
+						@L.Html("AutoConnectToPortHtml", lastPort, _settings.DefaultBaudRate)
 					}
 					else
 					{
-						<text>Connects to the last port used, once you have connected by hand, </text>
+						@L["AutoConnectNoPort"]
 					}
-					when PrintDeck starts and whenever the port appears, for example when the printer is switched on.
-					After a failed attempt it waits until the port disappears and comes back.
 				</p>
 			</section>
 
 			<section class="card">
-				<header class="card-head"><h2>Printer screen</h2></header>
+				<header class="card-head"><h2>@L["PrinterScreen"]</h2></header>
 				<label class="toggle">
 					<input type="checkbox" @bind="_host.ShowProgressOnPrinter" />
-					<span>Show progress, time left and layer on the printer's screen</span>
+					<span>@L["ShowProgress"]</span>
 				</label>
-				<p class="muted small">
-					Sends <code>M73</code> and <code>M117</code> while PrintDeck streams a print.
-					Files that already contain <code>M73</code> (PrusaSlicer, OrcaSlicer) keep their own.
-				</p>
+				<p class="muted small">@L.Html("PrinterScreenHintHtml")</p>
 			</section>
 
 			<section class="card">
-				<header class="card-head"><h2>Camera</h2></header>
-				<label class="field"><span>MJPEG stream URL</span>
+				<header class="card-head"><h2>@L["Camera"]</h2></header>
+				<label class="field"><span>@L["StreamUrl"]</span>
 					<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
 				</label>
-				<label class="field"><span>Snapshot URL</span>
+				<label class="field"><span>@L["SnapshotUrl"]</span>
 					<span class="field-row">
 						<input class="input" placeholder="http://printer.local:8080/?action=snapshot" @bind="_host.WebcamSnapshotUrl" />
-						<button type="button" class="btn btn-ghost" disabled="@_testingSnapshot" @onclick="TestSnapshotAsync">@(_testingSnapshot ? "Testing…" : "Test")</button>
+						<button type="button" class="btn btn-ghost" disabled="@_testingSnapshot" @onclick="TestSnapshotAsync">@(_testingSnapshot ? L["Testing"] : L["Test"])</button>
 					</span>
 				</label>
 				<div class="camera-options">
-					<label class="field-inline">Rotate
-						<select class="input" aria-label="Rotate the picture" @bind="_host.WebcamRotation">
+					<label class="field-inline">@L["Rotate"]
+						<select class="input" aria-label="@L["RotateTitle"]" @bind="_host.WebcamRotation">
 							@foreach (CameraRotation r in Enum.GetValues<CameraRotation>())
 							{
 								<option value="@r">@((int)r)°</option>
 							}
 						</select>
 					</label>
-					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipHorizontal" /><span>Flip horizontally</span></label>
-					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipVertical" /><span>Flip vertically</span></label>
+					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipHorizontal" /><span>@L["FlipHorizontal"]</span></label>
+					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipVertical" /><span>@L["FlipVertical"]</span></label>
 				</div>
 				@if (_testSnapshot is { } shot)
 				{
 					<div class="camera-test">
 						<div class="webcam">
-							<img src="data:@shot.ContentType;base64,@Convert.ToBase64String(shot.Content)" alt="Test snapshot"
+							<img src="data:@shot.ContentType;base64,@Convert.ToBase64String(shot.Content)" alt="@L["TestSnapshot"]"
 								 style="@CameraView.ImageStyle(_host.WebcamRotation, _host.WebcamFlipHorizontal, _host.WebcamFlipVertical)" />
 						</div>
 					</div>
 				}
-				<p class="muted small">
-					The snapshot is a single still image, fetched by PrintDeck. The dashboard shows it, refreshed every few seconds,
-					when there is no stream. Rotate and flip apply to both. Enter <code>VIRTUAL</code> for a pretend camera.
-				</p>
+				<p class="muted small">@L.Html("CameraHintHtml")</p>
 			</section>
 
 			<section class="card" aria-labelledby="timelapse-title">
-				<header class="card-head"><h2 id="timelapse-title">Timelapse</h2></header>
-				<label class="field"><span>Take a frame</span>
+				<header class="card-head"><h2 id="timelapse-title">@L["Timelapse"]</h2></header>
+				<label class="field"><span>@L["TakeFrame"]</span>
 					<select class="input" @bind="_host.TimelapseMode">
-						<option value="@TimelapseMode.Off">Never (off)</option>
-						<option value="@TimelapseMode.Timed">Every few seconds</option>
-						<option value="@TimelapseMode.Layer">At each new layer</option>
+						<option value="@TimelapseMode.Off">@L["TimelapseOff"]</option>
+						<option value="@TimelapseMode.Timed">@L["TimelapseTimed"]</option>
+						<option value="@TimelapseMode.Layer">@L["TimelapseLayer"]</option>
 					</select>
 				</label>
 				<div class="timelapse-options">
 					@if (_host.TimelapseMode == TimelapseMode.Timed)
 					{
-						<label class="field-inline">Every
+						<label class="field-inline">@L["Every"]
 							<input class="input input-num" type="number" min="@TimelapseSettings.MinInterval" max="@TimelapseSettings.MaxInterval"
-								   aria-label="Seconds between frames" @bind="_host.TimelapseIntervalSeconds" /> s
+								   aria-label="@L["SecondsBetween"]" @bind="_host.TimelapseIntervalSeconds" /> s
 						</label>
 					}
-					<label class="field-inline">Video
+					<label class="field-inline">@L["Video"]
 						<input class="input input-num" type="number" min="@TimelapseSettings.MinFrameRate" max="@TimelapseSettings.MaxFrameRate"
-							   aria-label="Frames per second of the video" @bind="_host.TimelapseFrameRate" /> fps
+							   aria-label="@L["FramesPerSecond"]" @bind="_host.TimelapseFrameRate" /> fps
 					</label>
 				</div>
-				<p class="muted small">
-					Frames come from the snapshot URL while a print runs, and become a video under <a href="timelapse">Timelapse</a>
-					when it ends. Rendering needs <code>ffmpeg</code> on the host. Per layer follows the slicer's layer comments;
-					SD card prints take a frame every @_host.TimelapseIntervalSeconds s instead.
-				</p>
+				<p class="muted small">@L.Html("TimelapseHintHtml", _host.TimelapseIntervalSeconds)</p>
 			</section>
 
 			<div class="save-bar">
-				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save settings</button>
+				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveSettings"]</button>
 			</div>
 		</form>
 
@@ -198,22 +187,22 @@
 		{
 			<section class="card settings-wide" aria-labelledby="controls-title">
 				<header class="card-head">
-					<h2 id="controls-title">Camera controls</h2>
+					<h2 id="controls-title">@L["CameraControls"]</h2>
 					@if (cam.Controls.Count > 0)
 					{
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="ResetControlsAsync"><Icon Name="refresh" Size="14" /> Reset to defaults</button>
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="ResetControlsAsync"><Icon Name="refresh" Size="14" /> @L["ResetDefaults"]</button>
 					}
 				</header>
-				<label class="field camera-device"><span>Camera</span>
+				<label class="field camera-device"><span>@L["Camera"]</span>
 					<select class="input" value="@(cam.Device ?? "")" @onchange="SelectCameraAsync">
-						<option value="">None</option>
+						<option value="">@L["NoCamera"]</option>
 						@foreach (string d in cam.Devices)
 						{
-							<option value="@d">@(d == "VIRTUAL" ? "VIRTUAL (pretend webcam)" : d)</option>
+							<option value="@d">@(d == "VIRTUAL" ? L["VirtualCamera"] : d)</option>
 						}
 						@if (cam.Device is { } chosen && !cam.Devices.Contains(chosen))
 						{
-							<option value="@chosen">@chosen (not connected)</option>
+							<option value="@chosen">@L["NotConnected", chosen]</option>
 						}
 					</select>
 				</label>
@@ -227,7 +216,7 @@
 						@foreach (CameraControl c in cam.Controls)
 						{
 							<div class="camera-control @(c.Inactive ? "is-inactive" : "")" @key="c.Name"
-								 title="@(c.Inactive ? "Set by the camera's automatic mode; switch that off first" : null)">
+								 title="@(c.Inactive ? L["InactiveControl"].Value : null)">
 								@switch (c.Type)
 								{
 									case CameraControlType.Integer:
@@ -256,62 +245,55 @@
 						}
 					</div>
 				}
-				<p class="muted small">
-					Brightness, focus, exposure and the other controls your camera offers, through <code>v4l2-ctl</code>
-					(install <code>v4l-utils</code> on the host). Changes apply right away and are applied again when PrintDeck starts,
-					since most cameras forget them when they lose power. Greyed-out controls follow an automatic mode; switch that off first.
-				</p>
+				<p class="muted small">@L.Html("CameraControlsHintHtml")</p>
 			</section>
 		}
 
 		@if (_scripts is { } scripts)
 		{
 			<form class="card settings-wide" aria-labelledby="scripts-title" @onsubmit="SaveScriptsAsync" @onsubmit:preventDefault>
-				<header class="card-head"><h2 id="scripts-title">G-code scripts</h2></header>
+				<header class="card-head"><h2 id="scripts-title">@L["Scripts"]</h2></header>
 				<div class="scripts-grid">
 					<div class="scripts-pane">
-						<div class="seg scripts-tabs" role="tablist" aria-label="Script">
+						<div class="seg scripts-tabs" role="tablist" aria-label="@L["Script"]">
 							@for (int i = 0; i < ScriptSlots.Length; i++)
 							{
 								int slot = i;
 								<button type="button" role="tab" aria-selected="@(slot == _scriptSlot)"
 										class="seg-btn @(slot == _scriptSlot ? "is-active" : "")" @onclick="() => _scriptSlot = slot">
-									@ScriptSlots[slot].Label@if (!string.IsNullOrWhiteSpace(scripts.Texts[slot])) { <span class="script-dot" title="Has commands"></span> }
+									@ScriptSlots[slot].Label@if (!string.IsNullOrWhiteSpace(scripts.Texts[slot])) { <span class="script-dot" title="@L["HasCommands"]"></span> }
 								</button>
 							}
 						</div>
 						<p class="muted small">@ScriptSlots[_scriptSlot].Hint</p>
-						<textarea class="input mono" rows="9" spellcheck="false" aria-label="@ScriptSlots[_scriptSlot].Label script"
+						<textarea class="input mono" rows="9" spellcheck="false" aria-label="@L["ScriptFor", ScriptSlots[_scriptSlot].Label]"
 								  @bind="scripts.Texts[_scriptSlot]"></textarea>
-						<p class="muted small">
-							Include a snippet on its own line with <code>{% snippet 'disable_hotends' %}</code>.
-							Scripts are taken when a print starts, for prints streamed by PrintDeck and prints from the SD card.
-						</p>
+						<p class="muted small">@L.Html("ScriptsHintHtml")</p>
 					</div>
 
 					<div class="scripts-pane">
 						<div class="scripts-head">
-							<h3 class="card-subhead">Snippets</h3>
-							<button type="button" class="btn btn-sm btn-ghost" @onclick="() => scripts.Snippets.Add(new SnippetRow())">Add snippet</button>
+							<h3 class="card-subhead">@L["Snippets"]</h3>
+							<button type="button" class="btn btn-sm btn-ghost" @onclick="() => scripts.Snippets.Add(new SnippetRow())">@L["AddSnippet"]</button>
 						</div>
 						@if (scripts.Snippets.Count == 0)
 						{
-							<p class="muted small">No snippets yet.</p>
+							<p class="muted small">@L["NoSnippets"]</p>
 						}
 						@foreach (SnippetRow snippet in scripts.Snippets)
 						{
 							<div class="snippet-row">
 								<div class="field-row">
-									<input class="input mono" placeholder="name" aria-label="Snippet name" @bind="snippet.Name" />
-									<button type="button" class="icon-btn icon-btn-danger" title="Remove snippet" @onclick="() => scripts.Snippets.Remove(snippet)"><Icon Name="x" Size="16" /></button>
+									<input class="input mono" placeholder="@L["SnippetPlaceholder"]" aria-label="@L["SnippetName"]" @bind="snippet.Name" />
+									<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveSnippet"]" @onclick="() => scripts.Snippets.Remove(snippet)"><Icon Name="x" Size="16" /></button>
 								</div>
-								<textarea class="input mono" rows="2" spellcheck="false" aria-label="Snippet G-code" @bind="snippet.Gcode"></textarea>
+								<textarea class="input mono" rows="2" spellcheck="false" aria-label="@L["SnippetGcode"]" @bind="snippet.Gcode"></textarea>
 							</div>
 						}
 					</div>
 				</div>
 				<div class="form-actions">
-					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save scripts</button>
+					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveScripts"]</button>
 				</div>
 			</form>
 		}
@@ -320,14 +302,14 @@
 		{
 			<form class="card settings-wide" aria-labelledby="buttons-title" @onsubmit="SaveButtonsAsync" @onsubmit:preventDefault>
 				<header class="card-head">
-					<h2 id="buttons-title">Custom buttons</h2>
-					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => buttons.Add(new ButtonRow())">Add button</button>
+					<h2 id="buttons-title">@L["CustomButtons"]</h2>
+					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => buttons.Add(new ButtonRow())">@L["AddButton"]</button>
 				</header>
 				@if (buttons.Count == 0)
 				{
 					<p class="muted small">
-						No buttons yet.
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="AddExampleButtons">Add examples for a Prusa MK3S</button>
+						@L["NoButtons"]
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="AddExampleButtons">@L["AddExamples"]</button>
 					</p>
 				}
 				<div class="button-rows">
@@ -337,50 +319,43 @@
 						ButtonRow b = buttons[index];
 						<div class="button-row" @key="b">
 							<div class="field-row">
-								<input class="input" placeholder="Label" aria-label="Button label" maxlength="@CustomButton.MaxLabelLength" @bind="b.Label" />
-								<select class="input button-icon" aria-label="Button icon" @bind="b.Icon">
-									<option value="">No icon</option>
+								<input class="input" placeholder="@L["ButtonLabelPlaceholder"]" aria-label="@L["ButtonLabel"]" maxlength="@CustomButton.MaxLabelLength" @bind="b.Label" />
+								<select class="input button-icon" aria-label="@L["ButtonIcon"]" @bind="b.Icon">
+									<option value="">@L["NoIcon"]</option>
 									@foreach (string icon in CustomButton.Icons)
 									{
 										<option value="@icon">@icon</option>
 									}
 								</select>
-								<button type="button" class="icon-btn" title="Move up" disabled="@(index == 0)" @onclick="() => MoveButton(index, -1)"><Icon Name="up" Size="16" /></button>
-								<button type="button" class="icon-btn" title="Move down" disabled="@(index == buttons.Count - 1)" @onclick="() => MoveButton(index, 1)"><Icon Name="down" Size="16" /></button>
-								<button type="button" class="icon-btn icon-btn-danger" title="Remove button" @onclick="() => buttons.Remove(b)"><Icon Name="x" Size="16" /></button>
+								<button type="button" class="icon-btn" title="@L["MoveUp"]" disabled="@(index == 0)" @onclick="() => MoveButton(index, -1)"><Icon Name="up" Size="16" /></button>
+								<button type="button" class="icon-btn" title="@L["MoveDown"]" disabled="@(index == buttons.Count - 1)" @onclick="() => MoveButton(index, 1)"><Icon Name="down" Size="16" /></button>
+								<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveButton"]" @onclick="() => buttons.Remove(b)"><Icon Name="x" Size="16" /></button>
 							</div>
-							<textarea class="input mono" rows="3" spellcheck="false" aria-label="G-code for @(b.Label.Length > 0 ? b.Label : "the button")" @bind="b.Gcode"></textarea>
+							<textarea class="input mono" rows="3" spellcheck="false" aria-label="@(b.Label.Length > 0 ? L["GcodeFor", b.Label] : L["GcodeForButton"])" @bind="b.Gcode"></textarea>
 							<div class="button-options">
-								<label class="toggle"><input type="checkbox" @bind="b.IdleOnly" /><span>Not while printing</span></label>
-								<label class="toggle"><input type="checkbox" @bind="b.Confirm" /><span>Ask before sending</span></label>
+								<label class="toggle"><input type="checkbox" @bind="b.IdleOnly" /><span>@L["NotWhilePrinting"]</span></label>
+								<label class="toggle"><input type="checkbox" @bind="b.Confirm" /><span>@L["AskBeforeSending"]</span></label>
 							</div>
 						</div>
 					}
 				</div>
-				<p class="muted small">
-					Buttons show on the Control page. One command per line; include a snippet with <code>{% snippet 'name' %}</code>.
-					"Not while printing" allows the button when the printer is idle or paused, like jogging.
-				</p>
+				<p class="muted small">@L.Html("ButtonsHintHtml")</p>
 				<div class="form-actions">
-					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save buttons</button>
+					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveButtons"]</button>
 				</div>
 			</form>
 		}
 
 		<section class="card settings-wide" aria-labelledby="keys-title">
-			<header class="card-head"><h2 id="keys-title">Slicer upload</h2></header>
-			<p class="muted small">
-				In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type <strong>OctoPrint</strong>,
-				host <code>@Nav.BaseUri.TrimEnd('/')</code> and an API key. Give each slicer or integration its own app key,
-				so you can revoke one without touching the others. A key acts as the account that made it, with that account's role.
-			</p>
+			<header class="card-head"><h2 id="keys-title">@L["SlicerUpload"]</h2></header>
+			<p class="muted small">@L.Html("SlicerHintHtml", Nav.BaseUri.TrimEnd('/'))</p>
 			@if (_newKey is not null)
 			{
 				<div class="new-key" role="status">
-					<p><strong>@_newKeyName</strong>: copy this key now. PrintDeck keeps only a fingerprint of it and can't show it again.</p>
+					<p>@L.Html("CopyKeyHtml", _newKeyName)</p>
 					<div class="field-row">
-						<input class="input mono" readonly value="@_newKey" aria-label="New API key" />
-						<button type="button" class="btn btn-ghost" @onclick="() => _newKey = null"><Icon Name="check" Size="16" /> Done</button>
+						<input class="input mono" readonly value="@_newKey" aria-label="@L["NewApiKey"]" />
+						<button type="button" class="btn btn-ghost" @onclick="() => _newKey = null"><Icon Name="check" Size="16" /> @L["Done"]</button>
 					</div>
 				</div>
 			}
@@ -393,67 +368,58 @@
 						<li class="profile-row">
 							<div class="key-name">
 								<strong>@k.Name</strong>
-								<small>…@k.Hint · @k.OwnerName · made @Format.Ago(k.CreatedAt, Time.GetUtcNow()) · @(k.LastUsedAt is { } used ? $"used {Format.Ago(used, Time.GetUtcNow())}" : "never used")</small>
+								<small>…@k.Hint · @k.OwnerName · @L["KeyMade", Format.Ago(k.CreatedAt, Time.GetUtcNow())] · @(k.LastUsedAt is { } used ? L["KeyUsed", Format.Ago(used, Time.GetUtcNow())] : L["KeyNeverUsed"])</small>
 							</div>
-							<button type="button" class="btn btn-sm btn-danger @(armed ? "is-armed" : "")" title="@(armed ? "Click again to revoke" : null)"
+							<button type="button" class="btn btn-sm btn-danger @(armed ? "is-armed" : "")" title="@(armed ? L["ClickAgainToRevoke"].Value : null)"
 									@onclick="() => RevokeKeyAsync(k)">
-								<Icon Name="@(armed ? "check" : "x")" Size="14" /> @(armed ? "Confirm revoke" : "Revoke")
+								<Icon Name="@(armed ? "check" : "x")" Size="14" /> @(armed ? L["ConfirmRevoke"] : L["Revoke"])
 							</button>
 						</li>
 					}
 				</ul>
 			}
 			<form class="field-row" @onsubmit="CreateKeyAsync" @onsubmit:preventDefault>
-				<input class="input" maxlength="@ApiKeySecret.MaxNameLength" placeholder="Name, e.g. OrcaSlicer on the laptop" aria-label="Key name" @bind="_keyName" />
-				<button class="btn btn-primary" type="submit" disabled="@_creatingKey"><Icon Name="key" Size="16" /> New app key</button>
+				<input class="input" maxlength="@ApiKeySecret.MaxNameLength" placeholder="@L["KeyNamePlaceholder"]" aria-label="@L["KeyName"]" @bind="_keyName" />
+				<button class="btn btn-primary" type="submit" disabled="@_creatingKey"><Icon Name="key" Size="16" /> @L["NewAppKey"]</button>
 			</form>
 
-			<h3 class="card-subhead">Shared key</h3>
+			<h3 class="card-subhead">@L["SharedKey"]</h3>
 			@if (_settings.SharedApiKeyEnabled)
 			{
-				<p class="muted small">
-					The single key from before app keys. Whoever holds it can upload and print as an admin.
-					Once every slicer has its own key, turn it off.
-				</p>
+				<p class="muted small">@L["SharedKeyHint"]</p>
 				<div class="field-row">
-					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="Shared API key" />
-					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> New key</button>
+					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="@L["SharedApiKey"]" />
+					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["NewKey"]</button>
 					<button type="button" class="btn btn-danger @(_confirmSharedOff ? "is-armed" : "")" @onclick="DisableSharedKeyAsync">
-						<Icon Name="power" Size="16" /> @(_confirmSharedOff ? "Confirm: turn off" : "Turn off")
+						<Icon Name="power" Size="16" /> @(_confirmSharedOff ? L["ConfirmTurnOff"] : L["TurnOff"])
 					</button>
 				</div>
 			}
 			else
 			{
-				<p class="muted small">Off: only app keys sign in.</p>
-				<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> Turn on with a new key</button>
+				<p class="muted small">@L["SharedKeyOff"]</p>
+				<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["TurnOnNewKey"]</button>
 			}
 		</section>
 
 		<section class="card" aria-labelledby="backup-title">
-			<header class="card-head"><h2 id="backup-title">Backup</h2></header>
-			<p class="muted small">
-				One zip with the settings, printer profiles, API key and every uploaded file with its print history.
-				Accounts are not included. Keep it private: it holds the API key.
-			</p>
+			<header class="card-head"><h2 id="backup-title">@L["Backup"]</h2></header>
+			<p class="muted small">@L["BackupHint"]</p>
 			<div class="system-actions">
-				<a class="btn btn-ghost" href="backup" download><Icon Name="down" Size="16" /> Download backup</a>
-				<label class="btn btn-ghost file-btn @(_restoring || _busy ? "is-disabled" : "")" title="@(_busy ? "Finish the print first" : null)">
+				<a class="btn btn-ghost" href="backup" download><Icon Name="down" Size="16" /> @L["DownloadBackup"]</a>
+				<label class="btn btn-ghost file-btn @(_restoring || _busy ? "is-disabled" : "")" title="@(_busy ? L["FinishPrintFirst"].Value : null)">
 					<InputFile OnChange="PickBackup" accept=".zip,application/zip" disabled="@(_restoring || _busy)" />
-					<Icon Name="upload" Size="16" /> Restore…
+					<Icon Name="upload" Size="16" /> @L["RestoreEllipsis"]
 				</label>
 			</div>
 			@if (_restoreFile is not null)
 			{
 				<div class="restore-confirm" role="alert">
-					<p>
-						Restore <strong>@_restoreFile.Name</strong> (@Format.Bytes(_restoreFile.Size))? It replaces the settings,
-						printer profiles and API key. Files in the backup overwrite files with the same name; other files stay.
-					</p>
+					<p>@L.Html("RestoreConfirmHtml", _restoreFile.Name, Format.Bytes(_restoreFile.Size))</p>
 					<div class="system-actions">
-						<button type="button" class="btn btn-ghost" disabled="@_restoring" @onclick="() => _restoreFile = null">Cancel</button>
+						<button type="button" class="btn btn-ghost" disabled="@_restoring" @onclick="() => _restoreFile = null">@Shared["Cancel"]</button>
 						<button type="button" class="btn btn-danger" disabled="@(_restoring || _busy)" @onclick="RestoreAsync">
-							<Icon Name="refresh" Size="16" /> @(_restoring ? "Restoring…" : "Restore")
+							<Icon Name="refresh" Size="16" /> @(_restoring ? L["Restoring"] : L["Restore"])
 						</button>
 					</div>
 				</div>
@@ -461,41 +427,41 @@
 		</section>
 
 		<section class="card" aria-labelledby="system-title">
-			<header class="card-head"><h2 id="system-title">System</h2></header>
+			<header class="card-head"><h2 id="system-title">@L["System"]</h2></header>
 			@if (_health is { } health)
 			{
 				<ul class="health-list">
 					<li>
-						<span>Disk</span>
+						<span>@L["Disk"]</span>
 						@if (health.Disk is { } disk)
 						{
-							<span>@Format.Bytes(disk.FreeBytes) free of @Format.Bytes(disk.TotalBytes)</span>
+							<span>@L["DiskFree", Format.Bytes(disk.FreeBytes), Format.Bytes(disk.TotalBytes)]</span>
 						}
 						else
 						{
-							<span class="muted">Can't be read</span>
+							<span class="muted">@L["CantBeRead"]</span>
 						}
 					</li>
 					<li>
-						<span>Raspberry Pi power</span>
+						<span>@L["PiPower"]</span>
 						<span>@(health.Pi switch
 						{
-							null => "Not a Raspberry Pi",
-							{ UnderVoltageNow: true } => "Under-voltage now",
-							{ LimitedNow: true } => "Throttled now",
-							{ UnderVoltageSinceBoot: true } => "Under-voltage since boot",
-							{ LimitedSinceBoot: true } => "Throttled since boot",
-							_ => "OK"
+							null => L["NotAPi"],
+							{ UnderVoltageNow: true } => L["UnderVoltageNow"],
+							{ LimitedNow: true } => L["ThrottledNow"],
+							{ UnderVoltageSinceBoot: true } => L["UnderVoltageSinceBoot"],
+							{ LimitedSinceBoot: true } => L["ThrottledSinceBoot"],
+							_ => L["PiOk"]
 						})</span>
 					</li>
 					<li>
-						<span>Firmware</span>
-						<span>@(health.Firmware ?? "Not connected")</span>
+						<span>@L["Firmware"]</span>
+						<span>@(health.Firmware ?? L["FirmwareNotConnected"])</span>
 					</li>
 				</ul>
 				@if (health.Warnings.Count == 0)
 				{
-					<p class="muted small"><Icon Name="check" Size="14" /> No problems found.</p>
+					<p class="muted small"><Icon Name="check" Size="14" /> @L["NoProblems"]</p>
 				}
 				@foreach (HealthWarning w in health.Warnings)
 				{
@@ -504,24 +470,20 @@
 			}
 			@if (_hostActions.Count == 0)
 			{
-				<p class="muted small">
-					No commands configured. Set <code>System:RestartCommand</code>, <code>System:RebootCommand</code> and
-					<code>System:ShutdownCommand</code> in <code>appsettings.json</code> on the host, for example
-					<code>sudo systemctl restart printdeck</code>. They can't be set here, on purpose.
-				</p>
+				<p class="muted small">@L.Html("NoHostCommandsHtml")</p>
 			}
 			else
 			{
-				<p class="muted small">Disconnects the printer first. Not available while printing.</p>
+				<p class="muted small">@L["HostActionsHint"]</p>
 				<div class="system-actions">
 					@foreach (HostAction action in _hostActions)
 					{
 						bool armed = _confirmAction == action;
 						<button type="button" class="btn @(action == HostAction.RestartPrintDeck ? "" : "btn-danger") @(armed ? "is-armed" : "")"
-								disabled="@(_busy || _runningAction)" title="@(_busy ? "Finish the print first" : armed ? "Click again to confirm" : null)"
+								disabled="@(_busy || _runningAction)" title="@(_busy ? L["FinishPrintFirst"].Value : armed ? L["ClickAgainToConfirm"].Value : null)"
 								@onclick="() => RunHostActionAsync(action)">
 							<Icon Name="@(action == HostAction.RestartPrintDeck ? "refresh" : "power")" Size="16" />
-							@(armed ? $"Confirm: {HostActionLabel(action)}" : HostActionLabel(action))
+							@(armed ? L["ConfirmAction", HostActionLabel(action)] : HostActionLabel(action))
 						</button>
 					}
 				</div>
@@ -620,13 +582,13 @@
 			new(Texts[0], Texts[1], Texts[2], Texts[3], Texts[4], Snippets.Select(x => new GcodeSnippet(x.Name, x.Gcode)).ToList());
 	}
 
-	private static readonly (string Label, string Hint)[] ScriptSlots =
+	private (string Label, string Hint)[] ScriptSlots =>
 	[
-		("Before print", "Sent before the print starts."),
-		("After print", "Sent after the print finished."),
-		("After cancel", "Sent after a print is cancelled, from PrintDeck or from the printer."),
-		("On pause", "Sent after PrintDeck pauses the print, or the printer asks it to (//action:pause). Not when the printer pauses on its own, e.g. M600."),
-		("On resume", "Sent before a paused print continues.")
+		(L["ScriptBeforePrint"], L["ScriptBeforePrintHint"]),
+		(L["ScriptAfterPrint"], L["ScriptAfterPrintHint"]),
+		(L["ScriptAfterCancel"], L["ScriptAfterCancelHint"]),
+		(L["ScriptOnPause"], L["ScriptOnPauseHint"]),
+		(L["ScriptOnResume"], L["ScriptOnResumeHint"])
 	];
 
 	private ScriptsForm? _scripts;
@@ -677,11 +639,11 @@
 		_sliding.Clear();
 	}
 
-	private static string HostActionLabel(HostAction action) => action switch
+	private string HostActionLabel(HostAction action) => action switch
 	{
-		HostAction.RestartPrintDeck => "Restart PrintDeck",
-		HostAction.RebootHost => "Reboot host",
-		_ => "Shut down host"
+		HostAction.RestartPrintDeck => L["RestartPrintDeck"],
+		HostAction.RebootHost => L["RebootHost"],
+		_ => L["ShutDownHost"]
 	};
 
 	private async Task RunHostActionAsync(HostAction action)
@@ -698,9 +660,9 @@
 		{
 			string done = action switch
 			{
-				HostAction.RestartPrintDeck => "Restarting PrintDeck; this page reconnects when it is back.",
-				HostAction.RebootHost => "Rebooting the host.",
-				_ => "Shutting down the host."
+				HostAction.RestartPrintDeck => L["Restarting"],
+				HostAction.RebootHost => L["Rebooting"],
+				_ => L["ShuttingDown"]
 			};
 			await Run(new RunHostActionCommand(action), done);
 		}
@@ -722,11 +684,12 @@
 			Result<BackupRestore> result = await Mediator.Send(new RestoreBackupCommand(stream));
 			if (!result.IsSuccess)
 			{
-				Toasts.Error(result.Error ?? "Something went wrong.");
+				Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 				return;
 			}
 			int count = result.Value!.Files.Count;
-			Toasts.Success($"Restored the settings and {count} file{(count == 1 ? "" : "s")} (backup made {Format.Ago(result.Value.CreatedAt, Time.GetUtcNow())})");
+			string made = Format.Ago(result.Value.CreatedAt, Time.GetUtcNow());
+			Toasts.Success(count == 1 ? L["RestoredOne", made] : L["Restored", count, made]);
 			_restoreFile = null;
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
@@ -736,7 +699,7 @@
 		}
 		catch (IOException ex)
 		{
-			Toasts.Error($"Restore failed: {ex.Message}");
+			Toasts.Error(L["RestoreFailed", ex.Message]);
 		}
 		finally
 		{
@@ -744,9 +707,10 @@
 		}
 	}
 
-	private static string Summary(PrinterProfile p) =>
-		$"{p.BedWidth:0.#} × {p.BedDepth:0.#} × {p.MaxHeight:0.#} mm · {p.ExtruderCount} extruder{(p.ExtruderCount == 1 ? "" : "s")}" +
-		(p.HasHeatedBed ? " · heated bed" : "");
+	private string Summary(PrinterProfile p) =>
+		L["ProfileSize", p.BedWidth, p.BedDepth, p.MaxHeight]
+		+ (p.ExtruderCount == 1 ? L["OneExtruder"] : L["ExtruderCount", p.ExtruderCount])
+		+ (p.HasHeatedBed ? L["WithHeatedBed"] : "");
 
 	private void Edit(PrinterProfile p)
 	{
@@ -763,7 +727,7 @@
 
 	private void Duplicate(PrinterProfile p)
 	{
-		Edit(p with { Id = "", Name = $"{p.Name} copy" });
+		Edit(p with { Id = "", Name = L["ProfileCopy", p.Name] });
 	}
 
 	private async Task SaveProfileAsync()
@@ -772,17 +736,17 @@
 		Result<string> result = await Mediator.Send(new SavePrinterProfileCommand(_profile.ToProfile()));
 		if (!result.IsSuccess)
 		{
-			Toasts.Error(result.Error ?? "Something went wrong.");
+			Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 			return;
 		}
 		_settings = await Mediator.Send(new GetSettingsQuery());
 		if (_settings.FindProfile(result.Value!) is { } saved) Edit(saved);
-		Toasts.Success(adding ? $"Added {_profileName}" : $"Saved {_profileName}");
+		Toasts.Success(adding ? L["ProfileAdded", _profileName] : L["ProfileSaved", _profileName]);
 	}
 
 	private async Task SelectAsync(PrinterProfile p)
 	{
-		if (await Run(new SelectPrinterProfileCommand(p.Id), $"Now using {p.Name}"))
+		if (await Run(new SelectPrinterProfileCommand(p.Id), L["NowUsing", p.Name]))
 			_settings = await Mediator.Send(new GetSettingsQuery());
 	}
 
@@ -794,14 +758,14 @@
 			return;
 		}
 		_confirmDelete = null;
-		if (!await Run(new DeletePrinterProfileCommand(p.Id), $"Deleted {p.Name}")) return;
+		if (!await Run(new DeletePrinterProfileCommand(p.Id), L["ProfileDeleted", p.Name])) return;
 		_settings = await Mediator.Send(new GetSettingsQuery());
 		if (_profile?.Id == p.Id) Edit(_settings.ActiveProfile);
 	}
 
 	private async Task SaveScriptsAsync()
 	{
-		if (await Run(_scripts!.ToCommand(), "Scripts saved"))
+		if (await Run(_scripts!.ToCommand(), L["ScriptsSaved"]))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_scripts = ScriptsForm.From(_settings);
@@ -810,7 +774,7 @@
 
 	private async Task SaveButtonsAsync()
 	{
-		if (await Run(new SaveCustomButtonsCommand(_buttons!.Select(b => b.ToButton()).ToList()), "Buttons saved"))
+		if (await Run(new SaveCustomButtonsCommand(_buttons!.Select(b => b.ToButton()).ToList()), L["ButtonsSaved"]))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_buttons = ButtonRows(_settings);
@@ -831,7 +795,7 @@
 			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect,
 			f.WebcamSnapshotUrl, f.WebcamRotation, f.WebcamFlipHorizontal, f.WebcamFlipVertical,
 			new TimelapseSettings(f.TimelapseMode, f.TimelapseIntervalSeconds, f.TimelapseFrameRate));
-		if (await Run(command, "Settings saved"))
+		if (await Run(command, L["SettingsSaved"]))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
@@ -841,7 +805,7 @@
 	private async Task SelectCameraAsync(ChangeEventArgs e)
 	{
 		string? device = e.Value as string;
-		if (await Run(new SelectCameraDeviceCommand(device), string.IsNullOrEmpty(device) ? "No camera chosen" : $"Using {device}")) return;
+		if (await Run(new SelectCameraDeviceCommand(device), string.IsNullOrEmpty(device) ? L["NoCameraChosen"] : L["UsingCamera", device])) return;
 		await ReloadAsync();
 	}
 
@@ -865,7 +829,7 @@
 
 	private async Task ResetControlsAsync()
 	{
-		if (!await Run(new ResetCameraControlsCommand(), "Camera controls back to their defaults")) await ReloadAsync();
+		if (!await Run(new ResetCameraControlsCommand(), L["ControlsReset"])) await ReloadAsync();
 	}
 
 	private async Task TestSnapshotAsync()
@@ -876,7 +840,7 @@
 		{
 			Result<CameraSnapshot> result = await Mediator.Send(new TestCameraSnapshotCommand(_host?.WebcamSnapshotUrl ?? ""));
 			if (result.IsSuccess) _testSnapshot = result.Value;
-			else Toasts.Error(result.Error ?? "Something went wrong.");
+			else Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 		}
 		finally
 		{
@@ -890,11 +854,11 @@
 		Result<string> result = await Mediator.Send(new RegenerateApiKeyCommand());
 		if (!result.IsSuccess)
 		{
-			Toasts.Error(result.Error ?? "Something went wrong.");
+			Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 			return;
 		}
 		_settings = await Mediator.Send(new GetSettingsQuery());
-		Toasts.Success(wasOn ? "New shared key — update it in your slicer." : "The shared key is on again, with a new key.");
+		Toasts.Success(wasOn ? L["NewSharedKey"] : L["SharedKeyOn"]);
 	}
 
 	private async Task CreateKeyAsync()
@@ -906,7 +870,7 @@
 			Result<string> result = await Mediator.Send(new CreateApiKeyCommand(name));
 			if (!result.IsSuccess)
 			{
-				Toasts.Error(result.Error ?? "Something went wrong.");
+				Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 				return;
 			}
 			_newKey = result.Value;
@@ -928,7 +892,7 @@
 			return;
 		}
 		_confirmRevoke = null;
-		if (await Run(new RevokeApiKeyCommand(key.Id), $"Revoked {key.Name}"))
+		if (await Run(new RevokeApiKeyCommand(key.Id), L["Revoked", key.Name]))
 			_keys = await Mediator.Send(new ListApiKeysQuery());
 	}
 
@@ -941,7 +905,7 @@
 			return;
 		}
 		_confirmSharedOff = false;
-		if (await Run(new DisableSharedApiKeyCommand(), "Shared key turned off; only app keys sign in now."))
+		if (await Run(new DisableSharedApiKeyCommand(), L["SharedKeyTurnedOff"]))
 			_settings = await Mediator.Send(new GetSettingsQuery());
 	}
 }

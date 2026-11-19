@@ -1,11 +1,12 @@
 @using System.Globalization
 @using System.Text
 @inherits PrinterComponent
+@inject IStringLocalizer<TemperatureChart> L
 
 <section class="card chart-card">
 	<header class="card-head">
-		<h2>Temperature history</h2>
-		<div class="seg" role="group" aria-label="Time window">
+		<h2>@L["Title"]</h2>
+		<div class="seg" role="group" aria-label="@L["TimeWindow"]">
 			@foreach (int m in new[] { 5, 10, 30 })
 			{
 				<button class="seg-btn @(_minutes == m ? "is-active" : "")" @onclick="() => SetWindow(m)">@(m)m</button>
@@ -15,13 +16,13 @@
 
 	@if (_series.Count == 0)
 	{
-		<div class="empty chart-empty"><p>Temperatures appear here once connected</p></div>
+		<div class="empty chart-empty"><p>@L["Empty"]</p></div>
 	}
 	else
 	{
 		<div class="chart-wrap">
 			<div class="chart-plot">
-				<svg class="chart" viewBox="0 0 @_w @_h" preserveAspectRatio="none" role="img" aria-label="Temperature chart">
+				<svg class="chart" viewBox="0 0 @_w @_h" preserveAspectRatio="none" role="img" aria-label="@L["Chart"]">
 					@foreach (int tick in _ticks)
 					{
 						<line class="grid" x1="0" x2="@_w" y1="@P(Y(tick))" y2="@P(Y(tick))" />
@@ -39,7 +40,7 @@
 				@for (int i = 0; i <= _xTicks; i++)
 				{
 					double ago = _minutes - _minutes * i / (double)_xTicks;
-					<span class="chart-x @(i == 0 ? "is-first" : i == _xTicks ? "is-last" : "")" style="left:@P(100.0 * i / _xTicks)%">@(ago == 0 ? "now" : $"−{ago:0.#}m")</span>
+					<span class="chart-x @(i == 0 ? "is-first" : i == _xTicks ? "is-last" : "")" style="left:@P(100.0 * i / _xTicks)%">@(ago == 0 ? L["Now"] : $"−{ago:0.#}m")</span>
 				}
 				@foreach (Series s in _series)
 				{
@@ -52,7 +53,7 @@
 			{
 				<span class="legend-item"><i class="swatch swatch-@s.Kind"></i>@s.Name <b>@Format.Temp(s.Last)°</b></span>
 			}
-			<span class="legend-item muted"><i class="swatch swatch-dashed"></i>Target</span>
+			<span class="legend-item muted"><i class="swatch swatch-dashed"></i>@L["Target"]</span>
 		</div>
 	}
 </section>

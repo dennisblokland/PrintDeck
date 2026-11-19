@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Settings</value>
+	</data>
+	<data name="Profiles" xml:space="preserve">
+		<value>Printer profiles</value>
+	</data>
+	<data name="NewProfile" xml:space="preserve">
+		<value>New profile</value>
+	</data>
+	<data name="Active" xml:space="preserve">
+		<value>Active</value>
+	</data>
+	<data name="FinishPrintFirst" xml:space="preserve">
+		<value>Finish the print first</value>
+	</data>
+	<data name="Use" xml:space="preserve">
+		<value>Use</value>
+	</data>
+	<data name="Duplicate" xml:space="preserve">
+		<value>Duplicate</value>
+	</data>
+	<data name="ActiveCantBeDeleted" xml:space="preserve">
+		<value>The active profile can't be deleted</value>
+	</data>
+	<data name="ProfilesHint" xml:space="preserve">
+		<value>Build volume, extruders and heated bed belong to a profile. Switch profiles when you move PrintDeck to another printer.</value>
+	</data>
+	<data name="EditProfile" xml:space="preserve">
+		<value>Edit {0}</value>
+	</data>
+	<data name="Name" xml:space="preserve">
+		<value>Name</value>
+	</data>
+	<data name="BedWidth" xml:space="preserve">
+		<value>Bed width (mm)</value>
+	</data>
+	<data name="BedDepth" xml:space="preserve">
+		<value>Bed depth (mm)</value>
+	</data>
+	<data name="MaxHeight" xml:space="preserve">
+		<value>Max height (mm)</value>
+	</data>
+	<data name="Extruders" xml:space="preserve">
+		<value>Extruders</value>
+	</data>
+	<data name="HeatedBed" xml:space="preserve">
+		<value>Heated bed</value>
+	</data>
+	<data name="JogXY" xml:space="preserve">
+		<value>Jog XY (mm/min)</value>
+	</data>
+	<data name="JogZ" xml:space="preserve">
+		<value>Jog Z (mm/min)</value>
+	</data>
+	<data name="ExtrudeRate" xml:space="preserve">
+		<value>Extrude (mm/min)</value>
+	</data>
+	<data name="AddProfile" xml:space="preserve">
+		<value>Add profile</value>
+	</data>
+	<data name="SaveProfile" xml:space="preserve">
+		<value>Save profile</value>
+	</data>
+	<data name="Presets" xml:space="preserve">
+		<value>Temperature presets</value>
+	</data>
+	<data name="AddPreset" xml:space="preserve">
+		<value>Add preset</value>
+	</data>
+	<data name="PresetName" xml:space="preserve">
+		<value>Preset name</value>
+	</data>
+	<data name="Hotend" xml:space="preserve">
+		<value>Hotend</value>
+	</data>
+	<data name="Bed" xml:space="preserve">
+		<value>Bed</value>
+	</data>
+	<data name="Remove" xml:space="preserve">
+		<value>Remove</value>
+	</data>
+	<data name="Connection" xml:space="preserve">
+		<value>Connection</value>
+	</data>
+	<data name="AutoConnect" xml:space="preserve">
+		<value>Connect automatically</value>
+	</data>
+	<data name="AutoConnectToPortHtml" xml:space="preserve">
+		<value>Connects to &lt;code&gt;{0}&lt;/code&gt; at {1} baud, the last port used, when PrintDeck starts and whenever the port appears, for example when the printer is switched on. After a failed attempt it waits until the port disappears and comes back.</value>
+	</data>
+	<data name="AutoConnectNoPort" xml:space="preserve">
+		<value>Connects to the last port used, once you have connected by hand, when PrintDeck starts and whenever the port appears, for example when the printer is switched on. After a failed attempt it waits until the port disappears and comes back.</value>
+	</data>
+	<data name="PrinterScreen" xml:space="preserve">
+		<value>Printer screen</value>
+	</data>
+	<data name="ShowProgress" xml:space="preserve">
+		<value>Show progress, time left and layer on the printer's screen</value>
+	</data>
+	<data name="PrinterScreenHintHtml" xml:space="preserve">
+		<value>Sends &lt;code&gt;M73&lt;/code&gt; and &lt;code&gt;M117&lt;/code&gt; while PrintDeck streams a print. Files that already contain &lt;code&gt;M73&lt;/code&gt; (PrusaSlicer, OrcaSlicer) keep their own.</value>
+	</data>
+	<data name="Camera" xml:space="preserve">
+		<value>Camera</value>
+	</data>
+	<data name="StreamUrl" xml:space="preserve">
+		<value>MJPEG stream URL</value>
+	</data>
+	<data name="SnapshotUrl" xml:space="preserve">
+		<value>Snapshot URL</value>
+	</data>
+	<data name="Testing" xml:space="preserve">
+		<value>Testing…</value>
+	</data>
+	<data name="Test" xml:space="preserve">
+		<value>Test</value>
+	</data>
+	<data name="Rotate" xml:space="preserve">
+		<value>Rotate</value>
+	</data>
+	<data name="RotateTitle" xml:space="preserve">
+		<value>Rotate the picture</value>
+	</data>
+	<data name="FlipHorizontal" xml:space="preserve">
+		<value>Flip horizontally</value>
+	</data>
+	<data name="FlipVertical" xml:space="preserve">
+		<value>Flip vertically</value>
+	</data>
+	<data name="TestSnapshot" xml:space="preserve">
+		<value>Test snapshot</value>
+	</data>
+	<data name="CameraHintHtml" xml:space="preserve">
+		<value>The snapshot is a single still image, fetched by PrintDeck. The dashboard shows it, refreshed every few seconds, when there is no stream. Rotate and flip apply to both. Enter &lt;code&gt;VIRTUAL&lt;/code&gt; for a pretend camera.</value>
+	</data>
+	<data name="Timelapse" xml:space="preserve">
+		<value>Timelapse</value>
+	</data>
+	<data name="TakeFrame" xml:space="preserve">
+		<value>Take a frame</value>
+	</data>
+	<data name="TimelapseOff" xml:space="preserve">
+		<value>Never (off)</value>
+	</data>
+	<data name="TimelapseTimed" xml:space="preserve">
+		<value>Every few seconds</value>
+	</data>
+	<data name="TimelapseLayer" xml:space="preserve">
+		<value>At each new layer</value>
+	</data>
+	<data name="Every" xml:space="preserve">
+		<value>Every</value>
+	</data>
+	<data name="SecondsBetween" xml:space="preserve">
+		<value>Seconds between frames</value>
+	</data>
+	<data name="Video" xml:space="preserve">
+		<value>Video</value>
+	</data>
+	<data name="FramesPerSecond" xml:space="preserve">
+		<value>Frames per second of the video</value>
+	</data>
+	<data name="TimelapseHintHtml" xml:space="preserve">
+		<value>Frames come from the snapshot URL while a print runs, and become a video under &lt;a href="timelapse"&gt;Timelapse&lt;/a&gt; when it ends. Rendering needs &lt;code&gt;ffmpeg&lt;/code&gt; on the host. Per layer follows the slicer's layer comments; SD card prints take a frame every {0} s instead.</value>
+	</data>
+	<data name="SaveSettings" xml:space="preserve">
+		<value>Save settings</value>
+	</data>
+	<data name="CameraControls" xml:space="preserve">
+		<value>Camera controls</value>
+	</data>
+	<data name="ResetDefaults" xml:space="preserve">
+		<value>Reset to defaults</value>
+	</data>
+	<data name="NoCamera" xml:space="preserve">
+		<value>None</value>
+	</data>
+	<data name="VirtualCamera" xml:space="preserve">
+		<value>VIRTUAL (pretend webcam)</value>
+	</data>
+	<data name="NotConnected" xml:space="preserve">
+		<value>{0} (not connected)</value>
+	</data>
+	<data name="InactiveControl" xml:space="preserve">
+		<value>Set by the camera's automatic mode; switch that off first</value>
+	</data>
+	<data name="CameraControlsHintHtml" xml:space="preserve">
+		<value>Brightness, focus, exposure and the other controls your camera offers, through &lt;code&gt;v4l2-ctl&lt;/code&gt; (install &lt;code&gt;v4l-utils&lt;/code&gt; on the host). Changes apply right away and are applied again when PrintDeck starts, since most cameras forget them when they lose power. Greyed-out controls follow an automatic mode; switch that off first.</value>
+	</data>
+	<data name="Scripts" xml:space="preserve">
+		<value>G-code scripts</value>
+	</data>
+	<data name="Script" xml:space="preserve">
+		<value>Script</value>
+	</data>
+	<data name="HasCommands" xml:space="preserve">
+		<value>Has commands</value>
+	</data>
+	<data name="ScriptFor" xml:space="preserve">
+		<value>{0} script</value>
+	</data>
+	<data name="ScriptsHintHtml" xml:space="preserve">
+		<value>Include a snippet on its own line with &lt;code&gt;{% snippet 'disable_hotends' %}&lt;/code&gt;. Scripts are taken when a print starts, for prints streamed by PrintDeck and prints from the SD card.</value>
+	</data>
+	<data name="Snippets" xml:space="preserve">
+		<value>Snippets</value>
+	</data>
+	<data name="AddSnippet" xml:space="preserve">
+		<value>Add snippet</value>
+	</data>
+	<data name="NoSnippets" xml:space="preserve">
+		<value>No snippets yet.</value>
+	</data>
+	<data name="SnippetPlaceholder" xml:space="preserve">
+		<value>name</value>
+	</data>
+	<data name="SnippetName" xml:space="preserve">
+		<value>Snippet name</value>
+	</data>
+	<data name="RemoveSnippet" xml:space="preserve">
+		<value>Remove snippet</value>
+	</data>
+	<data name="SnippetGcode" xml:space="preserve">
+		<value>Snippet G-code</value>
+	</data>
+	<data name="SaveScripts" xml:space="preserve">
+		<value>Save scripts</value>
+	</data>
+	<data name="CustomButtons" xml:space="preserve">
+		<value>Custom buttons</value>
+	</data>
+	<data name="AddButton" xml:space="preserve">
+		<value>Add button</value>
+	</data>
+	<data name="NoButtons" xml:space="preserve">
+		<value>No buttons yet.</value>
+	</data>
+	<data name="AddExamples" xml:space="preserve">
+		<value>Add examples for a Prusa MK3S</value>
+	</data>
+	<data name="ButtonLabelPlaceholder" xml:space="preserve">
+		<value>Label</value>
+	</data>
+	<data name="ButtonLabel" xml:space="preserve">
+		<value>Button label</value>
+	</data>
+	<data name="ButtonIcon" xml:space="preserve">
+		<value>Button icon</value>
+	</data>
+	<data name="NoIcon" xml:space="preserve">
+		<value>No icon</value>
+	</data>
+	<data name="MoveUp" xml:space="preserve">
+		<value>Move up</value>
+	</data>
+	<data name="MoveDown" xml:space="preserve">
+		<value>Move down</value>
+	</data>
+	<data name="RemoveButton" xml:space="preserve">
+		<value>Remove button</value>
+	</data>
+	<data name="GcodeFor" xml:space="preserve">
+		<value>G-code for {0}</value>
+	</data>
+	<data name="GcodeForButton" xml:space="preserve">
+		<value>G-code for the button</value>
+	</data>
+	<data name="NotWhilePrinting" xml:space="preserve">
+		<value>Not while printing</value>
+	</data>
+	<data name="AskBeforeSending" xml:space="preserve">
+		<value>Ask before sending</value>
+	</data>
+	<data name="ButtonsHintHtml" xml:space="preserve">
+		<value>Buttons show on the Control page. One command per line; include a snippet with &lt;code&gt;{% snippet 'name' %}&lt;/code&gt;. "Not while printing" allows the button when the printer is idle or paused, like jogging.</value>
+	</data>
+	<data name="SaveButtons" xml:space="preserve">
+		<value>Save buttons</value>
+	</data>
+	<data name="SlicerUpload" xml:space="preserve">
+		<value>Slicer upload</value>
+	</data>
+	<data name="SlicerHintHtml" xml:space="preserve">
+		<value>In OrcaSlicer, PrusaSlicer or Cura add a physical printer with host type &lt;strong&gt;OctoPrint&lt;/strong&gt;, host &lt;code&gt;{0}&lt;/code&gt; and an API key. Give each slicer or integration its own app key, so you can revoke one without touching the others. A key acts as the account that made it, with that account's role.</value>
+	</data>
+	<data name="CopyKeyHtml" xml:space="preserve">
+		<value>&lt;strong&gt;{0}&lt;/strong&gt;: copy this key now. PrintDeck keeps only a fingerprint of it and can't show it again.</value>
+	</data>
+	<data name="NewApiKey" xml:space="preserve">
+		<value>New API key</value>
+	</data>
+	<data name="Done" xml:space="preserve">
+		<value>Done</value>
+	</data>
+	<data name="KeyMade" xml:space="preserve">
+		<value>made {0}</value>
+	</data>
+	<data name="KeyUsed" xml:space="preserve">
+		<value>used {0}</value>
+	</data>
+	<data name="KeyNeverUsed" xml:space="preserve">
+		<value>never used</value>
+	</data>
+	<data name="ClickAgainToRevoke" xml:space="preserve">
+		<value>Click again to revoke</value>
+	</data>
+	<data name="ConfirmRevoke" xml:space="preserve">
+		<value>Confirm revoke</value>
+	</data>
+	<data name="Revoke" xml:space="preserve">
+		<value>Revoke</value>
+	</data>
+	<data name="KeyNamePlaceholder" xml:space="preserve">
+		<value>Name, e.g. OrcaSlicer on the laptop</value>
+	</data>
+	<data name="KeyName" xml:space="preserve">
+		<value>Key name</value>
+	</data>
+	<data name="NewAppKey" xml:space="preserve">
+		<value>New app key</value>
+	</data>
+	<data name="SharedKey" xml:space="preserve">
+		<value>Shared key</value>
+	</data>
+	<data name="SharedKeyHint" xml:space="preserve">
+		<value>The single key from before app keys. Whoever holds it can upload and print as an admin. Once every slicer has its own key, turn it off.</value>
+	</data>
+	<data name="SharedApiKey" xml:space="preserve">
+		<value>Shared API key</value>
+	</data>
+	<data name="NewKey" xml:space="preserve">
+		<value>New key</value>
+	</data>
+	<data name="ConfirmTurnOff" xml:space="preserve">
+		<value>Confirm: turn off</value>
+	</data>
+	<data name="TurnOff" xml:space="preserve">
+		<value>Turn off</value>
+	</data>
+	<data name="SharedKeyOff" xml:space="preserve">
+		<value>Off: only app keys sign in.</value>
+	</data>
+	<data name="TurnOnNewKey" xml:space="preserve">
+		<value>Turn on with a new key</value>
+	</data>
+	<data name="Backup" xml:space="preserve">
+		<value>Backup</value>
+	</data>
+	<data name="BackupHint" xml:space="preserve">
+		<value>One zip with the settings, printer profiles, API key and every uploaded file with its print history. Accounts are not included. Keep it private: it holds the API key.</value>
+	</data>
+	<data name="DownloadBackup" xml:space="preserve">
+		<value>Download backup</value>
+	</data>
+	<data name="RestoreEllipsis" xml:space="preserve">
+		<value>Restore…</value>
+	</data>
+	<data name="RestoreConfirmHtml" xml:space="preserve">
+		<value>Restore &lt;strong&gt;{0}&lt;/strong&gt; ({1})? It replaces the settings, printer profiles and API key. Files in the backup overwrite files with the same name; other files stay.</value>
+	</data>
+	<data name="Restoring" xml:space="preserve">
+		<value>Restoring…</value>
+	</data>
+	<data name="Restore" xml:space="preserve">
+		<value>Restore</value>
+	</data>
+	<data name="System" xml:space="preserve">
+		<value>System</value>
+	</data>
+	<data name="Disk" xml:space="preserve">
+		<value>Disk</value>
+	</data>
+	<data name="DiskFree" xml:space="preserve">
+		<value>{0} free of {1}</value>
+	</data>
+	<data name="CantBeRead" xml:space="preserve">
+		<value>Can't be read</value>
+	</data>
+	<data name="PiPower" xml:space="preserve">
+		<value>Raspberry Pi power</value>
+	</data>
+	<data name="NotAPi" xml:space="preserve">
+		<value>Not a Raspberry Pi</value>
+	</data>
+	<data name="UnderVoltageNow" xml:space="preserve">
+		<value>Under-voltage now</value>
+	</data>
+	<data name="ThrottledNow" xml:space="preserve">
+		<value>Throttled now</value>
+	</data>
+	<data name="UnderVoltageSinceBoot" xml:space="preserve">
+		<value>Under-voltage since boot</value>
+	</data>
+	<data name="ThrottledSinceBoot" xml:space="preserve">
+		<value>Throttled since boot</value>
+	</data>
+	<data name="PiOk" xml:space="preserve">
+		<value>OK</value>
+	</data>
+	<data name="Firmware" xml:space="preserve">
+		<value>Firmware</value>
+	</data>
+	<data name="FirmwareNotConnected" xml:space="preserve">
+		<value>Not connected</value>
+	</data>
+	<data name="NoProblems" xml:space="preserve">
+		<value>No problems found.</value>
+	</data>
+	<data name="NoHostCommandsHtml" xml:space="preserve">
+		<value>No commands configured. Set &lt;code&gt;System:RestartCommand&lt;/code&gt;, &lt;code&gt;System:RebootCommand&lt;/code&gt; and &lt;code&gt;System:ShutdownCommand&lt;/code&gt; in &lt;code&gt;appsettings.json&lt;/code&gt; on the host, for example &lt;code&gt;sudo systemctl restart printdeck&lt;/code&gt;. They can't be set here, on purpose.</value>
+	</data>
+	<data name="HostActionsHint" xml:space="preserve">
+		<value>Disconnects the printer first. Not available while printing.</value>
+	</data>
+	<data name="ClickAgainToConfirm" xml:space="preserve">
+		<value>Click again to confirm</value>
+	</data>
+	<data name="ConfirmAction" xml:space="preserve">
+		<value>Confirm: {0}</value>
+	</data>
+	<data name="ScriptBeforePrint" xml:space="preserve">
+		<value>Before print</value>
+	</data>
+	<data name="ScriptBeforePrintHint" xml:space="preserve">
+		<value>Sent before the print starts.</value>
+	</data>
+	<data name="ScriptAfterPrint" xml:space="preserve">
+		<value>After print</value>
+	</data>
+	<data name="ScriptAfterPrintHint" xml:space="preserve">
+		<value>Sent after the print finished.</value>
+	</data>
+	<data name="ScriptAfterCancel" xml:space="preserve">
+		<value>After cancel</value>
+	</data>
+	<data name="ScriptAfterCancelHint" xml:space="preserve">
+		<value>Sent after a print is cancelled, from PrintDeck or from the printer.</value>
+	</data>
+	<data name="ScriptOnPause" xml:space="preserve">
+		<value>On pause</value>
+	</data>
+	<data name="ScriptOnPauseHint" xml:space="preserve">
+		<value>Sent after PrintDeck pauses the print, or the printer asks it to (//action:pause). Not when the printer pauses on its own, e.g. M600.</value>
+	</data>
+	<data name="ScriptOnResume" xml:space="preserve">
+		<value>On resume</value>
+	</data>
+	<data name="ScriptOnResumeHint" xml:space="preserve">
+		<value>Sent before a paused print continues.</value>
+	</data>
+	<data name="RestartPrintDeck" xml:space="preserve">
+		<value>Restart PrintDeck</value>
+	</data>
+	<data name="RebootHost" xml:space="preserve">
+		<value>Reboot host</value>
+	</data>
+	<data name="ShutDownHost" xml:space="preserve">
+		<value>Shut down host</value>
+	</data>
+	<data name="Restarting" xml:space="preserve">
+		<value>Restarting PrintDeck; this page reconnects when it is back.</value>
+	</data>
+	<data name="Rebooting" xml:space="preserve">
+		<value>Rebooting the host.</value>
+	</data>
+	<data name="ShuttingDown" xml:space="preserve">
+		<value>Shutting down the host.</value>
+	</data>
+	<data name="RestoredOne" xml:space="preserve">
+		<value>Restored the settings and 1 file (backup made {0})</value>
+	</data>
+	<data name="Restored" xml:space="preserve">
+		<value>Restored the settings and {0} files (backup made {1})</value>
+	</data>
+	<data name="RestoreFailed" xml:space="preserve">
+		<value>Restore failed: {0}</value>
+	</data>
+	<data name="ProfileSize" xml:space="preserve">
+		<value>{0:0.#} × {1:0.#} × {2:0.#} mm</value>
+	</data>
+	<data name="OneExtruder" xml:space="preserve">
+		<value> · 1 extruder</value>
+	</data>
+	<data name="ExtruderCount" xml:space="preserve">
+		<value> · {0} extruders</value>
+	</data>
+	<data name="WithHeatedBed" xml:space="preserve">
+		<value> · heated bed</value>
+	</data>
+	<data name="ProfileCopy" xml:space="preserve">
+		<value>{0} copy</value>
+	</data>
+	<data name="ProfileAdded" xml:space="preserve">
+		<value>Added {0}</value>
+	</data>
+	<data name="ProfileSaved" xml:space="preserve">
+		<value>Saved {0}</value>
+	</data>
+	<data name="NowUsing" xml:space="preserve">
+		<value>Now using {0}</value>
+	</data>
+	<data name="ProfileDeleted" xml:space="preserve">
+		<value>Deleted {0}</value>
+	</data>
+	<data name="ScriptsSaved" xml:space="preserve">
+		<value>Scripts saved</value>
+	</data>
+	<data name="ButtonsSaved" xml:space="preserve">
+		<value>Buttons saved</value>
+	</data>
+	<data name="SettingsSaved" xml:space="preserve">
+		<value>Settings saved</value>
+	</data>
+	<data name="NoCameraChosen" xml:space="preserve">
+		<value>No camera chosen</value>
+	</data>
+	<data name="UsingCamera" xml:space="preserve">
+		<value>Using {0}</value>
+	</data>
+	<data name="ControlsReset" xml:space="preserve">
+		<value>Camera controls back to their defaults</value>
+	</data>
+	<data name="NewSharedKey" xml:space="preserve">
+		<value>New shared key — update it in your slicer.</value>
+	</data>
+	<data name="SharedKeyOn" xml:space="preserve">
+		<value>The shared key is on again, with a new key.</value>
+	</data>
+	<data name="Revoked" xml:space="preserve">
+		<value>Revoked {0}</value>
+	</data>
+	<data name="SharedKeyTurnedOff" xml:space="preserve">
+		<value>Shared key turned off; only app keys sign in now.</value>
+	</data>
+</root>

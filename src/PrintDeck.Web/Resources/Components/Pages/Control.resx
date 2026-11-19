@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Control</value>
+	</data>
+	<data name="LockedWhilePrinting" xml:space="preserve">
+		<value>Motion is locked while printing. Pause the print to move the printer.</value>
+	</data>
+	<data name="ConnectFirst" xml:space="preserve">
+		<value>Connect the printer to use these controls.</value>
+	</data>
+	<data name="Move" xml:space="preserve">
+		<value>Move</value>
+	</data>
+	<data name="StepSize" xml:space="preserve">
+		<value>Step size</value>
+	</data>
+	<data name="HomeXY" xml:space="preserve">
+		<value>Home X and Y</value>
+	</data>
+	<data name="HomeZ" xml:space="preserve">
+		<value>Home Z</value>
+	</data>
+	<data name="HomeAll" xml:space="preserve">
+		<value>Home all</value>
+	</data>
+	<data name="MotorsOff" xml:space="preserve">
+		<value>Motors off</value>
+	</data>
+	<data name="KeyboardHtml" xml:space="preserve">
+		<value>Keyboard: &lt;kbd&gt;←&lt;/kbd&gt;&lt;kbd&gt;→&lt;/kbd&gt; X, &lt;kbd&gt;↑&lt;/kbd&gt;&lt;kbd&gt;↓&lt;/kbd&gt; Y, &lt;kbd&gt;PgUp&lt;/kbd&gt;&lt;kbd&gt;PgDn&lt;/kbd&gt; Z, &lt;kbd&gt;Home&lt;/kbd&gt; homes X and Y, &lt;kbd&gt;End&lt;/kbd&gt; homes Z, &lt;kbd&gt;1&lt;/kbd&gt;–&lt;kbd&gt;4&lt;/kbd&gt; step size.</value>
+	</data>
+	<data name="Extruder" xml:space="preserve">
+		<value>Extruder</value>
+	</data>
+	<data name="Length" xml:space="preserve">
+		<value>Length (mm)</value>
+	</data>
+	<data name="Extrude" xml:space="preserve">
+		<value>Extrude</value>
+	</data>
+	<data name="Retract" xml:space="preserve">
+		<value>Retract</value>
+	</data>
+	<data name="NeedsHeat" xml:space="preserve">
+		<value>Needs the hotend at 170 °C or more</value>
+	</data>
+	<data name="PartFan" xml:space="preserve">
+		<value>Part fan</value>
+	</data>
+	<data name="FanSpeed" xml:space="preserve">
+		<value>Fan speed</value>
+	</data>
+	<data name="FanOff" xml:space="preserve">
+		<value>Off</value>
+	</data>
+	<data name="Custom" xml:space="preserve">
+		<value>Custom</value>
+	</data>
+	<data name="NotWhilePrinting" xml:space="preserve">
+		<value>Not while printing</value>
+	</data>
+	<data name="ConnectPrinterFirst" xml:space="preserve">
+		<value>Connect the printer first</value>
+	</data>
+	<data name="SendButton" xml:space="preserve">
+		<value>Send {0}?</value>
+	</data>
+	<data name="ChangeButtonsHtml" xml:space="preserve">
+		<value>Change them under &lt;a href="settings"&gt;Settings → Custom buttons&lt;/a&gt;.</value>
+	</data>
+	<data name="SentButton" xml:space="preserve">
+		<value>Sent {0}</value>
+	</data>
+</root>

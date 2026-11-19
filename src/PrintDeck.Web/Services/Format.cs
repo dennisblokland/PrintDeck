@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 
 using PrintDeck.Web.Services.Enums;
 
@@ -6,6 +7,15 @@ namespace PrintDeck.Web.Services;
 
 public static class Format
 {
+	private static readonly ResourceManager _text = new("PrintDeck.Web.Resources.Services.Format", typeof(Format).Assembly);
+
+	/// <summary>Words from <c>Resources/Services/Format.resx</c>; units (s, m, h, KB) stay as they are.</summary>
+	private static string T(string key, params object[] args)
+	{
+		string text = _text.GetString(key, CultureInfo.CurrentUICulture) ?? key;
+		return args.Length == 0 ? text : string.Format(CultureInfo.CurrentCulture, text, args);
+	}
+
 	public static string Duration(TimeSpan? t)
 	{
 		if (t is not { } v) return "—";
@@ -30,10 +40,10 @@ public static class Format
 	public static string Ago(DateTimeOffset at, DateTimeOffset now)
 	{
 		TimeSpan d = now - at;
-		return d.TotalMinutes < 1 ? "just now"
-			: d.TotalHours < 1 ? $"{(int) d.TotalMinutes} min ago"
-			: d.TotalDays < 1 ? $"{(int) d.TotalHours} h ago"
-			: d.TotalDays < 7 ? $"{(int) d.TotalDays} d ago"
+		return d.TotalMinutes < 1 ? T("JustNow")
+			: d.TotalHours < 1 ? T("MinutesAgo", (int) d.TotalMinutes)
+			: d.TotalDays < 1 ? T("HoursAgo", (int) d.TotalHours)
+			: d.TotalDays < 7 ? T("DaysAgo", (int) d.TotalDays)
 			: at.LocalDateTime.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
 	}
 }

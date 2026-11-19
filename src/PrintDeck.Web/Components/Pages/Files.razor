@@ -1,13 +1,14 @@
 @page "/files"
 @inherits PrinterComponent
 @inject NavigationManager Nav
+@inject IStringLocalizer<Files> L
 
-<PageTitle>Files · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <header class="page-head">
-	<h1>Files</h1>
-	<nav class="breadcrumbs" aria-label="Breadcrumb">
-		<button class="crumb @(_folder.Length == 0 ? "is-current" : "")" @onclick='() => OpenFolderAsync("")'><Icon Name="folder" Size="14" /> All files</button>
+	<h1>@L["Title"]</h1>
+	<nav class="breadcrumbs" aria-label="@L["Breadcrumb"]">
+		<button class="crumb @(_folder.Length == 0 ? "is-current" : "")" @onclick='() => OpenFolderAsync("")'><Icon Name="folder" Size="14" /> @L["AllFiles"]</button>
 		@foreach (string crumb in Crumbs(_folder))
 		{
 			<span class="crumb-sep">/</span>
@@ -17,11 +18,11 @@
 	<p class="muted">
 		@if (Filtered)
 		{
-			<text>@_files.Count of @_total file@(_total == 1 ? "" : "s")</text>
+			<text>@L["CountOfTotal", _files.Count, FileCount(_total)]</text>
 		}
 		else
 		{
-			<text>@_files.Count file@(_files.Count == 1 ? "" : "s") · @Format.Bytes(_files.Sum(f => f.SizeBytes))</text>
+			<text>@FileCount(_files.Count) · @Format.Bytes(_files.Sum(f => f.SizeBytes))</text>
 		}
 	</p>
 </header>
@@ -33,14 +34,14 @@
 		<Icon Name="upload" Size="26" />
 		@if (_uploading)
 		{
-			<strong>Uploading @_uploadName…</strong>
-			<span class="muted">Large files take a moment while they are analysed.</span>
+			<strong>@L["Uploading", _uploadName ?? ""]</strong>
+			<span class="muted">@L["Analysing"]</span>
 		}
 		else
 		{
-			<strong>Drop G-code here or click to browse</strong>
+			<strong>@L["Drop"]</strong>
 			<span class="muted">
-				@(_folder.Length == 0 ? "" : $"Into {_folder}. ")Or send straight from your slicer — see Settings → Slicer upload.
+				@(_folder.Length == 0 ? "" : L["IntoFolder", _folder] + " ")@L["SlicerHint"]
 			</span>
 		}
 	</label>
@@ -51,23 +52,23 @@
 	bool errors = review.Problems.Any(p => p.Severity == GcodeProblemSeverity.Error);
 	<section class="card check-dialog @(errors ? "has-errors" : "")" role="alertdialog" aria-labelledby="check-title">
 		<header class="card-head">
-			<h2 id="check-title">@review.Problems.Count problem@(review.Problems.Count == 1 ? "" : "s") in <span class="mono">@review.FileName</span></h2>
+			<h2 id="check-title">@(review.Problems.Count == 1 ? L.Html("OneProblemInHtml", review.FileName) : L.Html("ProblemsInHtml", review.Problems.Count, review.FileName))</h2>
 		</header>
 		<ul class="check-list">
 			@foreach (GcodeProblem p in review.Problems)
 			{
 				<li>
-					<span class="chip @(p.Severity == GcodeProblemSeverity.Error ? "chip-failed" : "chip-paused")">@(p.Severity == GcodeProblemSeverity.Error ? "Error" : "Warning")</span>
+					<span class="chip @(p.Severity == GcodeProblemSeverity.Error ? "chip-failed" : "chip-paused")">@(p.Severity == GcodeProblemSeverity.Error ? L["Error"] : L["Warning"])</span>
 					<span class="check-message">@p.Message</span>
 					<span class="muted small mono">@Where(p)</span>
 				</li>
 			}
 		</ul>
 		<div class="actions">
-			<button class="btn" @onclick="() => _review = null">Cancel</button>
+			<button class="btn" @onclick="() => _review = null">@Shared["Cancel"]</button>
 			<button class="btn @(errors ? "btn-danger" : "btn-primary")" disabled="@(_state != PrinterState.Operational)"
 					@onclick="() => StartAsync(review.FileName)">
-				<Icon Name="play" Size="14" /> Print anyway
+				<Icon Name="play" Size="14" /> @L["PrintAnyway"]
 			</button>
 		</div>
 	</section>
@@ -76,21 +77,21 @@
 @if (_total > 0 || _subfolders.Count > 0 || CanControl)
 {
 	<div class="file-toolbar">
-		<input class="input file-search" type="search" placeholder="Search files" aria-label="Search files"
+		<input class="input file-search" type="search" placeholder="@L["Search"]" aria-label="@L["Search"]"
 			   value="@_search" @oninput="OnSearch" />
-		<select class="input" aria-label="Sort by" value="@_sort" @onchange="OnSort">
-			<option value="@FileSort.Uploaded">Newest upload</option>
-			<option value="@FileSort.Name">Name</option>
-			<option value="@FileSort.LastPrinted">Last printed</option>
-			<option value="@FileSort.Size">Size</option>
+		<select class="input" aria-label="@L["SortBy"]" value="@_sort" @onchange="OnSort">
+			<option value="@FileSort.Uploaded">@L["SortUploaded"]</option>
+			<option value="@FileSort.Name">@L["SortName"]</option>
+			<option value="@FileSort.LastPrinted">@L["SortLastPrinted"]</option>
+			<option value="@FileSort.Size">@L["SortSize"]</option>
 		</select>
 		<label class="toggle">
 			<input type="checkbox" checked="@_hidePrinted" @onchange="OnHidePrinted" />
-			<span>Hide printed</span>
+			<span>@L["HidePrinted"]</span>
 		</label>
 		@if (CanControl)
 		{
-			<button class="btn btn-sm btn-ghost" @onclick="ToggleNewFolder"><Icon Name="folder" Size="14" /> New folder</button>
+			<button class="btn btn-sm btn-ghost" @onclick="ToggleNewFolder"><Icon Name="folder" Size="14" /> @L["NewFolder"]</button>
 		}
 	</div>
 }
@@ -98,10 +99,10 @@
 @if (_newFolder is not null)
 {
 	<form class="card folder-form" @onsubmit="CreateFolderAsync" @onsubmit:preventDefault>
-		<input class="input" placeholder="Folder name" aria-label="New folder name" maxlength="@FilePath.MaxSegmentLength" @bind="_newFolder" autofocus />
-		<span class="muted small">in @(_folder.Length == 0 ? "All files" : _folder)</span>
-		<button type="button" class="btn btn-ghost" @onclick="() => _newFolder = null">Cancel</button>
-		<button class="btn btn-primary" type="submit"><Icon Name="check" Size="14" /> Create</button>
+		<input class="input" placeholder="@L["FolderName"]" aria-label="@L["NewFolderName"]" maxlength="@FilePath.MaxSegmentLength" @bind="_newFolder" autofocus />
+		<span class="muted small">@L["InFolder", _folder.Length == 0 ? L["AllFiles"] : _folder]</span>
+		<button type="button" class="btn btn-ghost" @onclick="() => _newFolder = null">@Shared["Cancel"]</button>
+		<button class="btn btn-primary" type="submit"><Icon Name="check" Size="14" /> @L["Create"]</button>
 	</form>
 }
 
@@ -115,9 +116,9 @@
 				{
 					<form class="folder-form" @onsubmit="() => RenameFolderAsync(folder)" @onsubmit:preventDefault>
 						<Icon Name="folder" Size="18" />
-						<input class="input" aria-label="Folder name" maxlength="@FilePath.MaxSegmentLength" @bind="_renameTo" autofocus />
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _renaming = null">Cancel</button>
-						<button class="btn btn-sm btn-primary" type="submit">Rename</button>
+						<input class="input" aria-label="@L["FolderName"]" maxlength="@FilePath.MaxSegmentLength" @bind="_renameTo" autofocus />
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _renaming = null">@Shared["Cancel"]</button>
+						<button class="btn btn-sm btn-primary" type="submit">@L["Rename"]</button>
 					</form>
 				}
 				else
@@ -130,9 +131,9 @@
 					@if (CanControl)
 					{
 						<div class="file-actions">
-							<button class="btn btn-sm btn-ghost" @onclick="() => StartRename(folder)">Rename</button>
+							<button class="btn btn-sm btn-ghost" @onclick="() => StartRename(folder)">@L["Rename"]</button>
 							<button class="icon-btn icon-btn-danger @(_confirmDelete == FolderKey(folder) ? "is-armed" : "")"
-									title="@(_confirmDelete == FolderKey(folder) ? "Click again to delete" : "Delete empty folder")" @onclick="() => DeleteFolderAsync(folder)">
+									title="@(_confirmDelete == FolderKey(folder) ? Shared["ClickAgainToDelete"] : L["DeleteEmptyFolder"])" @onclick="() => DeleteFolderAsync(folder)">
 								<Icon Name="@(_confirmDelete == FolderKey(folder) ? "check" : "trash")" Size="16" />
 							</button>
 						</div>
@@ -147,12 +148,12 @@
 {
 	@if (Filtered)
 	{
-		<div class="card empty"><Icon Name="folder" Size="28" /><p>No files match</p>
-			<button class="btn btn-ghost" @onclick="ShowAllAsync">Show all files</button></div>
+		<div class="card empty"><Icon Name="folder" Size="28" /><p>@L["NoMatch"]</p>
+			<button class="btn btn-ghost" @onclick="ShowAllAsync">@L["ShowAll"]</button></div>
 	}
 	else
 	{
-		<div class="card empty"><Icon Name="folder" Size="28" /><p>@(_folder.Length == 0 ? "No files yet" : "This folder is empty")</p></div>
+		<div class="card empty"><Icon Name="folder" Size="28" /><p>@(_folder.Length == 0 ? L["NoFiles"] : L["FolderEmpty"])</p></div>
 	}
 }
 else if (_files.Count > 0)
@@ -181,43 +182,43 @@ else if (_files.Count > 0)
 						@if (f.Prints?.Last is { } last)
 						{
 							<text> · </text><span class="file-printed @(last.Succeeded ? "is-ok" : "is-bad")"
-												   title="@PrintSummary(f.Prints)">@(last.Succeeded ? "printed" : last.Status == JobStatus.Cancelled ? "cancelled" : "failed") @Format.Ago(last.EndedAt, Time.GetUtcNow())</span>
+												   title="@PrintSummary(f.Prints)">@(last.Succeeded ? L["PrintedAgo", Format.Ago(last.EndedAt, Time.GetUtcNow())] : last.Status == JobStatus.Cancelled ? L["CancelledAgo", Format.Ago(last.EndedAt, Time.GetUtcNow())] : L["FailedAgo", Format.Ago(last.EndedAt, Time.GetUtcNow())])</span>
 						}
 					</span>
 				</div>
 				<div class="file-stats">
-					<span title="Estimated print time"><Icon Name="clock" Size="14" /> @Format.Duration(f.Analysis?.EstimatedPrintTime)</span>
-					<span title="Filament"><Icon Name="spool" Size="14" /> @Format.Filament(f.Analysis?.FilamentMillimeters)</span>
-					<span title="Layers"><Icon Name="layers" Size="14" /> @(f.Analysis?.LayerCount?.ToString() ?? "—")</span>
+					<span title="@L["EstimatedTime"]"><Icon Name="clock" Size="14" /> @Format.Duration(f.Analysis?.EstimatedPrintTime)</span>
+					<span title="@L["Filament"]"><Icon Name="spool" Size="14" /> @Format.Filament(f.Analysis?.FilamentMillimeters)</span>
+					<span title="@L["Layers"]"><Icon Name="layers" Size="14" /> @(f.Analysis?.LayerCount?.ToString() ?? "—")</span>
 				</div>
 				<div class="file-actions">
-					<a class="icon-btn" href="viewer/@FileUrl.Path(f.Name)" title="View toolpath"><Icon Name="eye" Size="16" /></a>
+					<a class="icon-btn" href="viewer/@FileUrl.Path(f.Name)" title="@L["ViewToolpath"]"><Icon Name="eye" Size="16" /></a>
 					@if (printing)
 					{
-						<span class="chip chip-printing">Printing</span>
+						<span class="chip chip-printing">@L["Printing"]</span>
 					}
 					else if (copying)
 					{
-						<span class="chip chip-printing">Copying to SD</span>
+						<span class="chip chip-printing">@L["CopyingToSd"]</span>
 					}
 					else if (CanControl)
 					{
 						@if (_sd.State == SdCardState.Ready)
 						{
 							<button class="icon-btn" disabled="@(_state != PrinterState.Operational)"
-									title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Copy to SD card")"
+									title="@(_state != PrinterState.Operational ? L["MustBeIdle"] : L["CopyToSd"])"
 									@onclick='() => CopyToSdAsync(f.Name)'>
 								<Icon Name="sdcard" Size="16" />
 							</button>
 						}
 						<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational || _checking is not null)"
-								title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Check the file, then print")"
+								title="@(_state != PrinterState.Operational ? L["MustBeIdle"] : L["CheckThenPrint"])"
 								@onclick="() => PrintAsync(f.Name)">
-							<Icon Name="play" Size="14" /> @(_checking == f.Name ? "Checking…" : "Print")
+							<Icon Name="play" Size="14" /> @(_checking == f.Name ? L["Checking"] : L["Print"])
 						</button>
-						<button class="icon-btn" title="Move or rename" @onclick="() => StartMove(f.Name)"><Icon Name="folder" Size="16" /></button>
+						<button class="icon-btn" title="@L["MoveOrRename"]" @onclick="() => StartMove(f.Name)"><Icon Name="folder" Size="16" /></button>
 						<button class="icon-btn icon-btn-danger @(_confirmDelete == f.Name ? "is-armed" : "")"
-								title="@(_confirmDelete == f.Name ? "Click again to delete" : "Delete")" @onclick="() => DeleteAsync(f.Name)">
+								title="@(_confirmDelete == f.Name ? Shared["ClickAgainToDelete"] : Shared["Delete"])" @onclick="() => DeleteAsync(f.Name)">
 							<Icon Name="@(_confirmDelete == f.Name ? "check" : "trash")" Size="16" />
 						</button>
 					}
@@ -225,16 +226,16 @@ else if (_files.Count > 0)
 				@if (_moving == f.Name)
 				{
 					<form class="folder-form move-form" @onsubmit="() => MoveAsync(f.Name)" @onsubmit:preventDefault>
-						<select class="input" aria-label="Move to folder" @bind="_moveFolder">
-							<option value="">All files (top level)</option>
+						<select class="input" aria-label="@L["MoveToFolder"]" @bind="_moveFolder">
+							<option value="">@L["TopLevel"]</option>
 							@foreach (string folder in _allFolders)
 							{
 								<option value="@folder">@folder</option>
 							}
 						</select>
-						<input class="input" aria-label="File name" @bind="_moveName" />
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _moving = null">Cancel</button>
-						<button class="btn btn-sm btn-primary" type="submit">Move</button>
+						<input class="input" aria-label="@L["FileName"]" @bind="_moveName" />
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _moving = null">@Shared["Cancel"]</button>
+						<button class="btn btn-sm btn-primary" type="submit">@L["Move"]</button>
 					</form>
 				}
 			</li>
@@ -246,7 +247,7 @@ else if (_files.Count > 0)
 {
 	<section class="sd-section" aria-labelledby="sd-title">
 		<div class="sd-head">
-			<h2 id="sd-title"><Icon Name="sdcard" Size="16" /> SD card
+			<h2 id="sd-title"><Icon Name="sdcard" Size="16" /> @L["SdCard"]
 				<span class="muted">· @SdSummary</span>
 			</h2>
 			@if (CanControl)
@@ -254,13 +255,13 @@ else if (_files.Count > 0)
 				<div class="sd-head-actions">
 					@if (_sd.State == SdCardState.Ready)
 					{
-						<button class="icon-btn" title="Refresh list" @onclick="() => Run(new RefreshSdCardCommand())"><Icon Name="refresh" Size="16" /></button>
-						<button class="btn btn-sm btn-ghost" disabled="@_sdBusy" title="@(_sdBusy ? "The SD card is in use" : "Unmount the card so you can remove it")"
-								@onclick='() => Run(new ReleaseSdCardCommand(), "SD card released")'>Release</button>
+						<button class="icon-btn" title="@L["RefreshList"]" @onclick="() => Run(new RefreshSdCardCommand())"><Icon Name="refresh" Size="16" /></button>
+						<button class="btn btn-sm btn-ghost" disabled="@_sdBusy" title="@(_sdBusy ? L["SdInUse"] : L["ReleaseTitle"])"
+								@onclick='() => Run(new ReleaseSdCardCommand(), L["Released"])'>@L["Release"]</button>
 					}
 					else
 					{
-						<button class="btn btn-sm" disabled="@_sdBusy" @onclick="() => Run(new InitSdCardCommand())">Initialise card</button>
+						<button class="btn btn-sm" disabled="@_sdBusy" @onclick="() => Run(new InitSdCardCommand())">@L["Initialise"]</button>
 					}
 				</div>
 			}
@@ -268,11 +269,11 @@ else if (_files.Count > 0)
 
 		@if (_sd.State != SdCardState.Ready)
 		{
-			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>@(_sd.State == SdCardState.Unknown ? "Checking for an SD card…" : "No SD card. Insert one and initialise it.")</p></div>
+			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>@(_sd.State == SdCardState.Unknown ? L["CheckingSd"] : L["NoSd"])</p></div>
 		}
 		else if (_sd.Files.Count == 0)
 		{
-			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>No G-code on the SD card</p></div>
+			<div class="card empty"><Icon Name="sdcard" Size="28" /><p>@L["SdEmpty"]</p></div>
 		}
 		else
 		{
@@ -283,23 +284,23 @@ else if (_files.Count > 0)
 					<li class="file @(printing ? "is-printing" : "")" @key="f.Path">
 						<div class="file-main">
 							<span class="file-name" title="@f.DisplayName">@f.DisplayName</span>
-							<span class="file-sub"><span class="sd-path">@f.Path</span> · @(f.SizeBytes > 0 ? Format.Bytes(f.SizeBytes) : "size unknown")</span>
+							<span class="file-sub"><span class="sd-path">@f.Path</span> · @(f.SizeBytes > 0 ? Format.Bytes(f.SizeBytes) : L["SizeUnknown"])</span>
 						</div>
 						<div class="file-stats"></div>
 						<div class="file-actions">
 							@if (printing)
 							{
-								<span class="chip chip-printing">Printing</span>
+								<span class="chip chip-printing">@L["Printing"]</span>
 							}
 							else if (CanControl)
 							{
 								<button class="btn btn-sm btn-primary" disabled="@(_state != PrinterState.Operational)"
-										title="@(_state != PrinterState.Operational ? "Printer must be connected and idle" : "Print from the SD card")"
-										@onclick='() => Run(new StartSdPrintCommand(f.Path), $"Printing {f.DisplayName} from the SD card")'>
-									<Icon Name="play" Size="14" /> Print
+										title="@(_state != PrinterState.Operational ? L["MustBeIdle"] : L["PrintFromSd"])"
+										@onclick='() => Run(new StartSdPrintCommand(f.Path), L["PrintingFromSd", f.DisplayName])'>
+									<Icon Name="play" Size="14" /> @L["Print"]
 								</button>
 								<button class="icon-btn icon-btn-danger @(_confirmDelete == SdKey(f) ? "is-armed" : "")" disabled="@_sdBusy"
-										title="@(_confirmDelete == SdKey(f) ? "Click again to delete from the SD card" : "Delete from the SD card")"
+										title="@(_confirmDelete == SdKey(f) ? L["ConfirmDeleteFromSd"] : L["DeleteFromSd"])"
 										@onclick="() => DeleteSdAsync(f)">
 									<Icon Name="@(_confirmDelete == SdKey(f) ? "check" : "trash")" Size="16" />
 								</button>
@@ -393,11 +394,9 @@ else if (_files.Count > 0)
 		for (int i = 1; i <= parts.Length; i++) yield return string.Join('/', parts[..i]);
 	}
 
-	private string FolderSummary(string folder)
-	{
-		int files = _everything.Count(f => FilePath.IsWithin(f.Name, folder));
-		return $"{files} file{(files == 1 ? "" : "s")}";
-	}
+	private string FolderSummary(string folder) => FileCount(_everything.Count(f => FilePath.IsWithin(f.Name, folder)));
+
+	private string FileCount(int n) => n == 1 ? L["OneFile"] : L["FileCount", n];
 
 	private static string FolderKey(string folder) => "folder:" + folder;
 
@@ -406,7 +405,7 @@ else if (_files.Count > 0)
 	private async Task CreateFolderAsync()
 	{
 		string name = (_newFolder ?? "").Trim();
-		if (await Run(new CreateFolderCommand(FilePath.Combine(_folder, name)), $"Created folder {name}")) _newFolder = null;
+		if (await Run(new CreateFolderCommand(FilePath.Combine(_folder, name)), L["FolderCreated", name])) _newFolder = null;
 	}
 
 	private void StartRename(string folder)
@@ -418,7 +417,7 @@ else if (_files.Count > 0)
 	private async Task RenameFolderAsync(string folder)
 	{
 		string target = FilePath.Combine(FilePath.Folder(folder), _renameTo.Trim());
-		if (await Run(new MoveFolderCommand(folder, target), $"Renamed to {_renameTo.Trim()}")) _renaming = null;
+		if (await Run(new MoveFolderCommand(folder, target), L["RenamedTo", _renameTo.Trim()])) _renaming = null;
 	}
 
 	private async Task DeleteFolderAsync(string folder)
@@ -431,7 +430,7 @@ else if (_files.Count > 0)
 			return;
 		}
 		_confirmDelete = null;
-		await Run(new DeleteFolderCommand(folder), $"Deleted folder {FilePath.Name(folder)}");
+		await Run(new DeleteFolderCommand(folder), L["FolderDeleted", FilePath.Name(folder)]);
 	}
 
 	private void StartMove(string name)
@@ -444,7 +443,7 @@ else if (_files.Count > 0)
 	private async Task MoveAsync(string name)
 	{
 		string target = FilePath.Combine(_moveFolder, _moveName.Trim());
-		if (await Run(new MoveGcodeCommand(name, target), $"Moved to {target}")) _moving = null;
+		if (await Run(new MoveGcodeCommand(name, target), L["MovedTo", target])) _moving = null;
 	}
 
 	private Task OnSearch(ChangeEventArgs e) => ApplyAsync(e.Value as string, _sort, _hidePrinted);
@@ -465,11 +464,11 @@ else if (_files.Count > 0)
 		await RefreshAsync();
 	}
 
-	private static string PrintSummary(PrintStats p) =>
-		$"{p.Completed} successful print{(p.Completed == 1 ? "" : "s")}"
-		+ (p.Unsuccessful > 0 ? $", {p.Unsuccessful} cancelled or failed" : "")
-		+ (p.TotalPrintTime > TimeSpan.Zero ? $" · {Format.Duration(p.TotalPrintTime)} printing" : "")
-		+ (p.TotalFilamentMm > 0 ? $" · {Format.Filament(p.TotalFilamentMm)} filament" : "");
+	private string PrintSummary(PrintStats p) =>
+		(p.Completed == 1 ? L["OneSuccessfulPrint"] : L["SuccessfulPrints", p.Completed])
+		+ (p.Unsuccessful > 0 ? L["Unsuccessful", p.Unsuccessful] : "")
+		+ (p.TotalPrintTime > TimeSpan.Zero ? L["PrintingTime", Format.Duration(p.TotalPrintTime)] : "")
+		+ (p.TotalFilamentMm > 0 ? L["FilamentUsed", Format.Filament(p.TotalFilamentMm)] : "");
 	private (string FileName, IReadOnlyList<GcodeProblem> Problems)? _review;
 
 	protected override PrinterChange Interests => PrinterChange.Files | PrinterChange.State | PrinterChange.Job;
@@ -497,20 +496,20 @@ else if (_files.Count > 0)
 	{
 		IReadOnlyList<IBrowserFile> files = e.GetMultipleFiles(20);
 		_uploading = true;
-		_uploadName = files.Count == 1 ? files[0].Name : $"{files.Count} files";
+		_uploadName = files.Count == 1 ? files[0].Name : L["FileCount", files.Count];
 		try
 		{
 			foreach (IBrowserFile file in files)
 			{
 				await using Stream stream = file.OpenReadStream(_maxUpload);
 				Result<GcodeFile> result = await Mediator.Send(new UploadGcodeCommand(file.Name, stream, _folder));
-				if (result.IsSuccess) Toasts.Success($"Uploaded {result.Value!.Name}");
+				if (result.IsSuccess) Toasts.Success(L["Uploaded", result.Value!.Name]);
 				else Toasts.Error(result.Error!);
 			}
 		}
 		catch (IOException ex)
 		{
-			Toasts.Error($"Upload failed: {ex.Message}");
+			Toasts.Error(L["UploadFailed", ex.Message]);
 		}
 		finally
 		{
@@ -521,9 +520,9 @@ else if (_files.Count > 0)
 
 	private string SdSummary => _sd.State switch
 	{
-		SdCardState.Ready => $"{_sd.Files.Count} file{(_sd.Files.Count == 1 ? "" : "s")}",
-		SdCardState.Unavailable => "not available",
-		_ => "unknown"
+		SdCardState.Ready => FileCount(_sd.Files.Count),
+		SdCardState.Unavailable => L["SdNotAvailable"],
+		_ => L["SdUnknown"]
 	};
 
 	private static string SdKey(SdFile f) => "sd:" + f.Path;
@@ -531,7 +530,7 @@ else if (_files.Count > 0)
 	private async Task CopyToSdAsync(string name)
 	{
 		Result<string> result = await Mediator.Send(new CopyToSdCardCommand(name));
-		if (result.IsSuccess) Toasts.Success($"Copying {name} to the SD card as {result.Value}");
+		if (result.IsSuccess) Toasts.Success(L["CopyingTo", name, result.Value!]);
 		else Toasts.Error(result.Error!);
 	}
 
@@ -545,7 +544,7 @@ else if (_files.Count > 0)
 			return;
 		}
 		_confirmDelete = null;
-		await Run(new DeleteSdFileCommand(f.Path), $"Deleted {f.DisplayName} from the SD card");
+		await Run(new DeleteSdFileCommand(f.Path), L["DeletedFromSd", f.DisplayName]);
 	}
 
 	/// <summary>Checks the file first; a clean file starts at once, otherwise the problems are shown.</summary>
@@ -556,7 +555,7 @@ else if (_files.Count > 0)
 		try
 		{
 			IReadOnlyList<GcodeProblem>? problems = await Mediator.Send(new CheckGcodeFileQuery(name));
-			if (problems is null) Toasts.Error($"File {name} not found.");
+			if (problems is null) Toasts.Error(L["NotFound", name]);
 			else if (problems.Count == 0) await StartAsync(name);
 			else _review = (name, problems);
 		}
@@ -569,15 +568,15 @@ else if (_files.Count > 0)
 	private async Task StartAsync(string name)
 	{
 		_review = null;
-		await Run(new StartPrintCommand(name, IgnoreProblems: true), $"Printing {name}");
+		await Run(new StartPrintCommand(name, IgnoreProblems: true), L["PrintingFile", name]);
 	}
 
-	private static string Where(GcodeProblem p) =>
+	private string Where(GcodeProblem p) =>
 		(p.FirstLine, p.Count) switch
 		{
 			(null, _) => "",
-			({ } line, 1) => $"line {line:N0}",
-			({ } line, int n) => $"line {line:N0} and {n - 1:N0} more"
+			({ } line, 1) => L["Line", line],
+			({ } line, int n) => L["LineAndMore", line, n - 1]
 		};
 
 	private async Task DeleteAsync(string name)
@@ -589,7 +588,7 @@ else if (_files.Count > 0)
 			return;
 		}
 		_confirmDelete = null;
-		await Run(new DeleteGcodeCommand(name), $"Deleted {name}");
+		await Run(new DeleteGcodeCommand(name), L["Deleted", name]);
 	}
 
 	private static string ThumbnailUrl(GcodeFile f) => $"thumbnail/{FileUrl.Path(f.Name)}?v={f.UploadedAt.UtcTicks:x}";

@@ -2,6 +2,7 @@ using Mediator;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Localization;
 
 using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
@@ -23,6 +24,9 @@ public abstract class PrinterComponent : ComponentBase, IDisposable
 	[Inject] protected IPrinterEvents Events { get; set; } = default!;
 	[Inject] protected ToastService Toasts { get; set; } = default!;
 	[Inject] protected TimeProvider Time { get; set; } = default!;
+
+	/// <summary>Words many pages share; each component injects its own <c>IStringLocalizer</c> as <c>L</c>.</summary>
+	[Inject] protected IStringLocalizer<SharedText> Shared { get; set; } = default!;
 
 	[CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
 
@@ -77,7 +81,7 @@ public abstract class PrinterComponent : ComponentBase, IDisposable
 	protected async Task<bool> Run(ICommand<Result> command, string? success = null)
 	{
 		Result result = await Mediator.Send(command);
-		if (!result.IsSuccess) Toasts.Error(result.Error ?? "Something went wrong.");
+		if (!result.IsSuccess) Toasts.Error(result.Error ?? Shared["SomethingWentWrong"]);
 		else if (success is not null) Toasts.Success(success);
 		return result.IsSuccess;
 	}

@@ -1,5 +1,7 @@
 @page "/access-denied"
+@inject IStringLocalizer<AccessDenied> L
+@inject IStringLocalizer<SharedText> Shared
 
-<PageTitle>Admins only · PrintDeck</PageTitle>
+<PageTitle>@Shared["PageTitle", L["Title"]]</PageTitle>
 
 <AdminsOnly />

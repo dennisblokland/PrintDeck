@@ -1,15 +1,16 @@
 @inherits PrinterComponent
+@inject IStringLocalizer<TemperaturePanel> L
 
 <section class="card temps-card">
 	<header class="card-head">
-		<h2>Temperatures</h2>
+		<h2>@L["Title"]</h2>
 	</header>
 
 	@if (_heaters.Count == 0)
 	{
 		<div class="empty">
 			<Icon Name="thermo" Size="28" />
-			<p>Connect the printer to see temperatures</p>
+			<p>@L["Empty"]</p>
 		</div>
 	}
 	else
@@ -23,7 +24,7 @@
 					<div class="heater-label"><Icon Name="@(h.IsBed ? "bed" : "flame")" Size="16" /> @h.DisplayName</div>
 					<div class="heater-read">
 						<span class="heater-actual">@Format.Temp(h.Actual)<small>°C</small></span>
-						<span class="heater-target @(h.Target > 0 ? "is-on" : "")">@(h.Target > 0 ? $"→ {h.Target:0}°" : "off")</span>
+						<span class="heater-target @(h.Target > 0 ? "is-on" : "")">@(h.Target > 0 ? $"→ {h.Target:0}°" : L["Off"])</span>
 					</div>
 					<div class="heater-meter" aria-hidden="true">
 						<i style="transform:scaleX(@Frac(h.Actual, scale))"></i>
@@ -35,10 +36,10 @@
 					@if (CanControl)
 					{
 						<form class="heater-set" @onsubmit="() => SetAsync(h.Heater)" @onsubmit:preventDefault>
-							<input class="input input-num" type="number" min="0" max="320" step="1" placeholder="Target"
-								   aria-label="@($"{h.DisplayName} target")" @bind="_inputs[h.Heater]" />
-							<button class="btn btn-sm" type="submit">Set</button>
-							<button class="btn btn-sm btn-ghost" type="button" title="Turn off" @onclick="() => OffAsync(h.Heater)"><Icon Name="power" Size="14" /></button>
+							<input class="input input-num" type="number" min="0" max="320" step="1" placeholder="@L["Target"]"
+								   aria-label="@L["TargetFor", h.DisplayName]" @bind="_inputs[h.Heater]" />
+							<button class="btn btn-sm" type="submit">@L["Set"]</button>
+							<button class="btn btn-sm btn-ghost" type="button" title="@L["TurnOff"]" @onclick="() => OffAsync(h.Heater)"><Icon Name="power" Size="14" /></button>
 						</form>
 					}
 				</div>
@@ -50,9 +51,9 @@
 			<div class="presets">
 				@foreach (TemperaturePreset p in _presets)
 				{
-					<button class="btn btn-sm btn-ghost" title="@($"{p.Hotend}° / {p.Bed}°")" @onclick='() => Run(new ApplyTemperaturePresetCommand(p.Name), p.Name + " preheat")'>@p.Name</button>
+					<button class="btn btn-sm btn-ghost" title="@($"{p.Hotend}° / {p.Bed}°")" @onclick='() => Run(new ApplyTemperaturePresetCommand(p.Name), L["Preheating", p.Name])'>@p.Name</button>
 				}
-				<button class="btn btn-sm btn-ghost" @onclick='() => Run(new ApplyTemperaturePresetCommand("Off"), "Heaters off")'>Cool down</button>
+				<button class="btn btn-sm btn-ghost" @onclick='() => Run(new ApplyTemperaturePresetCommand("Off"), L["HeatersOff"])'>@L["CoolDown"]</button>
 			</div>
 		}
 	}

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Viewer</value>
+	</data>
+	<data name="File" xml:space="preserve">
+		<value>File</value>
+	</data>
+	<data name="PickFile" xml:space="preserve">
+		<value>Pick a file…</value>
+	</data>
+	<data name="FilePrinting" xml:space="preserve">
+		<value>{0} — printing</value>
+	</data>
+	<data name="Empty" xml:space="preserve">
+		<value>Upload a file to see its toolpath</value>
+	</data>
+	<data name="Files" xml:space="preserve">
+		<value>Files</value>
+	</data>
+	<data name="Canvas2d" xml:space="preserve">
+		<value>Toolpath of the selected layer</value>
+	</data>
+	<data name="Canvas3d" xml:space="preserve">
+		<value>3D toolpath up to the selected layer</value>
+	</data>
+	<data name="Reading" xml:space="preserve">
+		<value>Reading toolpath…</value>
+	</data>
+	<data name="NoMoves" xml:space="preserve">
+		<value>No extrusion moves in this file</value>
+	</data>
+	<data name="View" xml:space="preserve">
+		<value>View</value>
+	</data>
+	<data name="FitModel" xml:space="preserve">
+		<value>Fit model</value>
+	</data>
+	<data name="WholeBed" xml:space="preserve">
+		<value>Whole bed</value>
+	</data>
+	<data name="Layer" xml:space="preserve">
+		<value>Layer</value>
+	</data>
+	<data name="MovesWithinLayer" xml:space="preserve">
+		<value>Moves within layer</value>
+	</data>
+	<data name="FollowTitle" xml:space="preserve">
+		<value>Jump to the layer that is printing</value>
+	</data>
+	<data name="Follow" xml:space="preserve">
+		<value>Follow print</value>
+	</data>
+	<data name="LayerDown" xml:space="preserve">
+		<value>Layer down</value>
+	</data>
+	<data name="LayerUp" xml:space="preserve">
+		<value>Layer up</value>
+	</data>
+	<data name="PrintingLayer" xml:space="preserve">
+		<value>Printing layer {0}</value>
+	</data>
+	<data name="Show" xml:space="preserve">
+		<value>Show</value>
+	</data>
+	<data name="Nozzle" xml:space="preserve">
+		<value>Nozzle</value>
+	</data>
+	<data name="LayerBelow" xml:space="preserve">
+		<value>Layer below</value>
+	</data>
+	<data name="Travel" xml:space="preserve">
+		<value>Travel moves</value>
+	</data>
+	<data name="Hint2d" xml:space="preserve">
+		<value>Drag to pan, scroll or pinch to zoom, double-click to fit.</value>
+	</data>
+	<data name="Hint3d" xml:space="preserve">
+		<value>Drag to orbit, right-drag or two fingers to pan, scroll or pinch to zoom, double-click to fit.</value>
+	</data>
+	<data name="NeedsWebGl" xml:space="preserve">
+		<value>3D view needs a browser with WebGL 2.</value>
+	</data>
+	<data name="View3dFailed" xml:space="preserve">
+		<value>3D view failed: {0}</value>
+	</data>
+	<data name="KindOuterWall" xml:space="preserve">
+		<value>Outer wall</value>
+	</data>
+	<data name="KindInnerWall" xml:space="preserve">
+		<value>Inner wall</value>
+	</data>
+	<data name="KindInfill" xml:space="preserve">
+		<value>Infill</value>
+	</data>
+	<data name="KindSolidInfill" xml:space="preserve">
+		<value>Solid infill</value>
+	</data>
+	<data name="KindSupport" xml:space="preserve">
+		<value>Support</value>
+	</data>
+	<data name="KindSkirt" xml:space="preserve">
+		<value>Skirt / brim</value>
+	</data>
+	<data name="KindOther" xml:space="preserve">
+		<value>Other</value>
+	</data>
+</root>
