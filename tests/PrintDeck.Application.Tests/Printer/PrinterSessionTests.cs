@@ -63,6 +63,15 @@ public class PrinterSessionTests : IAsyncDisposable
 		}
 
 		[Fact]
+		public async Task Can_be_disposed_twice()
+		{
+			// The host disposes it once as PrinterSession and once as IPrinterSession.
+			await ConnectAsync();
+			await _session.DisposeAsync();
+			await _session.DisposeAsync();
+		}
+
+		[Fact]
 		public async Task Refuses_a_second_connect()
 		{
 			await ConnectAsync();
