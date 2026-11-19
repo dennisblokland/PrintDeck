@@ -28,7 +28,7 @@
 		<value>Timelapses are off.</value>
 	</data>
 	<data name="SwitchOnHtml" xml:space="preserve">
-		<value>Switch them on under &lt;a href="settings"&gt;Settings → Timelapse&lt;/a&gt;.</value>
+		<value>Switch them on under &lt;a href="settings/camera"&gt;Settings → Camera&lt;/a&gt;.</value>
 	</data>
 	<data name="Empty" xml:space="preserve">
 		<value>No timelapses yet</value>

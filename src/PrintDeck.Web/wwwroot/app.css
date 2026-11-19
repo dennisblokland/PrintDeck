@@ -502,6 +502,19 @@ kbd {
 .profile-name:hover strong, .profile-row.is-editing .profile-name strong { color: var(--accent); }
 .profile-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
 .settings-wide { grid-column: 1 / -1; }
+.settings-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: start; }
+.settings-nav { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 2px; }
+.settings-nav-link {
+    display: flex; align-items: center; gap: 10px; flex: none;
+    height: 36px; padding: 0 12px; border-radius: var(--radius-sm);
+    color: var(--muted); font-weight: 500; white-space: nowrap;
+    transition: background-color .15s var(--ease), color .15s var(--ease);
+}
+.settings-nav-link:hover { background: var(--panel-2); color: var(--text); }
+.settings-nav-link.is-active { background: var(--panel-3); color: var(--text); box-shadow: var(--highlight); }
+.settings-nav-link.is-active .icon { color: var(--accent); }
+.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-host > .presets-card { grid-row: span 2; }
 .scripts-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; margin-bottom: 16px; }
 .scripts-pane { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .scripts-tabs { flex-wrap: wrap; align-self: flex-start; }
@@ -723,12 +736,19 @@ kbd {
 /* ───────────────────────── responsive ───────────────────────── */
 @media (max-width: 1100px) {
     .dash, .control-grid, .settings, .settings-host, .viewer, .users, .scripts-grid { grid-template-columns: minmax(0, 1fr); }
+    .settings-host > .presets-card { grid-row: auto; }
     .viewer-canvas-wrap { height: 62vh; }
     .control-grid > .card:first-child { grid-row: auto; }
     .file { grid-template-columns: minmax(0, 1fr) auto; }
     .file-stats { grid-column: 1 / -1; grid-row: 2; }
     .file.has-thumb { grid-template-columns: auto minmax(0, 1fr) auto; }
     .file.has-thumb .file-stats { grid-column: 2 / -1; }
+}
+
+@media (max-width: 900px) {
+    .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .settings-nav { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: none; }
+    .settings-nav::-webkit-scrollbar { display: none; }
 }
 
 @media (max-width: 760px) {
