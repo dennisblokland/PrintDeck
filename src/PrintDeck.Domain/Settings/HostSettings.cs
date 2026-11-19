@@ -79,6 +79,9 @@ public sealed record HostSettings
 		new("ABS", 250, 100)
 	];
 
+	/// <summary>Buttons on the Control page that send G-code, in the order shown.</summary>
+	public IReadOnlyList<CustomButton> CustomButtons { get; init; } = [];
+
 	/// <summary>Terminal lines to hide, by pattern; each can be switched on and off on the Terminal page.</summary>
 	public IReadOnlyList<TerminalFilter> TerminalFilters { get; init; } = TerminalFilter.Defaults;
 
@@ -117,6 +120,7 @@ public sealed record HostSettings
 			Snippets = Snippets ?? [],
 			TerminalFilters = TerminalFilters ?? [],
 			CameraControls = CameraControls ?? [],
+			CustomButtons = CustomButtons ?? [],
 			Timelapse = (Timelapse ?? new TimelapseSettings()).Normalized()
 		};
 	}

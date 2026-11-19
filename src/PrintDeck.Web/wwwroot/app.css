@@ -379,6 +379,13 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 .control-grid > .card:first-child { grid-row: span 2; }
 .control-grid:disabled .card { opacity: .55; }
 .control-more { margin-top: 16px; }
+.custom-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.button-rows { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.button-row { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.button-row:first-child { border-top: 0; padding-top: 0; }
+.button-row .field-row .input:first-child { flex: 1; min-width: 0; }
+.button-icon { width: auto; flex: 0 0 auto; }
+.button-options { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 
 .jog { display: flex; justify-content: center; gap: 32px; padding: 8px 0; flex-wrap: wrap; }
 .jog-xy { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(3, 64px); gap: 8px; }

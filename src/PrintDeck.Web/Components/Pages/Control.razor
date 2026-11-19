@@ -88,6 +88,31 @@
 @* Outside the fieldset: speed and flow stay adjustable while printing. *@
 <div class="control-grid control-more">
 	<SpeedFlowPanel />
+	@if (_buttons.Count > 0)
+	{
+		<section class="card" aria-labelledby="custom-title">
+			<header class="card-head"><h2 id="custom-title">Custom</h2></header>
+			<div class="custom-buttons">
+				@for (int i = 0; i < _buttons.Count; i++)
+				{
+					int index = i;
+					CustomButton b = _buttons[index];
+					bool allowed = b.IdleOnly ? _canMove : _state.IsConnected();
+					bool armed = _armed == index;
+					<button type="button" class="btn @(armed ? "btn-primary" : "")" disabled="@(!allowed)" @key="(index, b.Label)"
+							title="@(allowed ? b.Gcode : b.IdleOnly && _state.IsBusy() ? "Not while printing" : "Connect the printer first")"
+							@onclick="() => PressAsync(index, b)">
+						@if (b.Icon is { } icon)
+						{
+							<Icon Name="@icon" Size="16" />
+						}
+						@(armed ? $"Send {b.Label}?" : b.Label)
+					</button>
+				}
+			</div>
+			<p class="muted small">Change them under <a href="settings">Settings → Custom buttons</a>.</p>
+		</section>
+	}
 </div>
 
 @code {
@@ -96,6 +121,8 @@
 	private double _step = 10;
 	private double _extrude = 5;
 	private int _fan;
+	private IReadOnlyList<CustomButton> _buttons = [];
+	private int? _armed;
 
 	private bool _canMove => _state is PrinterState.Operational or PrinterState.Paused;
 
@@ -103,9 +130,27 @@
 	private IJSObjectReference? _keys;
 	private DotNetObjectReference<Control>? _self;
 
-	protected override PrinterChange Interests => PrinterChange.State;
+	protected override PrinterChange Interests => PrinterChange.State | PrinterChange.Settings;
 
-	protected override async Task RefreshAsync() => _state = (await Mediator.Send(new GetPrinterStatusQuery())).State;
+	protected override async Task RefreshAsync()
+	{
+		_state = (await Mediator.Send(new GetPrinterStatusQuery())).State;
+		IReadOnlyList<CustomButton> buttons = (await Mediator.Send(new GetSettingsQuery())).CustomButtons;
+		if (!buttons.SequenceEqual(_buttons)) _armed = null;
+		_buttons = buttons;
+	}
+
+	/// <summary>A button that asks first sends on the second click.</summary>
+	private async Task PressAsync(int index, CustomButton b)
+	{
+		if (b.Confirm && _armed != index)
+		{
+			_armed = index;
+			return;
+		}
+		_armed = null;
+		await Run(new RunCustomButtonCommand(index, b.Label), $"Sent {b.Label}");
+	}
 
 	private Task Jog(Axis axis, int direction) => Run(new JogCommand(axis, direction * _step));
 
