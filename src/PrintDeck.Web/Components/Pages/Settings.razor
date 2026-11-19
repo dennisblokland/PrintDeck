@@ -316,6 +316,57 @@
 			</form>
 		}
 
+		@if (_buttons is { } buttons)
+		{
+			<form class="card settings-wide" aria-labelledby="buttons-title" @onsubmit="SaveButtonsAsync" @onsubmit:preventDefault>
+				<header class="card-head">
+					<h2 id="buttons-title">Custom buttons</h2>
+					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => buttons.Add(new ButtonRow())">Add button</button>
+				</header>
+				@if (buttons.Count == 0)
+				{
+					<p class="muted small">
+						No buttons yet.
+						<button type="button" class="btn btn-sm btn-ghost" @onclick="AddExampleButtons">Add examples for a Prusa MK3S</button>
+					</p>
+				}
+				<div class="button-rows">
+					@for (int i = 0; i < buttons.Count; i++)
+					{
+						int index = i;
+						ButtonRow b = buttons[index];
+						<div class="button-row" @key="b">
+							<div class="field-row">
+								<input class="input" placeholder="Label" aria-label="Button label" maxlength="@CustomButton.MaxLabelLength" @bind="b.Label" />
+								<select class="input button-icon" aria-label="Button icon" @bind="b.Icon">
+									<option value="">No icon</option>
+									@foreach (string icon in CustomButton.Icons)
+									{
+										<option value="@icon">@icon</option>
+									}
+								</select>
+								<button type="button" class="icon-btn" title="Move up" disabled="@(index == 0)" @onclick="() => MoveButton(index, -1)"><Icon Name="up" Size="16" /></button>
+								<button type="button" class="icon-btn" title="Move down" disabled="@(index == buttons.Count - 1)" @onclick="() => MoveButton(index, 1)"><Icon Name="down" Size="16" /></button>
+								<button type="button" class="icon-btn icon-btn-danger" title="Remove button" @onclick="() => buttons.Remove(b)"><Icon Name="x" Size="16" /></button>
+							</div>
+							<textarea class="input mono" rows="3" spellcheck="false" aria-label="G-code for @(b.Label.Length > 0 ? b.Label : "the button")" @bind="b.Gcode"></textarea>
+							<div class="button-options">
+								<label class="toggle"><input type="checkbox" @bind="b.IdleOnly" /><span>Not while printing</span></label>
+								<label class="toggle"><input type="checkbox" @bind="b.Confirm" /><span>Ask before sending</span></label>
+							</div>
+						</div>
+					}
+				</div>
+				<p class="muted small">
+					Buttons show on the Control page. One command per line; include a snippet with <code>{% snippet 'name' %}</code>.
+					"Not while printing" allows the button when the printer is idle or paused, like jogging.
+				</p>
+				<div class="form-actions">
+					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> Save buttons</button>
+				</div>
+			</form>
+		}
+
 		<section class="card settings-wide" aria-labelledby="keys-title">
 			<header class="card-head"><h2 id="keys-title">Slicer upload</h2></header>
 			<p class="muted small">
@@ -535,6 +586,22 @@
 		};
 	}
 
+	private sealed class ButtonRow
+	{
+		public string Label { get; set; } = "";
+		public string Gcode { get; set; } = "";
+		public string Icon { get; set; } = "";
+		public bool Confirm { get; set; }
+		public bool IdleOnly { get; set; } = true;
+
+		public static ButtonRow From(CustomButton b) =>
+			new() { Label = b.Label, Gcode = b.Gcode, Icon = b.Icon ?? "", Confirm = b.Confirm, IdleOnly = b.IdleOnly };
+
+		public CustomButton ToButton() => new(Label, Gcode, Icon.Length == 0 ? null : Icon, Confirm, IdleOnly);
+	}
+
+	private static List<ButtonRow> ButtonRows(HostSettings s) => s.CustomButtons.Select(ButtonRow.From).ToList();
+
 	private sealed class SnippetRow { public string Name { get; set; } = ""; public string Gcode { get; set; } = ""; }
 
 	/// <summary>The five scripts in <see cref="ScriptSlots"/> order, and the snippets.</summary>
@@ -563,6 +630,7 @@
 	];
 
 	private ScriptsForm? _scripts;
+	private List<ButtonRow>? _buttons;
 	private int _scriptSlot;
 	private HostSettings? _settings;
 	private ProfileForm? _profile;
@@ -604,6 +672,7 @@
 		if (_profile is null) Edit(_settings.ActiveProfile);
 		_host ??= HostForm.From(_settings);
 		_scripts ??= ScriptsForm.From(_settings);
+		_buttons ??= ButtonRows(_settings);
 		_controls = await Mediator.Send(new GetCameraControlsQuery());
 		_sliding.Clear();
 	}
@@ -662,6 +731,7 @@
 			_settings = await Mediator.Send(new GetSettingsQuery());
 			_host = HostForm.From(_settings);
 			_scripts = ScriptsForm.From(_settings);
+			_buttons = ButtonRows(_settings);
 			Edit(_settings.ActiveProfile);
 		}
 		catch (IOException ex)
@@ -737,6 +807,22 @@
 			_scripts = ScriptsForm.From(_settings);
 		}
 	}
+
+	private async Task SaveButtonsAsync()
+	{
+		if (await Run(new SaveCustomButtonsCommand(_buttons!.Select(b => b.ToButton()).ToList()), "Buttons saved"))
+		{
+			_settings = await Mediator.Send(new GetSettingsQuery());
+			_buttons = ButtonRows(_settings);
+		}
+	}
+
+	private void MoveButton(int index, int by)
+	{
+		(_buttons![index], _buttons[index + by]) = (_buttons[index + by], _buttons[index]);
+	}
+
+	private void AddExampleButtons() => _buttons!.AddRange(CustomButton.PrusaExamples.Select(ButtonRow.From));
 
 	private async Task SaveHostAsync()
 	{

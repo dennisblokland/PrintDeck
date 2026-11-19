@@ -33,6 +33,11 @@ public sealed class UpdateGcodeScriptsHandler(ISettingsStore settings, PrinterEv
 			if (GcodeScript.Expand(script, snippets) is { IsSuccess: false } failed)
 				return Result.Failure($"{label}: {failed.Error}");
 
+		// Buttons include snippets too: removing or breaking one they use is refused here.
+		foreach (CustomButton button in (await settings.GetAsync(ct)).CustomButtons)
+			if (button.Commands(snippets) is { IsSuccess: false } failed)
+				return Result.Failure($"Button {button.Label}: {failed.Error}");
+
 		await settings.UpdateAsync(s => s with
 		{
 			BeforePrintGcode = scripts[0].Script,

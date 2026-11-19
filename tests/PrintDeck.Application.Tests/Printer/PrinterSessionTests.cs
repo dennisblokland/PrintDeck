@@ -193,6 +193,9 @@ public class PrinterSessionTests : IAsyncDisposable
 		public async Task Clear_terminal_empties_the_log()
 		{
 			await ConnectAsync();
+			// The connect commands are still going out; clearing before the last one is answered races with them.
+			await Until(() => _printer.Commands.Contains("M20 L")
+				&& _session.Terminal(1) is [{ Direction: TerminalDirection.Received, Text: "ok" }]);
 			Assert.NotEmpty(_session.Terminal(100));
 
 			_session.ClearTerminal();

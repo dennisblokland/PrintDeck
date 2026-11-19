@@ -56,16 +56,18 @@ public sealed class JsonSettingsStoreTests : IDisposable
 			Presets = [new TemperaturePreset("TPU", 225, 50)],
 			TerminalFilters = [new TerminalFilter("Echo", "^echo:"), new TerminalFilter("Busy", "busy:", Enabled: false)],
 			CameraDevice = "/dev/video0",
-			CameraControls = [new CameraControlValue("brightness", 140), new CameraControlValue("focus_absolute", 25)]
+			CameraControls = [new CameraControlValue("brightness", 140), new CameraControlValue("focus_absolute", 25)],
+			CustomButtons = [new CustomButton("Level", "G28 W\nG80", "scan", Confirm: true), new CustomButton("Change", "M600", IdleOnly: false)]
 		};
 		await NewStore().UpdateAsync(_ => saved, Ct);
 
 		HostSettings loaded = await NewStore().GetAsync(Ct);
 
 		Assert.Equal(
-			saved with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [] },
-			loaded with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [] });
+			saved with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [], CustomButtons = [] },
+			loaded with { Presets = [], Profiles = [], Snippets = [], TerminalFilters = [], CameraControls = [], CustomButtons = [] });
 		Assert.Equal(saved.CameraControls, loaded.CameraControls);
+		Assert.Equal(saved.CustomButtons, loaded.CustomButtons);
 		Assert.Equal(saved.TerminalFilters, loaded.TerminalFilters);
 		Assert.Equal(saved.Presets, loaded.Presets);
 		Assert.Equal(saved.Snippets, loaded.Snippets);
