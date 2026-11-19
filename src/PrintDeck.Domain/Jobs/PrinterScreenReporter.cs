@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 
 using PrintDeck.Domain.Jobs.Enums;
@@ -21,38 +20,23 @@ public sealed class PrinterScreenReporter(string fileName, int? layerCount)
 	private int _lastPercent = -1;
 	private int? _lastMinutes;
 	private DateTimeOffset _lastSent = DateTimeOffset.MinValue;
-	private bool _explicitLayers;
+	private readonly LayerCounter _layers = new();
 
 	/// <summary>True once the file turned out to send its own M73; PrintDeck then sends none.</summary>
 	public bool FileReportsProgress { get; private set; }
 
 	/// <summary>Current layer (1-based), once the file has marked one.</summary>
-	public int Layer { get; private set; }
+	public int Layer => _layers.Layer;
 
 	public IReadOnlyList<string> Start() => ["M73 P0", Message(Path.GetFileNameWithoutExtension(fileName))];
 
 	/// <summary>Looks at each raw line streamed to the printer; returns an M117 when a new layer starts.</summary>
 	public string? OnLine(string raw)
 	{
-		string line = raw.Trim();
-		if (line.StartsWith(';'))
-		{
-			string comment = line[1..].TrimStart();
-			int? layer = null;
-			// Cura and OrcaSlicer number layers from 0 ("LAYER:0"); PrusaSlicer only marks the change.
-			if (comment.StartsWith("LAYER:", StringComparison.Ordinal)
-				&& int.TryParse(comment.AsSpan(6), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n))
-			{
-				_explicitLayers = true;
-				layer = n + 1;
-			}
-			else if (!_explicitLayers && comment.StartsWith("LAYER_CHANGE", StringComparison.Ordinal))
-				layer = Layer + 1;
-
-			if (layer is not { } l || l == Layer) return null;
-			Layer = l;
-			return Message(layerCount is { } total && total >= l ? $"Layer {l}/{total}" : $"Layer {l}");
-		}
+		if (raw.TrimStart().StartsWith(';'))
+			return _layers.OnLine(raw) is { } l
+				? Message(layerCount is { } total && total >= l ? $"Layer {l}/{total}" : $"Layer {l}")
+				: null;
 
 		if (!FileReportsProgress && GcodeLine.Clean(raw) is { } command && GcodeLine.CommandOf(command) == "M73")
 			FileReportsProgress = true;

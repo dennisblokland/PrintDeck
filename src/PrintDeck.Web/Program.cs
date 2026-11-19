@@ -43,6 +43,7 @@ app.Services.StartPrintHistory();
 app.Services.StartAutoConnect();
 app.Services.StartThumbnailBackfill();
 app.Services.StartCameraControls();
+app.Services.StartTimelapse();
 
 app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())
@@ -59,6 +60,7 @@ app.MapSlicerApi();
 app.MapToolpathApi();
 app.MapThumbnailApi();
 app.MapCameraApi();
+app.MapTimelapseApi();
 app.MapLogsApi();
 app.MapBackupApi();
 app.MapAccountEndpoints();

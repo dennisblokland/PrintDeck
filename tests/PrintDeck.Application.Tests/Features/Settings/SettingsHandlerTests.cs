@@ -8,6 +8,8 @@ using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Printer.Enums;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Domain.Settings.Enums;
+using PrintDeck.Domain.Timelapse;
+using PrintDeck.Domain.Timelapse.Enums;
 
 namespace PrintDeck.Application.Tests.Features.Settings;
 
@@ -228,6 +230,9 @@ public class SettingsHandlerTests
 			{ "relative snapshot url", "Snapshot URL must be an http or https URL." },
 			{ "file snapshot url", "Snapshot URL must be an http or https URL." },
 			{ "odd rotation", "Rotation must be 0, 90, 180 or 270 degrees." },
+			{ "timelapse without snapshot url", "A timelapse needs a snapshot URL." },
+			{ "timelapse interval", "The timelapse interval must be 1–3600 seconds." },
+			{ "timelapse frame rate", "The timelapse frame rate must be 1–60 frames per second." },
 		};
 
 		private ValueTask<Result> UpdateInvalid(string reason) => reason switch
@@ -240,6 +245,9 @@ public class SettingsHandlerTests
 			"relative snapshot url" => UpdateCamera("camera/snapshot"),
 			"file snapshot url" => UpdateCamera("file:///etc/passwd"),
 			"odd rotation" => UpdateCamera(null, (CameraRotation)45),
+			"timelapse without snapshot url" => UpdateTimelapse(null, new TimelapseSettings(TimelapseMode.Layer)),
+			"timelapse interval" => UpdateTimelapse("VIRTUAL", new TimelapseSettings(TimelapseMode.Timed, 0)),
+			"timelapse frame rate" => UpdateTimelapse("VIRTUAL", new TimelapseSettings(TimelapseMode.Timed, 10, 120)),
 			_ => throw new ArgumentOutOfRangeException(nameof(reason))
 		};
 
@@ -286,6 +294,34 @@ public class SettingsHandlerTests
 			Assert.True((await UpdateCamera(" ")).IsSuccess);
 			Assert.Null(_settings.Settings.WebcamSnapshotUrl);
 			Assert.Equal(CameraRotation.None, _settings.Settings.WebcamRotation);
+		}
+
+		private ValueTask<Result> UpdateTimelapse(string? snapshot, TimelapseSettings? timelapse) =>
+			new UpdateSettingsHandler(_settings, _events.Hub).Handle(
+				new UpdateSettingsCommand([new("PLA", 205, 60)], null, WebcamSnapshotUrl: snapshot, Timelapse: timelapse), Ct);
+
+		[Fact]
+		public async Task Update_accepts_the_virtual_camera()
+		{
+			Assert.True((await UpdateCamera("VIRTUAL")).IsSuccess);
+			Assert.Equal("VIRTUAL", _settings.Settings.WebcamSnapshotUrl);
+		}
+
+		[Fact]
+		public async Task Update_saves_the_timelapse_settings_and_keeps_them_when_none_are_sent()
+		{
+			Assert.True((await UpdateTimelapse("http://cam.local/snap", new TimelapseSettings(TimelapseMode.Timed, 30, 30))).IsSuccess);
+			Assert.Equal(new TimelapseSettings(TimelapseMode.Timed, 30, 30), _settings.Settings.Timelapse);
+
+			Assert.True((await UpdateTimelapse("http://cam.local/snap", null)).IsSuccess);
+			Assert.Equal(new TimelapseSettings(TimelapseMode.Timed, 30, 30), _settings.Settings.Timelapse);
+		}
+
+		[Fact]
+		public async Task A_timelapse_that_is_off_needs_no_snapshot_url()
+		{
+			Assert.True((await UpdateTimelapse(null, new TimelapseSettings(TimelapseMode.Off, 5, 10))).IsSuccess);
+			Assert.Equal(new TimelapseSettings(TimelapseMode.Off, 5, 10), _settings.Settings.Timelapse);
 		}
 
 		[Fact]

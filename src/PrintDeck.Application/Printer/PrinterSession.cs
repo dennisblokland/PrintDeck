@@ -56,6 +56,8 @@ public sealed class PrinterSession(
 	private TaskCompletionSource _started = new();
 	private StreamReader? _job;
 	private PrinterScreenReporter? _screen;
+	private LayerCounter? _layers;
+	private int _layerChanged;
 	private long _nextLine;
 	private long? _resendFrom;
 	private long _terminalId;
@@ -98,6 +100,7 @@ public sealed class PrinterSession(
 	public bool WaitingForUser { get; private set; }
 	public int FeedRate { get; private set; } = 100;
 	public int FlowRate { get; private set; } = 100;
+	public int Layer => _layers?.Layer ?? 0;
 
 	private DateTimeOffset Now => time.GetUtcNow();
 
@@ -237,6 +240,7 @@ public sealed class PrinterSession(
 			_job = new StreamReader(content, Encoding.UTF8);
 			CurrentJob = new PrintJob(fileName, size, estimate, Now);
 			_screen = options?.ShowProgressOnPrinter == true ? new PrinterScreenReporter(fileName, options.LayerCount) : null;
+			_layers = new LayerCounter();
 			_scripts = options?.Scripts ?? PrintScripts.None;
 			// Queued commands go out before the file's lines.
 			QueueScript(_scripts.BeforePrint);
@@ -546,6 +550,7 @@ public sealed class PrinterSession(
 			if (file.SizeBytes <= 0) return Result.Failure("The printer did not report the file's size.");
 
 			CurrentJob = new PrintJob(file.DisplayName, file.SizeBytes, null, Now, JobKind.SdPrint);
+			_layers = null;
 			_scripts = scripts ?? PrintScripts.None;
 			State = PrinterState.Printing;
 		}
@@ -576,6 +581,7 @@ public sealed class PrinterSession(
 			_uploadOpened = false;
 			_uploadAccepted = false;
 			CurrentJob = new PrintJob(fileName, size, null, Now, JobKind.SdUpload);
+			_layers = null;
 			State = PrinterState.Transferring;
 		}
 		Log(TerminalDirection.Info, $"Copying {fileName} to the SD card as {target}");
@@ -699,6 +705,7 @@ public sealed class PrinterSession(
 			while (!refused && reader.ReadLine() is { } raw)
 			{
 				job.Advance(Encoding.UTF8.GetByteCount(raw) + 1);
+				if (_layers?.OnLine(raw) is not null) Interlocked.Exchange(ref _layerChanged, 1);
 				if (_screen is { } screen)
 				{
 					if (screen.OnProgress(job.Progress, job.EstimatedRemaining(Now), Now) is { } progress) _manual.Enqueue(progress);
@@ -764,6 +771,7 @@ public sealed class PrinterSession(
 				}
 
 				string? command = NextCommand();
+				if (Interlocked.Exchange(ref _layerChanged, 0) == 1) events.Publish(PrinterChange.Layer);
 				if (command is null)
 				{
 					await _work.WaitAsync(TimeSpan.FromMilliseconds(500), ct);

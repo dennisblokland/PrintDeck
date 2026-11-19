@@ -51,6 +51,16 @@ public class CameraSnapshotHandlerTests
 		Assert.Equal([new Uri("https://cam.local/snap.jpg")], _camera.Requested);
 	}
 
+	[Fact]
+	public async Task Virtual_goes_to_the_pretend_camera()
+	{
+		Assert.True((await Test("virtual")).IsSuccess);
+		await _settings.UpdateAsync(s => s with { WebcamSnapshotUrl = "VIRTUAL" }, Ct);
+		Assert.True((await Get()).IsSuccess);
+
+		Assert.Equal([SnapshotSource.VirtualUri, SnapshotSource.VirtualUri], _camera.Requested);
+	}
+
 	[Theory]
 	[InlineData("", "Enter a snapshot URL first.")]
 	[InlineData("  ", "Enter a snapshot URL first.")]

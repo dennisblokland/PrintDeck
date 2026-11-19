@@ -40,6 +40,12 @@ public interface IPrinterSession
 	/// <summary>The printer reports "busy: paused for user" (M0/M1/M600 waiting).</summary>
 	bool WaitingForUser { get; }
 
+	/// <summary>
+	/// Layer the streamed print has reached (1-based), from the slicer's layer comments; 0 when unknown
+	/// (SD card prints, files without markers). Changes publish <see cref="Abstractions.Enums.PrinterChange.Layer"/>.
+	/// </summary>
+	int Layer { get; }
+
 	IReadOnlyList<TerminalEntry> Terminal(int last);
 	void ClearTerminal();
 

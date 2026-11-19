@@ -156,7 +156,36 @@
 				}
 				<p class="muted small">
 					The snapshot is a single still image, fetched by PrintDeck. The dashboard shows it, refreshed every few seconds,
-					when there is no stream. Rotate and flip apply to both.
+					when there is no stream. Rotate and flip apply to both. Enter <code>VIRTUAL</code> for a pretend camera.
+				</p>
+			</section>
+
+			<section class="card" aria-labelledby="timelapse-title">
+				<header class="card-head"><h2 id="timelapse-title">Timelapse</h2></header>
+				<label class="field"><span>Take a frame</span>
+					<select class="input" @bind="_host.TimelapseMode">
+						<option value="@TimelapseMode.Off">Never (off)</option>
+						<option value="@TimelapseMode.Timed">Every few seconds</option>
+						<option value="@TimelapseMode.Layer">At each new layer</option>
+					</select>
+				</label>
+				<div class="timelapse-options">
+					@if (_host.TimelapseMode == TimelapseMode.Timed)
+					{
+						<label class="field-inline">Every
+							<input class="input input-num" type="number" min="@TimelapseSettings.MinInterval" max="@TimelapseSettings.MaxInterval"
+								   aria-label="Seconds between frames" @bind="_host.TimelapseIntervalSeconds" /> s
+						</label>
+					}
+					<label class="field-inline">Video
+						<input class="input input-num" type="number" min="@TimelapseSettings.MinFrameRate" max="@TimelapseSettings.MaxFrameRate"
+							   aria-label="Frames per second of the video" @bind="_host.TimelapseFrameRate" /> fps
+					</label>
+				</div>
+				<p class="muted small">
+					Frames come from the snapshot URL while a print runs, and become a video under <a href="timelapse">Timelapse</a>
+					when it ends. Rendering needs <code>ffmpeg</code> on the host. Per layer follows the slicer's layer comments;
+					SD card prints take a frame every @_host.TimelapseIntervalSeconds s instead.
 				</p>
 			</section>
 
@@ -490,6 +519,9 @@
 		public CameraRotation WebcamRotation { get; set; }
 		public bool WebcamFlipHorizontal { get; set; }
 		public bool WebcamFlipVertical { get; set; }
+		public TimelapseMode TimelapseMode { get; set; }
+		public int TimelapseIntervalSeconds { get; set; }
+		public int TimelapseFrameRate { get; set; }
 		public List<PresetRow> Presets { get; set; } = [];
 
 		public static HostForm From(HostSettings s) => new()
@@ -498,6 +530,7 @@
 			AutoConnect = s.AutoConnect,
 			WebcamSnapshotUrl = s.WebcamSnapshotUrl, WebcamRotation = s.WebcamRotation,
 			WebcamFlipHorizontal = s.WebcamFlipHorizontal, WebcamFlipVertical = s.WebcamFlipVertical,
+			TimelapseMode = s.Timelapse.Mode, TimelapseIntervalSeconds = s.Timelapse.IntervalSeconds, TimelapseFrameRate = s.Timelapse.FrameRate,
 			Presets = s.Presets.Select(x => new PresetRow { Name = x.Name, Hotend = x.Hotend, Bed = x.Bed }).ToList()
 		};
 	}
@@ -710,7 +743,8 @@
 		HostForm f = _host!;
 		UpdateSettingsCommand command = new(
 			f.Presets.Select(x => new TemperaturePreset(x.Name, x.Hotend, x.Bed)).ToList(), f.WebcamStreamUrl, f.ShowProgressOnPrinter, f.AutoConnect,
-			f.WebcamSnapshotUrl, f.WebcamRotation, f.WebcamFlipHorizontal, f.WebcamFlipVertical);
+			f.WebcamSnapshotUrl, f.WebcamRotation, f.WebcamFlipHorizontal, f.WebcamFlipVertical,
+			new TimelapseSettings(f.TimelapseMode, f.TimelapseIntervalSeconds, f.TimelapseFrameRate));
 		if (await Run(command, "Settings saved"))
 		{
 			_settings = await Mediator.Send(new GetSettingsQuery());

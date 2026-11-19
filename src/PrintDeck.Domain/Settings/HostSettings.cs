@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Settings.Enums;
 using PrintDeck.Domain.Terminal;
+using PrintDeck.Domain.Timelapse;
 
 namespace PrintDeck.Domain.Settings;
 
@@ -37,6 +38,9 @@ public sealed record HostSettings
 
 	/// <summary>Control values chosen in PrintDeck for <see cref="CameraDevice"/>; applied again when PrintDeck starts.</summary>
 	public IReadOnlyList<CameraControlValue> CameraControls { get; init; } = [];
+	/// <summary>Frames from the snapshot URL during prints, rendered to a video when the print ends.</summary>
+	public TimelapseSettings Timelapse { get; init; } = new();
+
 	public string ApiKey { get; init; } = "";
 
 	/// <summary>Whether <see cref="ApiKey"/>, the one key shared by every slicer, still signs in. App keys replace it.</summary>
@@ -112,7 +116,8 @@ public sealed record HostSettings
 			ResumeGcode = ResumeGcode ?? "",
 			Snippets = Snippets ?? [],
 			TerminalFilters = TerminalFilters ?? [],
-			CameraControls = CameraControls ?? []
+			CameraControls = CameraControls ?? [],
+			Timelapse = (Timelapse ?? new TimelapseSettings()).Normalized()
 		};
 	}
 }

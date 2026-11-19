@@ -14,6 +14,9 @@ public sealed class StorageOptions
 	/// <summary>Data Protection keys: they sign login cookies, so keeping them means a restart doesn't log everyone out.</summary>
 	public string KeysDirectory => Path.Combine(DataDirectory, "keys");
 
+	/// <summary>Rendered timelapse videos; the frames of the one being recorded go in a hidden folder inside.</summary>
+	public string TimelapseDirectory => Path.Combine(DataDirectory, "timelapse");
+
 	/// <summary>printdeck.log and, when switched on, serial.log.</summary>
 	public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 }
