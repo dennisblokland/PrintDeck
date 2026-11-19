@@ -15,6 +15,7 @@ using PrintDeck.Infrastructure.Logging;
 using PrintDeck.Infrastructure.Serial;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Infrastructure.Storage;
+using PrintDeck.Infrastructure.Timelapse;
 using PrintDeck.Infrastructure.Virtual;
 using PrintDeck.Infrastructure.Processes;
 
@@ -35,7 +36,10 @@ public static class DependencyInjection
 		services.AddSingleton<IHostCommands, ShellHostCommands>();
 		services.AddSingleton<ISerialLog, FileSerialLog>();
 		services.AddSingleton<ILogFiles, LogDirectoryFiles>();
-		services.AddSingleton<ICameraSnapshots>(_ => new HttpCameraSnapshots());
+		services.AddSingleton<HttpCameraSnapshots>(_ => new HttpCameraSnapshots());
+		services.AddSingleton<ICameraSnapshots>(sp => new CameraSnapshots(
+			sp.GetRequiredService<HttpCameraSnapshots>(), new VirtualCamera(sp.GetRequiredService<TimeProvider>())));
+		services.AddSingleton<ITimelapseStore>(sp => new FileSystemTimelapseStore(sp.GetRequiredService<IOptions<StorageOptions>>(), new ProcessCommandRunner()));
 		services.AddSingleton<IHostHealth>(sp => new HostHealth(
 			sp.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory, new ProcessCommandRunner(), sp.GetRequiredService<TimeProvider>()));
 		services.AddSingleton<ICameraControls>(_ => new V4l2CameraControls(new ProcessCommandRunner(), new VirtualV4l2Ctl(), V4l2CameraControls.HostDevices));

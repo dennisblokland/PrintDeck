@@ -2,7 +2,6 @@ using Mediator;
 
 using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Application.Features.Camera.Commands;
-using PrintDeck.Application.Features.Settings.Handlers;
 using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Common;
 
@@ -15,7 +14,7 @@ public sealed class TestCameraSnapshotHandler(ICameraSnapshots camera)
 	{
 		string url = c.Url?.Trim() ?? "";
 		if (url.Length == 0) return Result.Failure<CameraSnapshot>("Enter a snapshot URL first.");
-		if (!UpdateSettingsHandler.IsHttpUrl(url)) return Result.Failure<CameraSnapshot>("Snapshot URL must be an http or https URL.");
-		return await camera.TakeAsync(new Uri(url), ct);
+		if (SnapshotSource.Parse(url) is not { } source) return Result.Failure<CameraSnapshot>(SnapshotSource.Invalid);
+		return await camera.TakeAsync(source, ct);
 	}
 }

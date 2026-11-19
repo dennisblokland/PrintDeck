@@ -17,8 +17,7 @@ public sealed class GetCameraSnapshotHandler(ISettingsStore settings, ICameraSna
 	{
 		HostSettings s = await settings.GetAsync(ct);
 		if (string.IsNullOrWhiteSpace(s.WebcamSnapshotUrl)) return Result.Failure<CameraSnapshot>(NotSet);
-		if (!Uri.TryCreate(s.WebcamSnapshotUrl, UriKind.Absolute, out Uri? url))
-			return Result.Failure<CameraSnapshot>("Snapshot URL must be an http or https URL.");
+		if (SnapshotSource.Parse(s.WebcamSnapshotUrl) is not { } url) return Result.Failure<CameraSnapshot>(SnapshotSource.Invalid);
 		return await camera.TakeAsync(url, ct);
 	}
 }

@@ -4,15 +4,20 @@ using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
 using PrintDeck.Application.Abstractions.Interfaces;
 using PrintDeck.Application.Features.Settings.Commands;
+using PrintDeck.Domain.Camera;
 using PrintDeck.Domain.Common;
 using PrintDeck.Domain.Settings;
 using PrintDeck.Domain.Settings.Enums;
+using PrintDeck.Domain.Timelapse;
+using PrintDeck.Domain.Timelapse.Enums;
 
 namespace PrintDeck.Application.Features.Settings.Handlers;
 
 public sealed class UpdateSettingsHandler(ISettingsStore settings, PrinterEventHub events)
 	: ICommandHandler<UpdateSettingsCommand, Result>
 {
+	public const string NeedsSnapshot = "A timelapse needs a snapshot URL.";
+
 	public async ValueTask<Result> Handle(UpdateSettingsCommand c, CancellationToken ct)
 	{
 		string? webcam = string.IsNullOrWhiteSpace(c.WebcamStreamUrl) ? null : c.WebcamStreamUrl.Trim();
@@ -26,10 +31,14 @@ public sealed class UpdateSettingsHandler(ISettingsStore settings, PrinterEventH
 				? "Preset names must be unique."
 			: webcam is not null && !Uri.TryCreate(webcam, UriKind.Absolute, out _)
 				? "Webcam URL is not a valid URL."
-			: snapshot is not null && !IsHttpUrl(snapshot)
-				? "Snapshot URL must be an http or https URL."
+			: snapshot is not null && SnapshotSource.Parse(snapshot) is null
+				? SnapshotSource.Invalid
 			: !Enum.IsDefined(c.WebcamRotation)
 				? "Rotation must be 0, 90, 180 or 270 degrees."
+			: c.Timelapse?.Problem() is { } timelapseProblem
+				? timelapseProblem
+			: c.Timelapse is { Mode: not TimelapseMode.Off } && snapshot is null
+				? NeedsSnapshot
 			: null;
 		if (error is not null) return Result.Failure(error);
 
@@ -42,13 +51,10 @@ public sealed class UpdateSettingsHandler(ISettingsStore settings, PrinterEventH
 			WebcamFlipHorizontal = c.WebcamFlipHorizontal,
 			WebcamFlipVertical = c.WebcamFlipVertical,
 			ShowProgressOnPrinter = c.ShowProgressOnPrinter,
-			AutoConnect = c.AutoConnect
+			AutoConnect = c.AutoConnect,
+			Timelapse = c.Timelapse ?? s.Timelapse
 		}, ct);
 		events.Publish(PrinterChange.Settings);
 		return Result.Success();
 	}
-
-	/// <summary>PrintDeck fetches snapshots itself, so only web addresses (no file: or other schemes).</summary>
-	public static bool IsHttpUrl(string url) =>
-		Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 }

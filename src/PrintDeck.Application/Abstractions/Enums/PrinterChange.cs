@@ -15,5 +15,11 @@ public enum PrinterChange
 
 	/// <summary>Firmware prompt, notification or wait-for-user changed.</summary>
 	Dialog = 64,
-	All = State | Temperature | Terminal | Job | Files | Settings | Dialog
+
+	/// <summary>A streamed print reached a new layer (<see cref="Printer.Interfaces.IPrinterSession.Layer"/>).</summary>
+	Layer = 128,
+
+	/// <summary>A timelapse started or stopped recording, took a frame, or a video was rendered or deleted.</summary>
+	Timelapse = 256,
+	All = State | Temperature | Terminal | Job | Files | Settings | Dialog | Layer | Timelapse
 }

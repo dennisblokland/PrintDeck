@@ -565,6 +565,20 @@ kbd {
 .history-table tbody tr:first-child td { border-top: 0; }
 .history-file { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 
+/* ───────────────────────── timelapse ───────────────────────── */
+.timelapse-status { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.timelapse-status strong { color: var(--text); font-weight: 600; }
+.timelapse-hint { margin: 0 0 12px; }
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); animation: rec-pulse 1.6s ease-in-out infinite; }
+@keyframes rec-pulse { 50% { opacity: .35; } }
+.timelapse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.timelapse-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.timelapse-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius-sm); display: block; }
+.timelapse-meta { min-width: 0; }
+.timelapse-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timelapse-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.timelapse-options { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 4px; }
+
 /* ───────────────────────── files: search, sort, filter ───────────────────────── */
 .file-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .file-search { flex: 1; min-width: 180px; }

@@ -9,6 +9,7 @@ using PrintDeck.Application.Files;
 using PrintDeck.Application.Files.Thumbnails;
 using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
+using PrintDeck.Application.Timelapse;
 
 namespace PrintDeck.Application;
 
@@ -27,6 +28,7 @@ public static class DependencyInjection
 		services.AddSingleton<AutoConnector>();
 		services.AddSingleton<ThumbnailBackfill>();
 		services.AddSingleton<CameraControlsStartup>();
+		services.AddSingleton<TimelapseRecorder>();
 		return services;
 	}
 
@@ -41,6 +43,10 @@ public static class DependencyInjection
 	/// <summary>Reads slicer thumbnails for stored files that have none yet, in the background.</summary>
 	public static void StartThumbnailBackfill(this IServiceProvider services) =>
 		_ = services.GetRequiredService<ThumbnailBackfill>().Start();
+
+	/// <summary>Starts recording timelapses of prints, when they are switched on in the settings.</summary>
+	public static void StartTimelapse(this IServiceProvider services) =>
+		services.GetRequiredService<TimelapseRecorder>().Start();
 
 	/// <summary>Applies the saved camera controls in the background, so a slow or missing camera doesn't hold up the start.</summary>
 	public static void StartCameraControls(this IServiceProvider services) =>

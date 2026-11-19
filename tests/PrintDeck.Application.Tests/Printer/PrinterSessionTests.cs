@@ -250,6 +250,23 @@ public class PrinterSessionTests : IAsyncDisposable
 		}
 
 		[Fact]
+		public async Task Follows_the_layers_of_a_streamed_print_and_says_when_one_starts()
+		{
+			await ConnectAsync();
+			List<(int Layer, bool MoveSent)> seen = [];
+			_events.Hub.Changed += c =>
+			{
+				if ((c & PrinterChange.Layer) != 0) lock (seen) seen.Add((_session.Layer, _printer.Commands.Contains($"G1 X{_session.Layer}")));
+			};
+
+			_session.StartJob("cube.gcode", Gcode(";LAYER_CHANGE\nG1 X1\n;Z:0.4\n;LAYER_CHANGE\nG1 X2\n", out long size), size, null);
+
+			await Until(() => _session.CurrentJob!.Status == JobStatus.Completed);
+			Assert.Equal(2, _session.Layer);
+			Assert.Equal([(1, false), (2, false)], seen); // before the layer's first move goes out
+		}
+
+		[Fact]
 		public async Task Pause_and_cancel_show_on_the_printer_screen()
 		{
 			await ConnectAsync();

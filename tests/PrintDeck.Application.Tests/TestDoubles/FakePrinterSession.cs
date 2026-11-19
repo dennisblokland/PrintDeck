@@ -29,6 +29,7 @@ internal sealed class FakePrinterSession : IPrinterSession
 	public bool WaitingForUser { get; set; }
 	public int FeedRate { get; set; } = 100;
 	public int FlowRate { get; set; } = 100;
+	public int Layer { get; set; }
 	public List<string> DialogCalls { get; } = [];
 	public (string FileName, long Size)? SdUpload { get; private set; }
 	public List<TerminalEntry> TerminalEntries { get; } = [];
