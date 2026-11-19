@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using PrintDeck.Application.Abstractions;
 using PrintDeck.Application.Abstractions.Enums;
 using PrintDeck.Application.Abstractions.Interfaces;
+using PrintDeck.Application.ApiKeys;
 using PrintDeck.Application.Camera;
 using PrintDeck.Application.Files;
 using PrintDeck.Application.Files.Thumbnails;
@@ -29,6 +30,7 @@ public static class DependencyInjection
 		services.AddSingleton<ThumbnailBackfill>();
 		services.AddSingleton<CameraControlsStartup>();
 		services.AddSingleton<TimelapseRecorder>();
+		services.AddSingleton<AppKeyRequests>();
 		return services;
 	}
 
@@ -43,6 +45,14 @@ public static class DependencyInjection
 	/// <summary>Reads slicer thumbnails for stored files that have none yet, in the background.</summary>
 	public static void StartThumbnailBackfill(this IServiceProvider services) =>
 		_ = services.GetRequiredService<ThumbnailBackfill>().Start();
+
+	/// <summary>Gives this PrintDeck its stable id on first start (OctoPrint clients tell instances apart by it).</summary>
+	public static async Task EnsureInstanceIdAsync(this IServiceProvider services)
+	{
+		ISettingsStore settings = services.GetRequiredService<ISettingsStore>();
+		if ((await settings.GetAsync(CancellationToken.None)).InstanceId.Length == 0)
+			await settings.UpdateAsync(s => s.InstanceId.Length == 0 ? s with { InstanceId = Guid.NewGuid().ToString("D") } : s, CancellationToken.None);
+	}
 
 	/// <summary>Starts recording timelapses of prints, when they are switched on in the settings.</summary>
 	public static void StartTimelapse(this IServiceProvider services) =>

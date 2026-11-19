@@ -51,4 +51,20 @@ public class ApiKeySecretTests
 	{
 		Assert.Equal("OrcaSlicer (ada)", new ApiKeyOwner("OrcaSlicer", "ada", UserRole.Admin).DisplayName);
 	}
+
+	[Fact]
+	public void Free_name_numbers_a_name_that_is_taken()
+	{
+		Assert.Equal("Home Assistant", ApiKeySecret.FreeName(" Home Assistant ", []));
+		Assert.Equal("Home Assistant (2)", ApiKeySecret.FreeName("Home Assistant", ["home assistant"]));
+		Assert.Equal("Home Assistant (3)", ApiKeySecret.FreeName("Home Assistant", ["Home Assistant", "Home Assistant (2)"]));
+	}
+
+	[Fact]
+	public void Free_name_leaves_room_for_the_number()
+	{
+		string name = ApiKeySecret.FreeName(new string('x', 100), [new string('x', ApiKeySecret.MaxNameLength - 5)]);
+		Assert.True(name.Length <= ApiKeySecret.MaxNameLength);
+		Assert.EndsWith(" (2)", name);
+	}
 }

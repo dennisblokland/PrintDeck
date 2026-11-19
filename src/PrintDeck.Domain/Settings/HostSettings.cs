@@ -41,6 +41,9 @@ public sealed record HostSettings
 	/// <summary>Frames from the snapshot URL during prints, rendered to a video when the print ends.</summary>
 	public TimelapseSettings Timelapse { get; init; } = new();
 
+	/// <summary>Stable id of this PrintDeck, e.g. the UUID OctoPrint clients such as Home Assistant tell instances apart by. Set at first start.</summary>
+	public string InstanceId { get; init; } = "";
+
 	public string ApiKey { get; init; } = "";
 
 	/// <summary>Whether <see cref="ApiKey"/>, the one key shared by every slicer, still signs in. App keys replace it.</summary>

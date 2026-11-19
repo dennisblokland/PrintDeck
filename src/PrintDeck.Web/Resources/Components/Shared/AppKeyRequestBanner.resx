@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Asks" xml:space="preserve">
+		<value>{0} asks for an app key</value>
+	</data>
+	<data name="ForAccount" xml:space="preserve">
+		<value>It will act as {0}. Allow it only if you just set it up.</value>
+	</data>
+	<data name="ForYou" xml:space="preserve">
+		<value>It will act as you. Allow it only if you just set it up.</value>
+	</data>
+	<data name="Deny" xml:space="preserve">
+		<value>Deny</value>
+	</data>
+	<data name="Allow" xml:space="preserve">
+		<value>Allow</value>
+	</data>
+	<data name="Allowed" xml:space="preserve">
+		<value>{0} has its key</value>
+	</data>
+</root>

@@ -42,6 +42,7 @@ WebApplication app = builder.Build();
 
 await app.Services.InitializeDatabaseAsync();
 await app.Services.InitializeSerialLogAsync();
+await app.Services.EnsureInstanceIdAsync();
 app.Services.StartPrintHistory();
 app.Services.StartAutoConnect();
 app.Services.StartThumbnailBackfill();
@@ -60,6 +61,8 @@ app.UseAntiforgery();
 
 app.MapStaticAssets().AllowAnonymous();
 app.MapSlicerApi();
+app.MapOctoPrintApi();
+app.MapAppKeysApi();
 app.MapToolpathApi();
 app.MapThumbnailApi();
 app.MapCameraApi();

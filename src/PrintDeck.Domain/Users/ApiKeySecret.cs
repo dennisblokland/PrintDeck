@@ -26,4 +26,14 @@ public static class ApiKeySecret
 		if (trimmed.Length is 0 or > MaxNameLength) return $"Give the key a name of up to {MaxNameLength} characters.";
 		return taken.Any(t => string.Equals(t.Trim(), trimmed, StringComparison.OrdinalIgnoreCase)) ? "A key with that name already exists." : null;
 	}
+
+	/// <summary><paramref name="name"/>, or "name (2)", "name (3)"… when a key already has it.</summary>
+	public static string FreeName(string name, IReadOnlyCollection<string> taken)
+	{
+		string trimmed = name.Trim();
+		if (trimmed.Length > MaxNameLength - 5) trimmed = trimmed[..(MaxNameLength - 5)].TrimEnd();
+		string candidate = trimmed;
+		for (int n = 2; NameProblem(candidate, taken) is not null; n++) candidate = $"{trimmed} ({n})";
+		return candidate;
+	}
 }
