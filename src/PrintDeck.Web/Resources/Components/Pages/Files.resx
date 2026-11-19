@@ -43,7 +43,7 @@
 		<value>Into {0}.</value>
 	</data>
 	<data name="SlicerHint" xml:space="preserve">
-		<value>Or send straight from your slicer — see Settings → Slicer upload.</value>
+		<value>Or send straight from your slicer — see Settings → API keys.</value>
 	</data>
 	<data name="OneProblemInHtml" xml:space="preserve">
 		<value>1 problem in &lt;span class="mono"&gt;{0}&lt;/span&gt;</value>

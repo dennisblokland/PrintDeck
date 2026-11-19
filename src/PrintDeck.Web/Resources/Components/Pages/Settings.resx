@@ -546,4 +546,25 @@
 	<data name="SharedKeyTurnedOff" xml:space="preserve">
 		<value>Shared key turned off; only app keys sign in now.</value>
 	</data>
+	<data name="Sections" xml:space="preserve">
+		<value>Settings sections</value>
+	</data>
+	<data name="SectionGeneral" xml:space="preserve">
+		<value>General</value>
+	</data>
+	<data name="SectionPrinters" xml:space="preserve">
+		<value>Printers</value>
+	</data>
+	<data name="SectionCamera" xml:space="preserve">
+		<value>Camera</value>
+	</data>
+	<data name="SectionGcode" xml:space="preserve">
+		<value>G-code</value>
+	</data>
+	<data name="SectionApiKeys" xml:space="preserve">
+		<value>API keys</value>
+	</data>
+	<data name="SectionSystem" xml:space="preserve">
+		<value>System</value>
+	</data>
 </root>

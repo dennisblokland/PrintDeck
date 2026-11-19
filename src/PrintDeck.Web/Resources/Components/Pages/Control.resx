@@ -79,7 +79,7 @@
 		<value>Send {0}?</value>
 	</data>
 	<data name="ChangeButtonsHtml" xml:space="preserve">
-		<value>Change them under &lt;a href="settings"&gt;Settings → Custom buttons&lt;/a&gt;.</value>
+		<value>Change them under &lt;a href="settings/gcode"&gt;Settings → G-code&lt;/a&gt;.</value>
 	</data>
 	<data name="SentButton" xml:space="preserve">
 		<value>Sent {0}</value>

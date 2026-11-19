@@ -1,4 +1,5 @@
 @page "/settings"
+@page "/settings/{Section}"
 @attribute [Authorize(Roles = nameof(UserRole.Admin))]
 @inherits PrinterComponent
 @inject NavigationManager Nav
@@ -10,485 +11,518 @@
 
 @if (_settings is not null && _profile is not null && _host is not null)
 {
-	<div class="settings">
-		<section class="card">
-			<header class="card-head">
-				<h2>@L["Profiles"]</h2>
-				<button type="button" class="btn btn-sm btn-ghost" @onclick="NewProfile">@L["NewProfile"]</button>
-			</header>
-			<ul class="profile-list">
-				@foreach (PrinterProfile p in _settings.Profiles)
-				{
-					bool active = p.Id == _settings.ActiveProfileId;
-					<li class="profile-row @(p.Id == _profile.Id ? "is-editing" : "")">
-						<button type="button" class="profile-name" @onclick="() => Edit(p)">
-							<span class="profile-title">
-								<strong>@p.Name</strong>
-								@if (active)
-								{
-									<span class="chip chip-printing">@L["Active"]</span>
-								}
-							</span>
-							<small>@Summary(p)</small>
-						</button>
-						@if (!active)
-						{
-							<button type="button" class="btn btn-sm btn-ghost" disabled="@_busy"
-									title="@(_busy ? L["FinishPrintFirst"].Value : null)" @onclick="() => SelectAsync(p)">@L["Use"]</button>
-						}
-						<button type="button" class="icon-btn" title="@L["Duplicate"]" @onclick="() => Duplicate(p)"><Icon Name="copy" Size="16" /></button>
-						<button type="button" class="icon-btn icon-btn-danger @(_confirmDelete == p.Id ? "is-armed" : "")" disabled="@active"
-								title="@(active ? L["ActiveCantBeDeleted"] : _confirmDelete == p.Id ? Shared["ClickAgainToDelete"] : Shared["Delete"])"
-								@onclick="() => DeleteAsync(p)">
-							<Icon Name="@(_confirmDelete == p.Id ? "check" : "trash")" Size="16" />
-						</button>
-					</li>
-				}
-			</ul>
-			<p class="muted small">@L["ProfilesHint"]</p>
-		</section>
+	<div class="settings-layout">
+		<nav class="settings-nav" aria-label="@L["Sections"]">
+			@foreach ((string slug, string icon, string label) in Sections)
+			{
+				bool current = slug == CurrentSection;
+				<a class="settings-nav-link @(current ? "is-active" : "")" href="settings/@slug" aria-current="@(current ? "page" : null)">
+					<Icon Name="@icon" Size="16" /> <span>@label</span>
+				</a>
+			}
+		</nav>
 
-		<form class="card" @onsubmit="SaveProfileAsync" @onsubmit:preventDefault>
-			<header class="card-head">
-				<h2>@(_profile.Id.Length == 0 ? L["NewProfile"] : L["EditProfile", _profileName])</h2>
-			</header>
-			<div class="form-grid">
-				<label class="field span-2"><span>@L["Name"]</span><input class="input" maxlength="64" @bind="_profile.Name" /></label>
-				<label class="field"><span>@L["BedWidth"]</span><input class="input" type="number" @bind="_profile.BedWidth" /></label>
-				<label class="field"><span>@L["BedDepth"]</span><input class="input" type="number" @bind="_profile.BedDepth" /></label>
-				<label class="field"><span>@L["MaxHeight"]</span><input class="input" type="number" @bind="_profile.MaxHeight" /></label>
-				<label class="field"><span>@L["Extruders"]</span><input class="input" type="number" min="1" max="8" @bind="_profile.ExtruderCount" /></label>
-				<label class="toggle span-2"><input type="checkbox" @bind="_profile.HasHeatedBed" /><span>@L["HeatedBed"]</span></label>
-				<label class="field"><span>@L["JogXY"]</span><input class="input" type="number" @bind="_profile.JogFeedrateXY" /></label>
-				<label class="field"><span>@L["JogZ"]</span><input class="input" type="number" @bind="_profile.JogFeedrateZ" /></label>
-				<label class="field"><span>@L["ExtrudeRate"]</span><input class="input" type="number" @bind="_profile.ExtrudeFeedrate" /></label>
-			</div>
-			<div class="form-actions">
-				@if (_profile.Id.Length == 0)
-				{
-					<button type="button" class="btn btn-ghost" @onclick="() => Edit(_settings.ActiveProfile)">@Shared["Cancel"]</button>
-				}
-				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @(_profile.Id.Length == 0 ? L["AddProfile"] : L["SaveProfile"])</button>
-			</div>
-		</form>
-
-		<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
-			<section class="card">
-				<header class="card-head">
-					<h2>@L["Presets"]</h2>
-					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _host.Presets.Add(new PresetRow())">@L["AddPreset"]</button>
-				</header>
-				<div class="preset-rows">
-					@foreach (PresetRow p in _host.Presets)
-					{
-						<div class="preset-row">
-							<input class="input" placeholder="@L["Name"]" aria-label="@L["PresetName"]" @bind="p.Name" />
-							<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="@L["Hotend"]" @bind="p.Hotend" />°</label>
-							<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="@L["Bed"]" @bind="p.Bed" />°</label>
-							<button type="button" class="icon-btn icon-btn-danger" title="@L["Remove"]" @onclick="() => _host.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
-						</div>
-					}
-				</div>
-			</section>
-
-			<section class="card">
-				<header class="card-head"><h2>@L["Connection"]</h2></header>
-				<label class="toggle">
-					<input type="checkbox" @bind="_host.AutoConnect" />
-					<span>@L["AutoConnect"]</span>
-				</label>
-				<p class="muted small">
-					@if (_settings.LastPort is { } lastPort)
-					{
-						@L.Html("AutoConnectToPortHtml", lastPort, _settings.DefaultBaudRate)
-					}
-					else
-					{
-						@L["AutoConnectNoPort"]
-					}
-				</p>
-			</section>
-
-			<section class="card">
-				<header class="card-head"><h2>@L["PrinterScreen"]</h2></header>
-				<label class="toggle">
-					<input type="checkbox" @bind="_host.ShowProgressOnPrinter" />
-					<span>@L["ShowProgress"]</span>
-				</label>
-				<p class="muted small">@L.Html("PrinterScreenHintHtml")</p>
-			</section>
-
-			<section class="card">
-				<header class="card-head"><h2>@L["Camera"]</h2></header>
-				<label class="field"><span>@L["StreamUrl"]</span>
-					<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
-				</label>
-				<label class="field"><span>@L["SnapshotUrl"]</span>
-					<span class="field-row">
-						<input class="input" placeholder="http://printer.local:8080/?action=snapshot" @bind="_host.WebcamSnapshotUrl" />
-						<button type="button" class="btn btn-ghost" disabled="@_testingSnapshot" @onclick="TestSnapshotAsync">@(_testingSnapshot ? L["Testing"] : L["Test"])</button>
-					</span>
-				</label>
-				<div class="camera-options">
-					<label class="field-inline">@L["Rotate"]
-						<select class="input" aria-label="@L["RotateTitle"]" @bind="_host.WebcamRotation">
-							@foreach (CameraRotation r in Enum.GetValues<CameraRotation>())
+		<div class="settings">
+			@switch (CurrentSection)
+			{
+				case "printers":
+					<section class="card">
+						<header class="card-head">
+							<h2>@L["Profiles"]</h2>
+							<button type="button" class="btn btn-sm btn-ghost" @onclick="NewProfile">@L["NewProfile"]</button>
+						</header>
+						<ul class="profile-list">
+							@foreach (PrinterProfile p in _settings.Profiles)
 							{
-								<option value="@r">@((int)r)°</option>
-							}
-						</select>
-					</label>
-					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipHorizontal" /><span>@L["FlipHorizontal"]</span></label>
-					<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipVertical" /><span>@L["FlipVertical"]</span></label>
-				</div>
-				@if (_testSnapshot is { } shot)
-				{
-					<div class="camera-test">
-						<div class="webcam">
-							<img src="data:@shot.ContentType;base64,@Convert.ToBase64String(shot.Content)" alt="@L["TestSnapshot"]"
-								 style="@CameraView.ImageStyle(_host.WebcamRotation, _host.WebcamFlipHorizontal, _host.WebcamFlipVertical)" />
-						</div>
-					</div>
-				}
-				<p class="muted small">@L.Html("CameraHintHtml")</p>
-			</section>
-
-			<section class="card" aria-labelledby="timelapse-title">
-				<header class="card-head"><h2 id="timelapse-title">@L["Timelapse"]</h2></header>
-				<label class="field"><span>@L["TakeFrame"]</span>
-					<select class="input" @bind="_host.TimelapseMode">
-						<option value="@TimelapseMode.Off">@L["TimelapseOff"]</option>
-						<option value="@TimelapseMode.Timed">@L["TimelapseTimed"]</option>
-						<option value="@TimelapseMode.Layer">@L["TimelapseLayer"]</option>
-					</select>
-				</label>
-				<div class="timelapse-options">
-					@if (_host.TimelapseMode == TimelapseMode.Timed)
-					{
-						<label class="field-inline">@L["Every"]
-							<input class="input input-num" type="number" min="@TimelapseSettings.MinInterval" max="@TimelapseSettings.MaxInterval"
-								   aria-label="@L["SecondsBetween"]" @bind="_host.TimelapseIntervalSeconds" /> s
-						</label>
-					}
-					<label class="field-inline">@L["Video"]
-						<input class="input input-num" type="number" min="@TimelapseSettings.MinFrameRate" max="@TimelapseSettings.MaxFrameRate"
-							   aria-label="@L["FramesPerSecond"]" @bind="_host.TimelapseFrameRate" /> fps
-					</label>
-				</div>
-				<p class="muted small">@L.Html("TimelapseHintHtml", _host.TimelapseIntervalSeconds)</p>
-			</section>
-
-			<div class="save-bar">
-				<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveSettings"]</button>
-			</div>
-		</form>
-
-		@if (_controls is { } cam)
-		{
-			<section class="card settings-wide" aria-labelledby="controls-title">
-				<header class="card-head">
-					<h2 id="controls-title">@L["CameraControls"]</h2>
-					@if (cam.Controls.Count > 0)
-					{
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="ResetControlsAsync"><Icon Name="refresh" Size="14" /> @L["ResetDefaults"]</button>
-					}
-				</header>
-				<label class="field camera-device"><span>@L["Camera"]</span>
-					<select class="input" value="@(cam.Device ?? "")" @onchange="SelectCameraAsync">
-						<option value="">@L["NoCamera"]</option>
-						@foreach (string d in cam.Devices)
-						{
-							<option value="@d">@(d == "VIRTUAL" ? L["VirtualCamera"] : d)</option>
-						}
-						@if (cam.Device is { } chosen && !cam.Devices.Contains(chosen))
-						{
-							<option value="@chosen">@L["NotConnected", chosen]</option>
-						}
-					</select>
-				</label>
-				@if (cam.Error is { } error)
-				{
-					<p class="auth-error" role="alert">@error</p>
-				}
-				@if (cam.Controls.Count > 0)
-				{
-					<div class="camera-controls">
-						@foreach (CameraControl c in cam.Controls)
-						{
-							<div class="camera-control @(c.Inactive ? "is-inactive" : "")" @key="c.Name"
-								 title="@(c.Inactive ? L["InactiveControl"].Value : null)">
-								@switch (c.Type)
-								{
-									case CameraControlType.Integer:
-										long shown = _sliding.TryGetValue(c.Name, out long v) ? v : c.Value;
-										<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span><output class="mono">@shown</output></label>
-										<input id="ctl-@c.Name" class="range" type="range" min="@c.Min" max="@c.Max" step="@c.Step" value="@c.Value" disabled="@c.Inactive"
-											   @oninput="e => Slide(c, e)" @onchange="e => SetControlAsync(c, e.Value)" />
-										break;
-									case CameraControlType.Boolean:
-										<label class="toggle">
-											<input type="checkbox" checked="@(c.Value != 0)" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value is true ? 1 : 0)" />
-											<span>@c.Label</span>
-										</label>
-										break;
-									default:
-										<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span></label>
-										<select id="ctl-@c.Name" class="input" value="@c.Value" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value)">
-											@foreach (CameraMenuItem m in c.Menu)
+								bool active = p.Id == _settings.ActiveProfileId;
+								<li class="profile-row @(p.Id == _profile.Id ? "is-editing" : "")">
+									<button type="button" class="profile-name" @onclick="() => Edit(p)">
+										<span class="profile-title">
+											<strong>@p.Name</strong>
+											@if (active)
 											{
-												<option value="@m.Value">@m.Label</option>
+												<span class="chip chip-printing">@L["Active"]</span>
 											}
-										</select>
-										break;
-								}
-							</div>
-						}
-					</div>
-				}
-				<p class="muted small">@L.Html("CameraControlsHintHtml")</p>
-			</section>
-		}
-
-		@if (_scripts is { } scripts)
-		{
-			<form class="card settings-wide" aria-labelledby="scripts-title" @onsubmit="SaveScriptsAsync" @onsubmit:preventDefault>
-				<header class="card-head"><h2 id="scripts-title">@L["Scripts"]</h2></header>
-				<div class="scripts-grid">
-					<div class="scripts-pane">
-						<div class="seg scripts-tabs" role="tablist" aria-label="@L["Script"]">
-							@for (int i = 0; i < ScriptSlots.Length; i++)
-							{
-								int slot = i;
-								<button type="button" role="tab" aria-selected="@(slot == _scriptSlot)"
-										class="seg-btn @(slot == _scriptSlot ? "is-active" : "")" @onclick="() => _scriptSlot = slot">
-									@ScriptSlots[slot].Label@if (!string.IsNullOrWhiteSpace(scripts.Texts[slot])) { <span class="script-dot" title="@L["HasCommands"]"></span> }
-								</button>
-							}
-						</div>
-						<p class="muted small">@ScriptSlots[_scriptSlot].Hint</p>
-						<textarea class="input mono" rows="9" spellcheck="false" aria-label="@L["ScriptFor", ScriptSlots[_scriptSlot].Label]"
-								  @bind="scripts.Texts[_scriptSlot]"></textarea>
-						<p class="muted small">@L.Html("ScriptsHintHtml")</p>
-					</div>
-
-					<div class="scripts-pane">
-						<div class="scripts-head">
-							<h3 class="card-subhead">@L["Snippets"]</h3>
-							<button type="button" class="btn btn-sm btn-ghost" @onclick="() => scripts.Snippets.Add(new SnippetRow())">@L["AddSnippet"]</button>
-						</div>
-						@if (scripts.Snippets.Count == 0)
-						{
-							<p class="muted small">@L["NoSnippets"]</p>
-						}
-						@foreach (SnippetRow snippet in scripts.Snippets)
-						{
-							<div class="snippet-row">
-								<div class="field-row">
-									<input class="input mono" placeholder="@L["SnippetPlaceholder"]" aria-label="@L["SnippetName"]" @bind="snippet.Name" />
-									<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveSnippet"]" @onclick="() => scripts.Snippets.Remove(snippet)"><Icon Name="x" Size="16" /></button>
-								</div>
-								<textarea class="input mono" rows="2" spellcheck="false" aria-label="@L["SnippetGcode"]" @bind="snippet.Gcode"></textarea>
-							</div>
-						}
-					</div>
-				</div>
-				<div class="form-actions">
-					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveScripts"]</button>
-				</div>
-			</form>
-		}
-
-		@if (_buttons is { } buttons)
-		{
-			<form class="card settings-wide" aria-labelledby="buttons-title" @onsubmit="SaveButtonsAsync" @onsubmit:preventDefault>
-				<header class="card-head">
-					<h2 id="buttons-title">@L["CustomButtons"]</h2>
-					<button type="button" class="btn btn-sm btn-ghost" @onclick="() => buttons.Add(new ButtonRow())">@L["AddButton"]</button>
-				</header>
-				@if (buttons.Count == 0)
-				{
-					<p class="muted small">
-						@L["NoButtons"]
-						<button type="button" class="btn btn-sm btn-ghost" @onclick="AddExampleButtons">@L["AddExamples"]</button>
-					</p>
-				}
-				<div class="button-rows">
-					@for (int i = 0; i < buttons.Count; i++)
-					{
-						int index = i;
-						ButtonRow b = buttons[index];
-						<div class="button-row" @key="b">
-							<div class="field-row">
-								<input class="input" placeholder="@L["ButtonLabelPlaceholder"]" aria-label="@L["ButtonLabel"]" maxlength="@CustomButton.MaxLabelLength" @bind="b.Label" />
-								<select class="input button-icon" aria-label="@L["ButtonIcon"]" @bind="b.Icon">
-									<option value="">@L["NoIcon"]</option>
-									@foreach (string icon in CustomButton.Icons)
+										</span>
+										<small>@Summary(p)</small>
+									</button>
+									@if (!active)
 									{
-										<option value="@icon">@icon</option>
+										<button type="button" class="btn btn-sm btn-ghost" disabled="@_busy"
+												title="@(_busy ? L["FinishPrintFirst"].Value : null)" @onclick="() => SelectAsync(p)">@L["Use"]</button>
+									}
+									<button type="button" class="icon-btn" title="@L["Duplicate"]" @onclick="() => Duplicate(p)"><Icon Name="copy" Size="16" /></button>
+									<button type="button" class="icon-btn icon-btn-danger @(_confirmDelete == p.Id ? "is-armed" : "")" disabled="@active"
+											title="@(active ? L["ActiveCantBeDeleted"] : _confirmDelete == p.Id ? Shared["ClickAgainToDelete"] : Shared["Delete"])"
+											@onclick="() => DeleteAsync(p)">
+										<Icon Name="@(_confirmDelete == p.Id ? "check" : "trash")" Size="16" />
+									</button>
+								</li>
+							}
+						</ul>
+						<p class="muted small">@L["ProfilesHint"]</p>
+					</section>
+
+					<form class="card" @onsubmit="SaveProfileAsync" @onsubmit:preventDefault>
+						<header class="card-head">
+							<h2>@(_profile.Id.Length == 0 ? L["NewProfile"] : L["EditProfile", _profileName])</h2>
+						</header>
+						<div class="form-grid">
+							<label class="field span-2"><span>@L["Name"]</span><input class="input" maxlength="64" @bind="_profile.Name" /></label>
+							<label class="field"><span>@L["BedWidth"]</span><input class="input" type="number" @bind="_profile.BedWidth" /></label>
+							<label class="field"><span>@L["BedDepth"]</span><input class="input" type="number" @bind="_profile.BedDepth" /></label>
+							<label class="field"><span>@L["MaxHeight"]</span><input class="input" type="number" @bind="_profile.MaxHeight" /></label>
+							<label class="field"><span>@L["Extruders"]</span><input class="input" type="number" min="1" max="8" @bind="_profile.ExtruderCount" /></label>
+							<label class="toggle span-2"><input type="checkbox" @bind="_profile.HasHeatedBed" /><span>@L["HeatedBed"]</span></label>
+							<label class="field"><span>@L["JogXY"]</span><input class="input" type="number" @bind="_profile.JogFeedrateXY" /></label>
+							<label class="field"><span>@L["JogZ"]</span><input class="input" type="number" @bind="_profile.JogFeedrateZ" /></label>
+							<label class="field"><span>@L["ExtrudeRate"]</span><input class="input" type="number" @bind="_profile.ExtrudeFeedrate" /></label>
+						</div>
+						<div class="form-actions">
+							@if (_profile.Id.Length == 0)
+							{
+								<button type="button" class="btn btn-ghost" @onclick="() => Edit(_settings.ActiveProfile)">@Shared["Cancel"]</button>
+							}
+							<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @(_profile.Id.Length == 0 ? L["AddProfile"] : L["SaveProfile"])</button>
+						</div>
+					</form>
+					break;
+
+				case "camera":
+					<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
+						<section class="card">
+							<header class="card-head"><h2>@L["Camera"]</h2></header>
+							<label class="field"><span>@L["StreamUrl"]</span>
+								<input class="input" placeholder="http://printer.local:8080/?action=stream" @bind="_host.WebcamStreamUrl" />
+							</label>
+							<label class="field"><span>@L["SnapshotUrl"]</span>
+								<span class="field-row">
+									<input class="input" placeholder="http://printer.local:8080/?action=snapshot" @bind="_host.WebcamSnapshotUrl" />
+									<button type="button" class="btn btn-ghost" disabled="@_testingSnapshot" @onclick="TestSnapshotAsync">@(_testingSnapshot ? L["Testing"] : L["Test"])</button>
+								</span>
+							</label>
+							<div class="camera-options">
+								<label class="field-inline">@L["Rotate"]
+									<select class="input" aria-label="@L["RotateTitle"]" @bind="_host.WebcamRotation">
+										@foreach (CameraRotation r in Enum.GetValues<CameraRotation>())
+										{
+											<option value="@r">@((int)r)°</option>
+										}
+									</select>
+								</label>
+								<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipHorizontal" /><span>@L["FlipHorizontal"]</span></label>
+								<label class="toggle"><input type="checkbox" @bind="_host.WebcamFlipVertical" /><span>@L["FlipVertical"]</span></label>
+							</div>
+							@if (_testSnapshot is { } shot)
+							{
+								<div class="camera-test">
+									<div class="webcam">
+										<img src="data:@shot.ContentType;base64,@Convert.ToBase64String(shot.Content)" alt="@L["TestSnapshot"]"
+											 style="@CameraView.ImageStyle(_host.WebcamRotation, _host.WebcamFlipHorizontal, _host.WebcamFlipVertical)" />
+									</div>
+								</div>
+							}
+							<p class="muted small">@L.Html("CameraHintHtml")</p>
+						</section>
+
+						<section class="card" aria-labelledby="timelapse-title">
+							<header class="card-head"><h2 id="timelapse-title">@L["Timelapse"]</h2></header>
+							<label class="field"><span>@L["TakeFrame"]</span>
+								<select class="input" @bind="_host.TimelapseMode">
+									<option value="@TimelapseMode.Off">@L["TimelapseOff"]</option>
+									<option value="@TimelapseMode.Timed">@L["TimelapseTimed"]</option>
+									<option value="@TimelapseMode.Layer">@L["TimelapseLayer"]</option>
+								</select>
+							</label>
+							<div class="timelapse-options">
+								@if (_host.TimelapseMode == TimelapseMode.Timed)
+								{
+									<label class="field-inline">@L["Every"]
+										<input class="input input-num" type="number" min="@TimelapseSettings.MinInterval" max="@TimelapseSettings.MaxInterval"
+											   aria-label="@L["SecondsBetween"]" @bind="_host.TimelapseIntervalSeconds" /> s
+									</label>
+								}
+								<label class="field-inline">@L["Video"]
+									<input class="input input-num" type="number" min="@TimelapseSettings.MinFrameRate" max="@TimelapseSettings.MaxFrameRate"
+										   aria-label="@L["FramesPerSecond"]" @bind="_host.TimelapseFrameRate" /> fps
+								</label>
+							</div>
+							<p class="muted small">@L.Html("TimelapseHintHtml", _host.TimelapseIntervalSeconds)</p>
+						</section>
+
+						<div class="save-bar">
+							<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveSettings"]</button>
+						</div>
+					</form>
+
+					if (_controls is { } cam)
+					{
+						<section class="card settings-wide" aria-labelledby="controls-title">
+							<header class="card-head">
+								<h2 id="controls-title">@L["CameraControls"]</h2>
+								@if (cam.Controls.Count > 0)
+								{
+									<button type="button" class="btn btn-sm btn-ghost" @onclick="ResetControlsAsync"><Icon Name="refresh" Size="14" /> @L["ResetDefaults"]</button>
+								}
+							</header>
+							<label class="field camera-device"><span>@L["Camera"]</span>
+								<select class="input" value="@(cam.Device ?? "")" @onchange="SelectCameraAsync">
+									<option value="">@L["NoCamera"]</option>
+									@foreach (string d in cam.Devices)
+									{
+										<option value="@d">@(d == "VIRTUAL" ? L["VirtualCamera"] : d)</option>
+									}
+									@if (cam.Device is { } chosen && !cam.Devices.Contains(chosen))
+									{
+										<option value="@chosen">@L["NotConnected", chosen]</option>
 									}
 								</select>
-								<button type="button" class="icon-btn" title="@L["MoveUp"]" disabled="@(index == 0)" @onclick="() => MoveButton(index, -1)"><Icon Name="up" Size="16" /></button>
-								<button type="button" class="icon-btn" title="@L["MoveDown"]" disabled="@(index == buttons.Count - 1)" @onclick="() => MoveButton(index, 1)"><Icon Name="down" Size="16" /></button>
-								<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveButton"]" @onclick="() => buttons.Remove(b)"><Icon Name="x" Size="16" /></button>
-							</div>
-							<textarea class="input mono" rows="3" spellcheck="false" aria-label="@(b.Label.Length > 0 ? L["GcodeFor", b.Label] : L["GcodeForButton"])" @bind="b.Gcode"></textarea>
-							<div class="button-options">
-								<label class="toggle"><input type="checkbox" @bind="b.IdleOnly" /><span>@L["NotWhilePrinting"]</span></label>
-								<label class="toggle"><input type="checkbox" @bind="b.Confirm" /><span>@L["AskBeforeSending"]</span></label>
-							</div>
-						</div>
+							</label>
+							@if (cam.Error is { } error)
+							{
+								<p class="auth-error" role="alert">@error</p>
+							}
+							@if (cam.Controls.Count > 0)
+							{
+								<div class="camera-controls">
+									@foreach (CameraControl c in cam.Controls)
+									{
+										<div class="camera-control @(c.Inactive ? "is-inactive" : "")" @key="c.Name"
+											 title="@(c.Inactive ? L["InactiveControl"].Value : null)">
+											@switch (c.Type)
+											{
+												case CameraControlType.Integer:
+													long shown = _sliding.TryGetValue(c.Name, out long v) ? v : c.Value;
+													<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span><output class="mono">@shown</output></label>
+													<input id="ctl-@c.Name" class="range" type="range" min="@c.Min" max="@c.Max" step="@c.Step" value="@c.Value" disabled="@c.Inactive"
+														   @oninput="e => Slide(c, e)" @onchange="e => SetControlAsync(c, e.Value)" />
+													break;
+												case CameraControlType.Boolean:
+													<label class="toggle">
+														<input type="checkbox" checked="@(c.Value != 0)" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value is true ? 1 : 0)" />
+														<span>@c.Label</span>
+													</label>
+													break;
+												default:
+													<label class="camera-control-head" for="ctl-@c.Name"><span>@c.Label</span></label>
+													<select id="ctl-@c.Name" class="input" value="@c.Value" disabled="@c.Inactive" @onchange="e => SetControlAsync(c, e.Value)">
+														@foreach (CameraMenuItem m in c.Menu)
+														{
+															<option value="@m.Value">@m.Label</option>
+														}
+													</select>
+													break;
+											}
+										</div>
+									}
+								</div>
+							}
+							<p class="muted small">@L.Html("CameraControlsHintHtml")</p>
+						</section>
 					}
-				</div>
-				<p class="muted small">@L.Html("ButtonsHintHtml")</p>
-				<div class="form-actions">
-					<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveButtons"]</button>
-				</div>
-			</form>
-		}
+					break;
 
-		<section class="card settings-wide" aria-labelledby="keys-title">
-			<header class="card-head"><h2 id="keys-title">@L["SlicerUpload"]</h2></header>
-			<p class="muted small">@L.Html("SlicerHintHtml", Nav.BaseUri.TrimEnd('/'))</p>
-			@if (_newKey is not null)
-			{
-				<div class="new-key" role="status">
-					<p>@L.Html("CopyKeyHtml", _newKeyName)</p>
-					<div class="field-row">
-						<input class="input mono" readonly value="@_newKey" aria-label="@L["NewApiKey"]" />
-						<button type="button" class="btn btn-ghost" @onclick="() => _newKey = null"><Icon Name="check" Size="16" /> @L["Done"]</button>
-					</div>
-				</div>
-			}
-			@if (_keys.Count > 0)
-			{
-				<ul class="profile-list key-list">
-					@foreach (ApiKeyInfo k in _keys)
+				case "gcode":
+					if (_scripts is { } scripts)
 					{
-						bool armed = _confirmRevoke == k.Id;
-						<li class="profile-row">
-							<div class="key-name">
-								<strong>@k.Name</strong>
-								<small>…@k.Hint · @k.OwnerName · @L["KeyMade", Format.Ago(k.CreatedAt, Time.GetUtcNow())] · @(k.LastUsedAt is { } used ? L["KeyUsed", Format.Ago(used, Time.GetUtcNow())] : L["KeyNeverUsed"])</small>
+						<form class="card settings-wide" aria-labelledby="scripts-title" @onsubmit="SaveScriptsAsync" @onsubmit:preventDefault>
+							<header class="card-head"><h2 id="scripts-title">@L["Scripts"]</h2></header>
+							<div class="scripts-grid">
+								<div class="scripts-pane">
+									<div class="seg scripts-tabs" role="tablist" aria-label="@L["Script"]">
+										@for (int i = 0; i < ScriptSlots.Length; i++)
+										{
+											int slot = i;
+											<button type="button" role="tab" aria-selected="@(slot == _scriptSlot)"
+													class="seg-btn @(slot == _scriptSlot ? "is-active" : "")" @onclick="() => _scriptSlot = slot">
+												@ScriptSlots[slot].Label@if (!string.IsNullOrWhiteSpace(scripts.Texts[slot])) { <span class="script-dot" title="@L["HasCommands"]"></span> }
+											</button>
+										}
+									</div>
+									<p class="muted small">@ScriptSlots[_scriptSlot].Hint</p>
+									<textarea class="input mono" rows="9" spellcheck="false" aria-label="@L["ScriptFor", ScriptSlots[_scriptSlot].Label]"
+											  @bind="scripts.Texts[_scriptSlot]"></textarea>
+									<p class="muted small">@L.Html("ScriptsHintHtml")</p>
+								</div>
+
+								<div class="scripts-pane">
+									<div class="scripts-head">
+										<h3 class="card-subhead">@L["Snippets"]</h3>
+										<button type="button" class="btn btn-sm btn-ghost" @onclick="() => scripts.Snippets.Add(new SnippetRow())">@L["AddSnippet"]</button>
+									</div>
+									@if (scripts.Snippets.Count == 0)
+									{
+										<p class="muted small">@L["NoSnippets"]</p>
+									}
+									@foreach (SnippetRow snippet in scripts.Snippets)
+									{
+										<div class="snippet-row">
+											<div class="field-row">
+												<input class="input mono" placeholder="@L["SnippetPlaceholder"]" aria-label="@L["SnippetName"]" @bind="snippet.Name" />
+												<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveSnippet"]" @onclick="() => scripts.Snippets.Remove(snippet)"><Icon Name="x" Size="16" /></button>
+											</div>
+											<textarea class="input mono" rows="2" spellcheck="false" aria-label="@L["SnippetGcode"]" @bind="snippet.Gcode"></textarea>
+										</div>
+									}
+								</div>
 							</div>
-							<button type="button" class="btn btn-sm btn-danger @(armed ? "is-armed" : "")" title="@(armed ? L["ClickAgainToRevoke"].Value : null)"
-									@onclick="() => RevokeKeyAsync(k)">
-								<Icon Name="@(armed ? "check" : "x")" Size="14" /> @(armed ? L["ConfirmRevoke"] : L["Revoke"])
-							</button>
-						</li>
+							<div class="form-actions">
+								<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveScripts"]</button>
+							</div>
+						</form>
 					}
-				</ul>
-			}
-			<form class="field-row" @onsubmit="CreateKeyAsync" @onsubmit:preventDefault>
-				<input class="input" maxlength="@ApiKeySecret.MaxNameLength" placeholder="@L["KeyNamePlaceholder"]" aria-label="@L["KeyName"]" @bind="_keyName" />
-				<button class="btn btn-primary" type="submit" disabled="@_creatingKey"><Icon Name="key" Size="16" /> @L["NewAppKey"]</button>
-			</form>
 
-			<h3 class="card-subhead">@L["SharedKey"]</h3>
-			@if (_settings.SharedApiKeyEnabled)
-			{
-				<p class="muted small">@L["SharedKeyHint"]</p>
-				<div class="field-row">
-					<input class="input mono" readonly value="@_settings.ApiKey" aria-label="@L["SharedApiKey"]" />
-					<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["NewKey"]</button>
-					<button type="button" class="btn btn-danger @(_confirmSharedOff ? "is-armed" : "")" @onclick="DisableSharedKeyAsync">
-						<Icon Name="power" Size="16" /> @(_confirmSharedOff ? L["ConfirmTurnOff"] : L["TurnOff"])
-					</button>
-				</div>
-			}
-			else
-			{
-				<p class="muted small">@L["SharedKeyOff"]</p>
-				<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["TurnOnNewKey"]</button>
-			}
-		</section>
+					if (_buttons is { } buttons)
+					{
+						<form class="card settings-wide" aria-labelledby="buttons-title" @onsubmit="SaveButtonsAsync" @onsubmit:preventDefault>
+							<header class="card-head">
+								<h2 id="buttons-title">@L["CustomButtons"]</h2>
+								<button type="button" class="btn btn-sm btn-ghost" @onclick="() => buttons.Add(new ButtonRow())">@L["AddButton"]</button>
+							</header>
+							@if (buttons.Count == 0)
+							{
+								<p class="muted small">
+									@L["NoButtons"]
+									<button type="button" class="btn btn-sm btn-ghost" @onclick="AddExampleButtons">@L["AddExamples"]</button>
+								</p>
+							}
+							<div class="button-rows">
+								@for (int i = 0; i < buttons.Count; i++)
+								{
+									int index = i;
+									ButtonRow b = buttons[index];
+									<div class="button-row" @key="b">
+										<div class="field-row">
+											<input class="input" placeholder="@L["ButtonLabelPlaceholder"]" aria-label="@L["ButtonLabel"]" maxlength="@CustomButton.MaxLabelLength" @bind="b.Label" />
+											<select class="input button-icon" aria-label="@L["ButtonIcon"]" @bind="b.Icon">
+												<option value="">@L["NoIcon"]</option>
+												@foreach (string icon in CustomButton.Icons)
+												{
+													<option value="@icon">@icon</option>
+												}
+											</select>
+											<button type="button" class="icon-btn" title="@L["MoveUp"]" disabled="@(index == 0)" @onclick="() => MoveButton(index, -1)"><Icon Name="up" Size="16" /></button>
+											<button type="button" class="icon-btn" title="@L["MoveDown"]" disabled="@(index == buttons.Count - 1)" @onclick="() => MoveButton(index, 1)"><Icon Name="down" Size="16" /></button>
+											<button type="button" class="icon-btn icon-btn-danger" title="@L["RemoveButton"]" @onclick="() => buttons.Remove(b)"><Icon Name="x" Size="16" /></button>
+										</div>
+										<textarea class="input mono" rows="3" spellcheck="false" aria-label="@(b.Label.Length > 0 ? L["GcodeFor", b.Label] : L["GcodeForButton"])" @bind="b.Gcode"></textarea>
+										<div class="button-options">
+											<label class="toggle"><input type="checkbox" @bind="b.IdleOnly" /><span>@L["NotWhilePrinting"]</span></label>
+											<label class="toggle"><input type="checkbox" @bind="b.Confirm" /><span>@L["AskBeforeSending"]</span></label>
+										</div>
+									</div>
+								}
+							</div>
+							<p class="muted small">@L.Html("ButtonsHintHtml")</p>
+							<div class="form-actions">
+								<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveButtons"]</button>
+							</div>
+						</form>
+					}
+					break;
 
-		<section class="card" aria-labelledby="backup-title">
-			<header class="card-head"><h2 id="backup-title">@L["Backup"]</h2></header>
-			<p class="muted small">@L["BackupHint"]</p>
-			<div class="system-actions">
-				<a class="btn btn-ghost" href="backup" download><Icon Name="down" Size="16" /> @L["DownloadBackup"]</a>
-				<label class="btn btn-ghost file-btn @(_restoring || _busy ? "is-disabled" : "")" title="@(_busy ? L["FinishPrintFirst"].Value : null)">
-					<InputFile OnChange="PickBackup" accept=".zip,application/zip" disabled="@(_restoring || _busy)" />
-					<Icon Name="upload" Size="16" /> @L["RestoreEllipsis"]
-				</label>
-			</div>
-			@if (_restoreFile is not null)
-			{
-				<div class="restore-confirm" role="alert">
-					<p>@L.Html("RestoreConfirmHtml", _restoreFile.Name, Format.Bytes(_restoreFile.Size))</p>
-					<div class="system-actions">
-						<button type="button" class="btn btn-ghost" disabled="@_restoring" @onclick="() => _restoreFile = null">@Shared["Cancel"]</button>
-						<button type="button" class="btn btn-danger" disabled="@(_restoring || _busy)" @onclick="RestoreAsync">
-							<Icon Name="refresh" Size="16" /> @(_restoring ? L["Restoring"] : L["Restore"])
-						</button>
-					</div>
-				</div>
-			}
-		</section>
-
-		<section class="card" aria-labelledby="system-title">
-			<header class="card-head"><h2 id="system-title">@L["System"]</h2></header>
-			@if (_health is { } health)
-			{
-				<ul class="health-list">
-					<li>
-						<span>@L["Disk"]</span>
-						@if (health.Disk is { } disk)
+				case "api":
+					<section class="card settings-wide" aria-labelledby="keys-title">
+						<header class="card-head"><h2 id="keys-title">@L["SlicerUpload"]</h2></header>
+						<p class="muted small">@L.Html("SlicerHintHtml", Nav.BaseUri.TrimEnd('/'))</p>
+						@if (_newKey is not null)
 						{
-							<span>@L["DiskFree", Format.Bytes(disk.FreeBytes), Format.Bytes(disk.TotalBytes)]</span>
+							<div class="new-key" role="status">
+								<p>@L.Html("CopyKeyHtml", _newKeyName)</p>
+								<div class="field-row">
+									<input class="input mono" readonly value="@_newKey" aria-label="@L["NewApiKey"]" />
+									<button type="button" class="btn btn-ghost" @onclick="() => _newKey = null"><Icon Name="check" Size="16" /> @L["Done"]</button>
+								</div>
+							</div>
+						}
+						@if (_keys.Count > 0)
+						{
+							<ul class="profile-list key-list">
+								@foreach (ApiKeyInfo k in _keys)
+								{
+									bool armed = _confirmRevoke == k.Id;
+									<li class="profile-row">
+										<div class="key-name">
+											<strong>@k.Name</strong>
+											<small>…@k.Hint · @k.OwnerName · @L["KeyMade", Format.Ago(k.CreatedAt, Time.GetUtcNow())] · @(k.LastUsedAt is { } used ? L["KeyUsed", Format.Ago(used, Time.GetUtcNow())] : L["KeyNeverUsed"])</small>
+										</div>
+										<button type="button" class="btn btn-sm btn-danger @(armed ? "is-armed" : "")" title="@(armed ? L["ClickAgainToRevoke"].Value : null)"
+												@onclick="() => RevokeKeyAsync(k)">
+											<Icon Name="@(armed ? "check" : "x")" Size="14" /> @(armed ? L["ConfirmRevoke"] : L["Revoke"])
+										</button>
+									</li>
+								}
+							</ul>
+						}
+						<form class="field-row" @onsubmit="CreateKeyAsync" @onsubmit:preventDefault>
+							<input class="input" maxlength="@ApiKeySecret.MaxNameLength" placeholder="@L["KeyNamePlaceholder"]" aria-label="@L["KeyName"]" @bind="_keyName" />
+							<button class="btn btn-primary" type="submit" disabled="@_creatingKey"><Icon Name="key" Size="16" /> @L["NewAppKey"]</button>
+						</form>
+
+						<h3 class="card-subhead">@L["SharedKey"]</h3>
+						@if (_settings.SharedApiKeyEnabled)
+						{
+							<p class="muted small">@L["SharedKeyHint"]</p>
+							<div class="field-row">
+								<input class="input mono" readonly value="@_settings.ApiKey" aria-label="@L["SharedApiKey"]" />
+								<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["NewKey"]</button>
+								<button type="button" class="btn btn-danger @(_confirmSharedOff ? "is-armed" : "")" @onclick="DisableSharedKeyAsync">
+									<Icon Name="power" Size="16" /> @(_confirmSharedOff ? L["ConfirmTurnOff"] : L["TurnOff"])
+								</button>
+							</div>
 						}
 						else
 						{
-							<span class="muted">@L["CantBeRead"]</span>
+							<p class="muted small">@L["SharedKeyOff"]</p>
+							<button type="button" class="btn btn-ghost" @onclick="RegenerateAsync"><Icon Name="refresh" Size="16" /> @L["TurnOnNewKey"]</button>
 						}
-					</li>
-					<li>
-						<span>@L["PiPower"]</span>
-						<span>@(health.Pi switch
+					</section>
+					break;
+
+				case "system":
+					<section class="card" aria-labelledby="backup-title">
+						<header class="card-head"><h2 id="backup-title">@L["Backup"]</h2></header>
+						<p class="muted small">@L["BackupHint"]</p>
+						<div class="system-actions">
+							<a class="btn btn-ghost" href="backup" download><Icon Name="down" Size="16" /> @L["DownloadBackup"]</a>
+							<label class="btn btn-ghost file-btn @(_restoring || _busy ? "is-disabled" : "")" title="@(_busy ? L["FinishPrintFirst"].Value : null)">
+								<InputFile OnChange="PickBackup" accept=".zip,application/zip" disabled="@(_restoring || _busy)" />
+								<Icon Name="upload" Size="16" /> @L["RestoreEllipsis"]
+							</label>
+						</div>
+						@if (_restoreFile is not null)
 						{
-							null => L["NotAPi"],
-							{ UnderVoltageNow: true } => L["UnderVoltageNow"],
-							{ LimitedNow: true } => L["ThrottledNow"],
-							{ UnderVoltageSinceBoot: true } => L["UnderVoltageSinceBoot"],
-							{ LimitedSinceBoot: true } => L["ThrottledSinceBoot"],
-							_ => L["PiOk"]
-						})</span>
-					</li>
-					<li>
-						<span>@L["Firmware"]</span>
-						<span>@(health.Firmware ?? L["FirmwareNotConnected"])</span>
-					</li>
-				</ul>
-				@if (health.Warnings.Count == 0)
-				{
-					<p class="muted small"><Icon Name="check" Size="14" /> @L["NoProblems"]</p>
-				}
-				@foreach (HealthWarning w in health.Warnings)
-				{
-					<p class="banner @(w.Severity == HealthSeverity.Error ? "banner-bad" : "banner-warn")"><strong>@w.Title.</strong> @w.Detail</p>
-				}
+							<div class="restore-confirm" role="alert">
+								<p>@L.Html("RestoreConfirmHtml", _restoreFile.Name, Format.Bytes(_restoreFile.Size))</p>
+								<div class="system-actions">
+									<button type="button" class="btn btn-ghost" disabled="@_restoring" @onclick="() => _restoreFile = null">@Shared["Cancel"]</button>
+									<button type="button" class="btn btn-danger" disabled="@(_restoring || _busy)" @onclick="RestoreAsync">
+										<Icon Name="refresh" Size="16" /> @(_restoring ? L["Restoring"] : L["Restore"])
+									</button>
+								</div>
+							</div>
+						}
+					</section>
+
+					<section class="card" aria-labelledby="system-title">
+						<header class="card-head"><h2 id="system-title">@L["System"]</h2></header>
+						@if (_health is { } health)
+						{
+							<ul class="health-list">
+								<li>
+									<span>@L["Disk"]</span>
+									@if (health.Disk is { } disk)
+									{
+										<span>@L["DiskFree", Format.Bytes(disk.FreeBytes), Format.Bytes(disk.TotalBytes)]</span>
+									}
+									else
+									{
+										<span class="muted">@L["CantBeRead"]</span>
+									}
+								</li>
+								<li>
+									<span>@L["PiPower"]</span>
+									<span>@(health.Pi switch
+									{
+										null => L["NotAPi"],
+										{ UnderVoltageNow: true } => L["UnderVoltageNow"],
+										{ LimitedNow: true } => L["ThrottledNow"],
+										{ UnderVoltageSinceBoot: true } => L["UnderVoltageSinceBoot"],
+										{ LimitedSinceBoot: true } => L["ThrottledSinceBoot"],
+										_ => L["PiOk"]
+									})</span>
+								</li>
+								<li>
+									<span>@L["Firmware"]</span>
+									<span>@(health.Firmware ?? L["FirmwareNotConnected"])</span>
+								</li>
+							</ul>
+							@if (health.Warnings.Count == 0)
+							{
+								<p class="muted small"><Icon Name="check" Size="14" /> @L["NoProblems"]</p>
+							}
+							@foreach (HealthWarning w in health.Warnings)
+							{
+								<p class="banner @(w.Severity == HealthSeverity.Error ? "banner-bad" : "banner-warn")"><strong>@w.Title.</strong> @w.Detail</p>
+							}
+						}
+						@if (_hostActions.Count == 0)
+						{
+							<p class="muted small">@L.Html("NoHostCommandsHtml")</p>
+						}
+						else
+						{
+							<p class="muted small">@L["HostActionsHint"]</p>
+							<div class="system-actions">
+								@foreach (HostAction action in _hostActions)
+								{
+									bool armed = _confirmAction == action;
+									<button type="button" class="btn @(action == HostAction.RestartPrintDeck ? "" : "btn-danger") @(armed ? "is-armed" : "")"
+											disabled="@(_busy || _runningAction)" title="@(_busy ? L["FinishPrintFirst"].Value : armed ? L["ClickAgainToConfirm"].Value : null)"
+											@onclick="() => RunHostActionAsync(action)">
+										<Icon Name="@(action == HostAction.RestartPrintDeck ? "refresh" : "power")" Size="16" />
+										@(armed ? L["ConfirmAction", HostActionLabel(action)] : HostActionLabel(action))
+									</button>
+								}
+							</div>
+						}
+					</section>
+					break;
+
+				default:
+					<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
+						<section class="card presets-card">
+							<header class="card-head">
+								<h2>@L["Presets"]</h2>
+								<button type="button" class="btn btn-sm btn-ghost" @onclick="() => _host.Presets.Add(new PresetRow())">@L["AddPreset"]</button>
+							</header>
+							<div class="preset-rows">
+								@foreach (PresetRow p in _host.Presets)
+								{
+									<div class="preset-row">
+										<input class="input" placeholder="@L["Name"]" aria-label="@L["PresetName"]" @bind="p.Name" />
+										<label class="field-inline"><Icon Name="flame" Size="14" /><input class="input input-num" type="number" aria-label="@L["Hotend"]" @bind="p.Hotend" />°</label>
+										<label class="field-inline"><Icon Name="bed" Size="14" /><input class="input input-num" type="number" aria-label="@L["Bed"]" @bind="p.Bed" />°</label>
+										<button type="button" class="icon-btn icon-btn-danger" title="@L["Remove"]" @onclick="() => _host.Presets.Remove(p)"><Icon Name="x" Size="16" /></button>
+									</div>
+								}
+							</div>
+						</section>
+
+						<section class="card">
+							<header class="card-head"><h2>@L["Connection"]</h2></header>
+							<label class="toggle">
+								<input type="checkbox" @bind="_host.AutoConnect" />
+								<span>@L["AutoConnect"]</span>
+							</label>
+							<p class="muted small">
+								@if (_settings.LastPort is { } lastPort)
+								{
+									@L.Html("AutoConnectToPortHtml", lastPort, _settings.DefaultBaudRate)
+								}
+								else
+								{
+									@L["AutoConnectNoPort"]
+								}
+							</p>
+						</section>
+
+						<section class="card">
+							<header class="card-head"><h2>@L["PrinterScreen"]</h2></header>
+							<label class="toggle">
+								<input type="checkbox" @bind="_host.ShowProgressOnPrinter" />
+								<span>@L["ShowProgress"]</span>
+							</label>
+							<p class="muted small">@L.Html("PrinterScreenHintHtml")</p>
+						</section>
+
+						<div class="save-bar">
+							<button class="btn btn-primary" type="submit"><Icon Name="check" Size="16" /> @L["SaveSettings"]</button>
+						</div>
+					</form>
+					break;
 			}
-			@if (_hostActions.Count == 0)
-			{
-				<p class="muted small">@L.Html("NoHostCommandsHtml")</p>
-			}
-			else
-			{
-				<p class="muted small">@L["HostActionsHint"]</p>
-				<div class="system-actions">
-					@foreach (HostAction action in _hostActions)
-					{
-						bool armed = _confirmAction == action;
-						<button type="button" class="btn @(action == HostAction.RestartPrintDeck ? "" : "btn-danger") @(armed ? "is-armed" : "")"
-								disabled="@(_busy || _runningAction)" title="@(_busy ? L["FinishPrintFirst"].Value : armed ? L["ClickAgainToConfirm"].Value : null)"
-								@onclick="() => RunHostActionAsync(action)">
-							<Icon Name="@(action == HostAction.RestartPrintDeck ? "refresh" : "power")" Size="16" />
-							@(armed ? L["ConfirmAction", HostActionLabel(action)] : HostActionLabel(action))
-						</button>
-					}
-				</div>
-			}
-		</section>
+		</div>
 	</div>
 }
 
@@ -590,6 +624,21 @@
 		(L["ScriptOnPause"], L["ScriptOnPauseHint"]),
 		(L["ScriptOnResume"], L["ScriptOnResumeHint"])
 	];
+
+	/// <summary>The part of the settings to show: one of the <see cref="Sections"/> slugs; anything else shows the first.</summary>
+	[Parameter] public string? Section { get; set; }
+
+	private (string Slug, string Icon, string Label)[] Sections =>
+	[
+		("general", "sliders", L["SectionGeneral"]),
+		("printers", "cube", L["SectionPrinters"]),
+		("camera", "camera", L["SectionCamera"]),
+		("gcode", "terminal", L["SectionGcode"]),
+		("api", "key", L["SectionApiKeys"]),
+		("system", "power", L["SectionSystem"])
+	];
+
+	private string CurrentSection => Sections.Any(s => s.Slug == Section) ? Section! : "general";
 
 	private ScriptsForm? _scripts;
 	private List<ButtonRow>? _buttons;
