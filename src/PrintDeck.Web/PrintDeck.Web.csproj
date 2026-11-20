@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PrintDeck.Infrastructure\PrintDeck.Infrastructure.csproj" />
     <ProjectReference Include="..\PrintDeck.Application\PrintDeck.Application.csproj" />
+    <ProjectReference Include="..\PrintDeck.Modules.HomeAssistant\PrintDeck.Modules.HomeAssistant.csproj" />
   </ItemGroup>
 
   <ItemGroup>

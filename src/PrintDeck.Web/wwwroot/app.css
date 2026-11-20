@@ -236,6 +236,7 @@ select.input { appearance: none; padding-right: 32px; cursor: pointer;
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
 .card-head h2 { color: var(--muted); }
+.card-head-actions { display: flex; align-items: center; gap: 8px; }
 .card-head .value { font-weight: 500; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 12px; color: var(--muted); text-align: center; flex: 1; }

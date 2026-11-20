@@ -1,9 +1,11 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
+using PrintDeck.Modules.HomeAssistant;
 using PrintDeck.Web.Components.Account;
 using PrintDeck.Web.Services;
 
@@ -11,13 +13,25 @@ namespace PrintDeck.Web.Tests.Localization;
 
 /// <summary>
 /// UI text lives in <c>Resources/**/*.resx</c>. A missing key doesn't fail anywhere (the localizer shows the key itself),
-/// so these tests compare the keys the code uses with the keys in the resource files, both ways.
+/// so these tests compare the keys the code uses with the keys in the resource files, both ways. Modules keep their
+/// text the same way, in their own project.
 /// </summary>
 public sealed partial class ResourceKeyTests
 {
-	private static readonly string _web = FindWebProject();
-	private static readonly string _resources = Path.Combine(_web, "Resources");
-	private static readonly string _sharedResx = Path.Combine(_resources, "SharedText.resx");
+	/// <summary>A project with UI text: its folder, its assembly and the namespace its resource names start with.</summary>
+	private sealed record UiProject(string Directory, Assembly Assembly, string RootNamespace)
+	{
+		public string Resources => Path.Combine(Directory, "Resources");
+	}
+
+	private static readonly string _web = FindProject("PrintDeck.Web");
+	private static readonly string _sharedResx = Path.Combine(_web, "Resources", "SharedText.resx");
+
+	private static readonly UiProject[] _projects =
+	[
+		new(_web, typeof(SharedText).Assembly, "PrintDeck.Web"),
+		new(FindProject("PrintDeck.Modules.HomeAssistant"), typeof(HomeAssistantModule).Assembly, "PrintDeck.Modules.HomeAssistant")
+	];
 
 	/// <summary>A component's own text: <c>L["Key"]</c>, <c>L["Key", args]</c> or <c>L.Html("KeyHtml", args)</c>.</summary>
 	[GeneratedRegex(@"\bL(?:\[\s*|\.Html\(\s*)""(\w+)""")]
@@ -45,15 +59,16 @@ public sealed partial class ResourceKeyTests
 		HashSet<string> html = [];
 		void Use(string resx, string key) => (byResx.TryGetValue(resx, out HashSet<string>? keys) ? keys : byResx[resx] = []).Add(key);
 
-		foreach (string file in Directory.EnumerateFiles(_web, "*.*", SearchOption.AllDirectories)
+		foreach (UiProject project in _projects)
+		foreach (string file in Directory.EnumerateFiles(project.Directory, "*.*", SearchOption.AllDirectories)
 			.Where(f => f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
 			.Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
 				&& !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
 				&& !f.Contains("node_modules", StringComparison.Ordinal)))
 		{
 			string source = File.ReadAllText(file);
-			string relative = Path.GetRelativePath(_web, file);
-			string own = Path.Combine(_resources, Path.ChangeExtension(relative, ".resx"));
+			string relative = Path.GetRelativePath(project.Directory, file);
+			string own = Path.Combine(project.Resources, Path.ChangeExtension(relative, ".resx"));
 
 			foreach (Match m in OwnKey().Matches(source)) Use(own, m.Groups[1].Value);
 			foreach (Match m in SharedKey().Matches(source)) Use(_sharedResx, m.Groups[1].Value);
@@ -68,7 +83,10 @@ public sealed partial class ResourceKeyTests
 		XDocument.Load(resx).Root!.Elements("data")
 			.ToDictionary(d => (string) d.Attribute("name")!, d => (string?) d.Element("value") ?? "");
 
-	private static IEnumerable<string> AllResx() => Directory.EnumerateFiles(_resources, "*.resx", SearchOption.AllDirectories);
+	private static IEnumerable<string> AllResx() =>
+		_projects.SelectMany(p => Directory.EnumerateFiles(p.Resources, "*.resx", SearchOption.AllDirectories));
+
+	private static string Shown(string resx) => Path.GetRelativePath(Path.GetDirectoryName(_web)!, resx);
 
 	[Fact]
 	public void Every_key_the_ui_uses_is_in_its_resource_file()
@@ -77,7 +95,7 @@ public sealed partial class ResourceKeyTests
 		foreach ((string resx, HashSet<string> keys) in Scan().KeysByResx)
 		{
 			Dictionary<string, string> entries = File.Exists(resx) ? Read(resx) : [];
-			missing.AddRange(keys.Where(k => !entries.ContainsKey(k)).Select(k => $"{Path.GetRelativePath(_web, resx)}: {k}"));
+			missing.AddRange(keys.Where(k => !entries.ContainsKey(k)).Select(k => $"{Shown(resx)}: {k}"));
 		}
 		Assert.Empty(missing);
 	}
@@ -90,7 +108,7 @@ public sealed partial class ResourceKeyTests
 		foreach (string resx in AllResx())
 		{
 			HashSet<string> keys = used.GetValueOrDefault(resx) ?? [];
-			unused.AddRange(Read(resx).Keys.Where(k => !keys.Contains(k)).Select(k => $"{Path.GetRelativePath(_web, resx)}: {k}"));
+			unused.AddRange(Read(resx).Keys.Where(k => !keys.Contains(k)).Select(k => $"{Shown(resx)}: {k}"));
 		}
 		Assert.Empty(unused);
 	}
@@ -116,12 +134,13 @@ public sealed partial class ResourceKeyTests
 		await using PrintDeckWebFactory app = new();
 		IStringLocalizerFactory factory = app.Services.GetRequiredService<IStringLocalizerFactory>();
 		List<string> problems = [];
-		foreach (string resx in AllResx())
+		foreach (UiProject project in _projects)
+		foreach (string resx in Directory.EnumerateFiles(project.Resources, "*.resx", SearchOption.AllDirectories))
 		{
-			string typeName = "PrintDeck.Web." + Path.ChangeExtension(Path.GetRelativePath(_resources, resx), null)!.Replace(Path.DirectorySeparatorChar, '.');
-			if (typeof(SharedText).Assembly.GetType(typeName) is not { } type)
+			string typeName = project.RootNamespace + "." + Path.ChangeExtension(Path.GetRelativePath(project.Resources, resx), null)!.Replace(Path.DirectorySeparatorChar, '.');
+			if (project.Assembly.GetType(typeName) is not { } type)
 			{
-				problems.Add($"{Path.GetRelativePath(_web, resx)}: no type {typeName}");
+				problems.Add($"{Shown(resx)}: no type {typeName}");
 				continue;
 			}
 			IStringLocalizer localizer = factory.Create(type);
@@ -153,13 +172,13 @@ public sealed partial class ResourceKeyTests
 			localizer.Html("RecordingHtml", "<b>cube&co.gcode", "3 frames").Value);
 	}
 
-	private static string FindWebProject()
+	private static string FindProject(string name)
 	{
 		for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
 		{
-			string candidate = Path.Combine(dir.FullName, "src", "PrintDeck.Web");
-			if (File.Exists(Path.Combine(candidate, "PrintDeck.Web.csproj"))) return candidate;
+			string candidate = Path.Combine(dir.FullName, "src", name);
+			if (File.Exists(Path.Combine(candidate, name + ".csproj"))) return candidate;
 		}
-		throw new DirectoryNotFoundException("src/PrintDeck.Web not found above " + AppContext.BaseDirectory);
+		throw new DirectoryNotFoundException($"src/{name} not found above " + AppContext.BaseDirectory);
 	}
 }

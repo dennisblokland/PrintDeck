@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
 using PrintDeck.Domain.Camera;
@@ -88,6 +89,9 @@ public sealed record HostSettings
 	/// <summary>Terminal lines to hide, by pattern; each can be switched on and off on the Terminal page.</summary>
 	public IReadOnlyList<TerminalFilter> TerminalFilters { get; init; } = TerminalFilter.Defaults;
 
+	/// <summary>Each module's on/off switch and its own settings, by module id. A module missing here is off.</summary>
+	public IReadOnlyDictionary<string, ModuleSection> Modules { get; init; } = ReadOnlyDictionary<string, ModuleSection>.Empty;
+
 	/// <summary>The profile in use; falls back to the first one if the active id is stale.</summary>
 	[JsonIgnore]
 	public PrinterProfile ActiveProfile =>
@@ -124,6 +128,8 @@ public sealed record HostSettings
 			TerminalFilters = TerminalFilters ?? [],
 			CameraControls = CameraControls ?? [],
 			CustomButtons = CustomButtons ?? [],
+			// One shared empty instance, so settings without modules stay equal as records.
+			Modules = Modules is null or { Count: 0 } ? ReadOnlyDictionary<string, ModuleSection>.Empty : Modules,
 			Timelapse = (Timelapse ?? new TimelapseSettings()).Normalized()
 		};
 	}

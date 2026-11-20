@@ -1,0 +1,52 @@
+@inherits PrinterComponent
+@inject IStringLocalizer<ModuleSettingsList> L
+
+@if (_modules is { } modules)
+{
+	@if (modules.Count == 0)
+	{
+		<section class="card"><p class="muted">@L["NoModules"]</p></section>
+	}
+	@foreach (ModuleDto m in modules)
+	{
+		<section class="card" @key="m.Id" aria-labelledby="module-@m.Id">
+			<header class="card-head">
+				<h2 id="module-@m.Id">@m.Name</h2>
+				<span class="muted small">@L["Version", m.Version]</span>
+			</header>
+			<label class="toggle">
+				<input type="checkbox" checked="@m.Enabled" disabled="@_saving" @onchange="e => SetAsync(m, e.Value is true)" />
+				<span>@L["SwitchedOn"]</span>
+			</label>
+			@if (m.Enabled && !m.Running)
+			{
+				<p class="muted small">@L["NotRunning"]</p>
+			}
+		</section>
+		@if (m.Running)
+		{
+			<ModuleOutlet @key="(m.Id, ModuleSlot.Settings)" Slot="ModuleSlot.Settings" ModuleId="@m.Id" />
+		}
+	}
+	<p class="muted small settings-wide">@L["Hint"]</p>
+}
+
+@code {
+	private IReadOnlyList<ModuleDto>? _modules;
+	private bool _saving;
+
+	protected override PrinterChange Interests => PrinterChange.Settings;
+
+	protected override async Task RefreshAsync() => _modules = await Mediator.Send(new ListModulesQuery());
+
+	private async Task SetAsync(ModuleDto module, bool on)
+	{
+		_saving = true;
+		try
+		{
+			await Run(new SetModuleEnabledCommand(module.Id, on), on ? L["SwitchedOnToast", module.Name] : L["SwitchedOffToast", module.Name]);
+			await RefreshAsync();
+		}
+		finally { _saving = false; }
+	}
+}

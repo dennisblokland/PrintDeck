@@ -48,6 +48,8 @@ internal sealed class FakePrinterSession : IPrinterSession
 
 	public IReadOnlyList<TerminalEntry> Terminal(int last) => TerminalEntries.TakeLast(last).ToList();
 	public void ClearTerminal() => TerminalCleared = true;
+	public List<string> Notes { get; } = [];
+	public void Note(string text) => Notes.Add(text);
 
 	public Task<Result> ConnectAsync(string port, int baudRate, CancellationToken ct)
 	{

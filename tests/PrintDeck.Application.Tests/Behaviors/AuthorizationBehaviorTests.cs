@@ -18,6 +18,7 @@ public class AuthorizationBehaviorTests
 	public sealed record ManageUsersCommand : ICommand<Result>, IAccountAdministration;
 	public sealed record ListUsersQuery : IQuery<string>, IAccountAdministration;
 	public sealed record RebootCommand : ICommand<Result>, IHostAdministration;
+	public sealed record ModuleSecretsQuery : IQuery<Result<string>>, IModuleOnly;
 
 	private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -92,5 +93,27 @@ public class AuthorizationBehaviorTests
 		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.AdminRequired, (await Command(new RebootCommand(), FakeCurrentUser.Viewer)).Error);
 		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.HostAccountRequired, (await Command(new RebootCommand(), FakeCurrentUser.ApiKey)).Error);
 		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.SignInRequired, (await Command(new RebootCommand(), null)).Error);
+	}
+
+	[Fact]
+	public async Task A_module_acts_as_an_admin_but_not_for_accounts_or_the_host()
+	{
+		CurrentUserInfo module = CurrentUserInfo.ForModule("lights");
+
+		Assert.True((await Command(new PrinterCommand(), module)).IsSuccess);
+		Assert.Equal(AuthorizationBehavior<ManageUsersCommand, Result>.AccountRequired, (await Command(new ManageUsersCommand(), module)).Error);
+		Assert.Equal(AuthorizationBehavior<RebootCommand, Result>.HostAccountRequired, (await Command(new RebootCommand(), module)).Error);
+	}
+
+	[Fact]
+	public async Task Module_only_messages_refuse_everyone_but_a_module()
+	{
+		Assert.True((await Send(new ModuleSecretsQuery(), CurrentUserInfo.ForModule("lights"), Result.Success("secret"))).IsSuccess);
+		foreach (CurrentUserInfo? user in new[] { FakeCurrentUser.Admin, FakeCurrentUser.ApiKey, FakeCurrentUser.Viewer })
+		{
+			Result<string> refused = await Send(new ModuleSecretsQuery(), user, Result.Success("secret"));
+			Assert.Equal(AuthorizationBehavior<ModuleSecretsQuery, Result<string>>.ModuleRequired, refused.Error);
+			Assert.Null(refused.Value);
+		}
 	}
 }

@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 using Microsoft.Extensions.Options;
 
 using PrintDeck.Domain.Camera;
@@ -73,6 +75,31 @@ public sealed class JsonSettingsStoreTests : IDisposable
 		Assert.Equal(saved.Snippets, loaded.Snippets);
 		Assert.Equal(saved.Profiles, loaded.Profiles);
 		Assert.Equal(ender, loaded.ActiveProfile);
+	}
+
+	[Fact]
+	public async Task Module_sections_survive_a_restart()
+	{
+		await NewStore().UpdateAsync(s => s with
+		{
+			Modules = new Dictionary<string, ModuleSection>
+			{
+				["home-assistant"] = new(true, new JsonObject { ["url"] = "VIRTUAL", ["lightOffDelayMinutes"] = 3 })
+			}
+		}, Ct);
+
+		ModuleSection section = (await NewStore().GetAsync(Ct)).Modules["home-assistant"];
+
+		Assert.True(section.Enabled);
+		Assert.Equal("""{"url":"VIRTUAL","lightOffDelayMinutes":3}""", section.Settings!.ToJsonString());
+	}
+
+	[Fact]
+	public async Task A_file_from_before_modules_has_none_switched_on()
+	{
+		await WriteFileAsync("""{"profiles":[],"apiKey":"K","modules":null}""");
+
+		Assert.Empty((await NewStore().GetAsync(Ct)).Modules);
 	}
 
 	[Fact]

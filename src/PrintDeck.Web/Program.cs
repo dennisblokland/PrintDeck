@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Http.Features;
 
 using PrintDeck.Application;
 using PrintDeck.Application.Behaviors;
+using PrintDeck.Application.Plugins;
 using PrintDeck.Infrastructure;
 using PrintDeck.Infrastructure.Identity;
+using PrintDeck.Modules.HomeAssistant;
 using PrintDeck.Web.Api;
 using PrintDeck.Web.Auth;
 using PrintDeck.Web.Components;
@@ -19,6 +21,8 @@ const long MaxUploadBytes = 1L << 30; // 1 GiB
 
 builder.Services.AddApplicationCore();
 builder.Services.AddInfrastructure(builder.Configuration);
+// In-tree modules, built against PrintDeck.Plugins.Abstractions only. Each is switched on in Settings → Modules.
+builder.Services.AddPrintDeckModule(new HomeAssistantModule());
 builder.Services.AddMediator(options =>
 {
 	options.ServiceLifetime = ServiceLifetime.Scoped;
@@ -48,6 +52,7 @@ app.Services.StartAutoConnect();
 app.Services.StartThumbnailBackfill();
 app.Services.StartCameraControls();
 app.Services.StartTimelapse();
+app.Services.StartModules();
 
 app.UsePrintDeckForwardedHeaders();
 if (!app.Environment.IsDevelopment())
