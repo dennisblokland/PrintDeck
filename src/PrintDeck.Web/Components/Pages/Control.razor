@@ -86,6 +86,7 @@
 @* Outside the fieldset: speed and flow stay adjustable while printing. *@
 <div class="control-grid control-more">
 	<SpeedFlowPanel />
+	<ModuleOutlet Slot="ModuleSlot.Control" />
 	@if (_buttons.Count > 0)
 	{
 		<section class="card" aria-labelledby="custom-title">

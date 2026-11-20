@@ -6,10 +6,13 @@
 	<section class="card webcam-card">
 		<header class="card-head">
 			<h2>@L["Title"]</h2>
-			@if (_snapshot)
-			{
-				<a class="btn btn-sm btn-ghost" href="camera/snapshot?download=true" download title="@L["SnapshotTitle"]"><Icon Name="down" Size="14" /> @L["Snapshot"]</a>
-			}
+			<div class="card-head-actions">
+				<ModuleOutlet Slot="ModuleSlot.CameraCard" />
+				@if (_snapshot)
+				{
+					<a class="btn btn-sm btn-ghost" href="camera/snapshot?download=true" download title="@L["SnapshotTitle"]"><Icon Name="down" Size="14" /> @L["Snapshot"]</a>
+				}
+			</div>
 		</header>
 		<div class="webcam">
 			<img src="@(_stream ?? $"camera/snapshot?t={_tick}")" alt="@(_stream is null ? L["SnapshotAlt"] : L["StreamAlt"])" loading="lazy"

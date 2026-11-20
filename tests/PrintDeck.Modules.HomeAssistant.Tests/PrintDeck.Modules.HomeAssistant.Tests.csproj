@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Only the module and the contract: the tests drive the module through a fake IPluginContext, as PrintDeck would. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PrintDeck.Modules.HomeAssistant\PrintDeck.Modules.HomeAssistant.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -8,6 +8,7 @@ using PrintDeck.Application.ApiKeys;
 using PrintDeck.Application.Camera;
 using PrintDeck.Application.Files;
 using PrintDeck.Application.Files.Thumbnails;
+using PrintDeck.Application.Plugins;
 using PrintDeck.Application.Printer;
 using PrintDeck.Application.Printer.Interfaces;
 using PrintDeck.Application.Timelapse;
@@ -31,7 +32,20 @@ public static class DependencyInjection
 		services.AddSingleton<CameraControlsStartup>();
 		services.AddSingleton<TimelapseRecorder>();
 		services.AddSingleton<AppKeyRequests>();
+		services.AddSingleton<PrinterEventStream>();
+		services.AddSingleton<ModuleCatalog>();
+		services.AddSingleton<ModuleHost>();
+		services.AddSingleton<IModuleContexts, ScopedModuleContexts>();
+		services.AddScoped<PluginContextFactory>();
+		services.AddScoped<ScopeIdentity>();
 		return services;
+	}
+
+	/// <summary>Starts the printer event stream and every module that is switched on. Call after the other Start* calls.</summary>
+	public static void StartModules(this IServiceProvider services)
+	{
+		services.GetRequiredService<PrinterEventStream>().Start();
+		services.GetRequiredService<ModuleHost>().Start();
 	}
 
 	/// <summary>Starts recording finished prints into each file's history.</summary>

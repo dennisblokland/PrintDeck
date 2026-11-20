@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PrintDeck.Domain\PrintDeck.Domain.csproj" />
+    <ProjectReference Include="..\PrintDeck.Plugins.Abstractions\PrintDeck.Plugins.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

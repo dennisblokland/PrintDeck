@@ -49,6 +49,9 @@ public interface IPrinterSession
 	IReadOnlyList<TerminalEntry> Terminal(int last);
 	void ClearTerminal();
 
+	/// <summary>Adds an info line to the terminal, such as a module saying what it did.</summary>
+	void Note(string text);
+
 	Task<Result> ConnectAsync(string port, int baudRate, CancellationToken ct);
 	Task DisconnectAsync();
 

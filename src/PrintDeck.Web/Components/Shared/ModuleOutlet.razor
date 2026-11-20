@@ -1,0 +1,41 @@
+@inherits PrinterComponent
+@inject PluginContextFactory Contexts
+
+@* Renders the components running modules add to one place in a page (ModuleSlot), each with a context for this user. *@
+@foreach ((string module, Type type) in _components)
+{
+	<DynamicComponent @key="(module, type)" Type="type" Parameters="Parameters(module)" />
+}
+
+@code {
+	[Parameter, EditorRequired] public ModuleSlot Slot { get; set; }
+
+	/// <summary>Only this module's components; all modules' when null.</summary>
+	[Parameter] public string? ModuleId { get; set; }
+
+	private IReadOnlyList<(string Module, Type Type)> _components = [];
+	private readonly Dictionary<string, PluginContext> _contexts = [];
+
+	protected override PrinterChange Interests => PrinterChange.Settings;
+
+	protected override async Task RefreshAsync()
+	{
+		IReadOnlyList<ModuleDto> modules = await Mediator.Send(new ListModulesQuery());
+		_components = modules
+			.Where(m => m.Running && (ModuleId is null || m.Id == ModuleId))
+			.SelectMany(m => m.Components.Where(c => c.Slot == Slot).Select(c => (m.Id, c.ComponentType)))
+			.ToList();
+	}
+
+	private Dictionary<string, object> Parameters(string module)
+	{
+		if (!_contexts.TryGetValue(module, out PluginContext? context)) _contexts[module] = context = Contexts.Create(module);
+		return new Dictionary<string, object> { ["Context"] = context };
+	}
+
+	public override void Dispose()
+	{
+		foreach (PluginContext context in _contexts.Values) context.Dispose();
+		base.Dispose();
+	}
+}

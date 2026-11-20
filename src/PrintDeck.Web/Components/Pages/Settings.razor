@@ -469,6 +469,10 @@
 					</section>
 					break;
 
+				case "modules":
+					<ModuleSettingsList />
+					break;
+
 				default:
 					<form class="settings-host" @onsubmit="SaveHostAsync" @onsubmit:preventDefault>
 						<section class="card presets-card">
@@ -635,6 +639,7 @@
 		("camera", "camera", L["SectionCamera"]),
 		("gcode", "terminal", L["SectionGcode"]),
 		("api", "key", L["SectionApiKeys"]),
+		("modules", "plug", L["SectionModules"]),
 		("system", "power", L["SectionSystem"])
 	];
 

@@ -1,0 +1,26 @@
+@inherits LightComponent
+@inject IStringLocalizer<LightCard> L
+
+@* The light toggle on the Control page. *@
+@if (Visible)
+{
+	<section class="card" aria-labelledby="light-title">
+		<header class="card-head">
+			<h2 id="light-title">@L["Title"]</h2>
+			@if (On is { } on)
+			{
+				<span class="value">@(on ? L["On"] : L["Off"])</span>
+			}
+		</header>
+		<div class="actions">
+			<button type="button" class="btn" aria-pressed="@(On == true ? "true" : "false")" disabled="@Busy" @onclick="ToggleAsync">
+				<LightIcon /> @(On == true ? L["SwitchOff"] : L["SwitchOn"])
+			</button>
+		</div>
+		@if (Error is { } error)
+		{
+			<p class="banner banner-warn">@error</p>
+		}
+		<p class="muted small">@L["Hint"]</p>
+	</section>
+}
