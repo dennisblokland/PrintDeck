@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="NoModules" xml:space="preserve">
+		<value>This PrintDeck was built without modules.</value>
+	</data>
+	<data name="Version" xml:space="preserve">
+		<value>Version {0}</value>
+	</data>
+	<data name="SwitchedOn" xml:space="preserve">
+		<value>Switched on</value>
+	</data>
+	<data name="NotRunning" xml:space="preserve">
+		<value>Switched on, but it didn't start. The log says why.</value>
+	</data>
+	<data name="SwitchedOnToast" xml:space="preserve">
+		<value>{0} switched on.</value>
+	</data>
+	<data name="SwitchedOffToast" xml:space="preserve">
+		<value>{0} switched off.</value>
+	</data>
+	<data name="Hint" xml:space="preserve">
+		<value>Modules add optional features, such as smart-home integrations. A module that is off does nothing and shows nothing.</value>
+	</data>
+</root>

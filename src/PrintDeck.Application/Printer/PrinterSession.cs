@@ -112,6 +112,8 @@ public sealed class PrinterSession(
 		events.Publish(PrinterChange.Terminal);
 	}
 
+	public void Note(string text) => Log(TerminalDirection.Info, text);
+
 	// ---------------------------------------------------------------- connection
 
 	public async Task<Result> ConnectAsync(string port, int baudRate, CancellationToken ct)

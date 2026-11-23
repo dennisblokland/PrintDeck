@@ -1,0 +1,101 @@
+@inject PrinterLight Light
+@inject IStringLocalizer<HomeAssistantSettingsCard> L
+
+@* The module's card in Settings → Modules. The token is never shown again once saved. *@
+@if (_form is { } f)
+{
+	<form class="card settings-wide" @onsubmit="SaveAsync" @onsubmit:preventDefault aria-labelledby="ha-title">
+		<header class="card-head"><h2 id="ha-title">@L["Title"]</h2></header>
+		<label class="field"><span>@L["Url"]</span>
+			<span class="field-row">
+				<input class="input" placeholder="http://homeassistant.local:8123" @bind="f.Url" />
+				<button type="button" class="btn btn-ghost" disabled="@_testing" @onclick="TestAsync">@(_testing ? L["Testing"] : L["Test"])</button>
+			</span>
+		</label>
+		<label class="field"><span>@L["Token"]</span>
+			<input class="input" type="password" autocomplete="off" placeholder="@(_tokenSaved ? L["TokenSaved"] : L["TokenEmpty"])" @bind="f.Token" />
+		</label>
+		<label class="field"><span>@L["Light"]</span>
+			<input class="input" list="ha-lights" placeholder="light.printer" @bind="f.LightEntity" />
+			<datalist id="ha-lights">
+				@foreach (EntityState e in _entities)
+				{
+					<option value="@e.EntityId">@e.DisplayName</option>
+				}
+			</datalist>
+		</label>
+		<label class="toggle"><input type="checkbox" @bind="f.LightWhilePrinting" /><span>@L["WhilePrinting"]</span></label>
+		<label class="toggle"><input type="checkbox" @bind="f.LightForTimelapse" /><span>@L["ForTimelapse"]</span></label>
+		<label class="field-inline">@L["OffAfter"]
+			<input class="input input-num" type="number" min="0" max="@HomeAssistantSettings.MaxOffDelayMinutes" @bind="f.LightOffDelayMinutes" />
+			@L["Minutes"]
+		</label>
+		@if (_message is { } message)
+		{
+			<p class="banner @(_failed ? "banner-warn" : "")" role="status">@message</p>
+		}
+		<p class="muted small">@L["Hint"]</p>
+		<div class="form-actions">
+			<button class="btn btn-primary" type="submit" disabled="@_saving">@L["Save"]</button>
+		</div>
+	</form>
+}
+
+@code {
+	[Parameter, EditorRequired] public IPluginContext Context { get; set; } = default!;
+
+	private HomeAssistantSettings? _form;
+	private bool _tokenSaved;
+	private IReadOnlyList<EntityState> _entities = [];
+	private bool _testing;
+	private bool _saving;
+	private string? _message;
+	private bool _failed;
+
+	protected override Task OnInitializedAsync() => LoadAsync();
+
+	private async Task LoadAsync()
+	{
+		EditableSettings<HomeAssistantSettings> saved = await Context.GetEditableSettingsAsync<HomeAssistantSettings>();
+		_form = saved.Settings;
+		_tokenSaved = saved.IsSaved(nameof(HomeAssistantSettings.Token));
+	}
+
+	private void Show(string? error, string? success = null)
+	{
+		_failed = error is not null;
+		_message = error ?? success;
+	}
+
+	private async Task TestAsync()
+	{
+		if (_form is null) return;
+		_testing = true;
+		try
+		{
+			PluginResult<IReadOnlyList<EntityState>> found = await Light.TestAsync(_form, Context);
+			_entities = found.Value ?? [];
+			Show(found.Error, L["Found", _entities.Count]);
+		}
+		finally { _testing = false; }
+	}
+
+	private async Task SaveAsync()
+	{
+		if (_form is null) return;
+		HomeAssistantSettings settings = _form.Trimmed();
+		if (settings.Problem() is { } problem)
+		{
+			Show(problem);
+			return;
+		}
+		_saving = true;
+		try
+		{
+			PluginResult saved = await Context.SaveSettingsAsync(settings);
+			Show(saved.Error, L["Saved"]);
+			if (saved.IsSuccess) await LoadAsync();
+		}
+		finally { _saving = false; }
+	}
+}

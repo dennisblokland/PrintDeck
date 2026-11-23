@@ -34,6 +34,8 @@ A modern 3D-printer host in .NET 11 / Blazor Server — an OctoPrint-style web U
 - **Sign-in** with ASP.NET Core Identity (accounts in SQLite): first-run setup creates the admin, **Admin** and **Viewer** roles (viewers watch, admins control), lockout after 5 wrong passwords, admins reset passwords under Users
 - **Login rate limit per address**: after 10 failed sign-ins within 15 minutes from one address (any usernames), that address waits until the oldest failure is 15 minutes old (HTTP 429 with `Retry-After`). IPv6 counts per /64. Paused attempts aren't checked against passwords, so they don't lock accounts either. Tune or switch off (`MaxFailures: 0`) in the `LoginRateLimit` section of `appsettings.json`. Behind a reverse proxy, list the proxy under `ReverseProxy` so each client keeps its own limit (see [Behind a reverse proxy](#behind-a-reverse-proxy))
 - **Backup and restore** (Settings → Backup): download one zip with the settings, printer profiles, API key and every uploaded file with its analysis and print history; restore it on this or another PrintDeck. A restore replaces the settings and overwrites files with the same name, other files stay. The whole archive is checked before anything changes, and restoring waits until no print is running. Accounts are not included. Admin accounts only
+- **Modules** (Settings → Modules): optional features that plug in without growing the core, each switched on and off without a restart. A module that is off is never started and shows nothing. Modules are built against `PrintDeck.Plugins.Abstractions` only and reach PrintDeck through `IPluginContext` (printer state and events, print control, the terminal, their own settings), which goes through PrintDeck's own commands and queries, so the same permission checks apply. Secrets such as tokens are saved in `settings.json` (and so in backups, like the API key) but never shown in a page again
+- **Printer light through Home Assistant** (module, Settings → Modules): a light toggle on the dashboard's camera card and the Control page (admins only) for a `light.*` or `switch.*` entity, using Home Assistant's REST API with a long-lived access token. *Test* checks the URL and token and lists the lights and switches. Optionally on while printing and/or while recording a timelapse, and off a few minutes (default 3) after; it only switches off a light it switched on itself. Each switch is logged to the terminal. Enter `VIRTUAL` as the URL for an in-process light to try it with the virtual printer
 - **System menu** (Settings → System): restart PrintDeck, reboot or shut down the host, with commands you configure on the host (see below). Admin accounts only, not while printing
 - **Health checks**: admins get a warning above every page, re-checked each minute, for low disk space where PrintDeck keeps its data (below 1 GB; an error below 256 MB), Raspberry Pi under-voltage or throttling (now or since boot, from `get_throttled` in sysfs or `vcgencmd`), and old firmware (Marlin before 1.1.0, often without thermal runaway protection). Dismiss one until it changes. Settings → System shows disk space, Pi power and firmware. To try the firmware warning, start PrintDeck with `VirtualPrinter:FirmwareName` set to `Marlin 1.0.2` and connect to VIRTUAL
 - Dark and light themes, mobile layout
@@ -50,18 +52,23 @@ src/
                             PrinterSession (protocol engine), GcodeAnalyzer, ports (IPrinterTransport, IGcodeFileStore, ISettingsStore)
   PrintDeck.Infrastructure  serial transport, virtual printer, file-system store, JSON settings,
                             Identity on SQLite (Identity/, EF Core migrations in Identity/Migrations)
-  PrintDeck.Web             Blazor UI + slicer API; registers Mediator (generator runs here); Scripts/ = TypeScript (G-code viewer)
+  PrintDeck.Plugins.Abstractions  the module contract (IPrintDeckModule, IPluginContext); references nothing else of PrintDeck
+  PrintDeck.Modules.*       in-tree modules, built against the contract only (Home Assistant light)
+  PrintDeck.Web             Blazor UI + slicer API; registers Mediator (generator runs here) and the modules; Scripts/ = TypeScript (G-code viewer)
 tests/                      one test project per layer; folders mirror the project under test
   PrintDeck.Domain.Tests          entities and protocol helpers (pure, no I/O)
   PrintDeck.Application.Tests     handlers per feature slice, G-code analysis/toolpaths, PrinterSession against a
                                   scripted transport; TestDoubles/ holds the fakes
   PrintDeck.Infrastructure.Tests  file/settings storage (temp dirs), virtual printer, end-to-end session against it
   PrintDeck.Web.Tests             slicer + toolpath HTTP endpoints (WebApplicationFactory), formatting, TypeScript checks
+  PrintDeck.Modules.HomeAssistant.Tests  the module against a fake IPluginContext, and that modules use only the contract
 ```
 
 UI components read through queries and write through commands. `IPrinterEvents` tells components *what* changed (state, temperature, job, …); they re-query, throttled.
 
 Every command and query passes `AuthorizationBehavior`: queries need a signed-in user, commands need an admin unless the message is marked `IAllowAnonymous` (setup), `IAllowAnyUser` (own password) or `IAccountAdministration` (user management: a real admin account, not the slicer API key). The slicer API key is its own authentication scheme and acts as an admin for uploads.
+
+Modules (`IPrintDeckModule`) are listed once in `Program.cs`. `ModuleHost` starts each one that is switched on and gives it an `IPluginContext` that acts as the module itself: like an admin, but never for accounts or the host, and only it may read its own secrets (`IModuleOnly`). The components a module adds (`ModuleSlot`: Settings, Dashboard, Control, camera card) are rendered by `ModuleOutlet` with a context for the signed-in user. `PrinterEventStream` turns `IPrinterEvents` changes into events modules act on (connected, print started/done/failed/cancelled/paused/resumed, timelapse started/stopped, settings changed).
 
 ## Run
 

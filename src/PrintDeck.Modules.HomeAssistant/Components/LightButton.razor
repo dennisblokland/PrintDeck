@@ -1,0 +1,11 @@
+@inherits LightComponent
+@inject IStringLocalizer<LightButton> L
+
+@* The light toggle in the header of the dashboard's camera card. *@
+@if (Visible)
+{
+	<button type="button" class="btn btn-sm btn-ghost" aria-pressed="@(On == true ? "true" : "false")" disabled="@Busy"
+			title="@(Error ?? (On == true ? L["SwitchOff"].Value : L["SwitchOn"].Value))" @onclick="ToggleAsync">
+		<LightIcon Size="14" /> @(On is null ? L["Light"] : On.Value ? L["On"] : L["Off"])
+	</button>
+}

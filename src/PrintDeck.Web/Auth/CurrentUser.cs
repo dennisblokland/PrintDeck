@@ -12,18 +12,20 @@ namespace PrintDeck.Web.Auth;
 /// <see cref="ICurrentUser"/> for both kinds of scope: in a Blazor circuit (and during prerendering) the
 /// <see cref="AuthenticationStateProvider"/> knows the user and tells us when that changes (sign-out,
 /// failed revalidation); in a plain HTTP request (slicer API, toolpath) it isn't initialised, so the
-/// request's own principal is used.
+/// request's own principal is used. A scope PrintDeck made for a module acts as that module (<see cref="ScopeIdentity"/>).
 /// </summary>
 public sealed class CurrentUser : ICurrentUser, IDisposable
 {
 	private readonly AuthenticationStateProvider _authState;
 	private readonly IHttpContextAccessor _http;
+	private readonly ScopeIdentity _scope;
 	private Task<AuthenticationState>? _changed;
 
-	public CurrentUser(AuthenticationStateProvider authState, IHttpContextAccessor http)
+	public CurrentUser(AuthenticationStateProvider authState, IHttpContextAccessor http, ScopeIdentity scope)
 	{
 		_authState = authState;
 		_http = http;
+		_scope = scope;
 		_authState.AuthenticationStateChanged += OnChanged;
 	}
 
@@ -31,6 +33,7 @@ public sealed class CurrentUser : ICurrentUser, IDisposable
 
 	public async ValueTask<CurrentUserInfo?> GetAsync()
 	{
+		if (_scope.User is { } own) return own;
 		ClaimsPrincipal? principal;
 		try { principal = (await (_changed ?? _authState.GetAuthenticationStateAsync())).User; }
 		catch (InvalidOperationException) { principal = _http.HttpContext?.User; }

@@ -567,4 +567,7 @@
 	<data name="SectionSystem" xml:space="preserve">
 		<value>System</value>
 	</data>
+	<data name="SectionModules" xml:space="preserve">
+		<value>Modules</value>
+	</data>
 </root>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    A PrintDeck module: it may reference PrintDeck.Plugins.Abstractions and nothing else of PrintDeck
+    (ModuleBoundaryTests checks this). Everything it needs from PrintDeck goes through IPluginContext.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PrintDeck.Plugins.Abstractions\PrintDeck.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PrintDeck.Modules.HomeAssistant.Tests" />
+  </ItemGroup>
+
+</Project>

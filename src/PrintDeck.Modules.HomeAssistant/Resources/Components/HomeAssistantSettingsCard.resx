@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<data name="Title" xml:space="preserve">
+		<value>Home Assistant light</value>
+	</data>
+	<data name="Url" xml:space="preserve">
+		<value>Home Assistant URL</value>
+	</data>
+	<data name="Test" xml:space="preserve">
+		<value>Test</value>
+	</data>
+	<data name="Testing" xml:space="preserve">
+		<value>Testing…</value>
+	</data>
+	<data name="Token" xml:space="preserve">
+		<value>Long-lived access token</value>
+	</data>
+	<data name="TokenSaved" xml:space="preserve">
+		<value>Saved. Type a new one to replace it.</value>
+	</data>
+	<data name="TokenEmpty" xml:space="preserve">
+		<value>Make one in your Home Assistant profile, under Security.</value>
+	</data>
+	<data name="Light" xml:space="preserve">
+		<value>Printer light</value>
+	</data>
+	<data name="WhilePrinting" xml:space="preserve">
+		<value>On while printing</value>
+	</data>
+	<data name="ForTimelapse" xml:space="preserve">
+		<value>On while recording a timelapse</value>
+	</data>
+	<data name="OffAfter" xml:space="preserve">
+		<value>Off</value>
+	</data>
+	<data name="Minutes" xml:space="preserve">
+		<value>minutes after it ends</value>
+	</data>
+	<data name="Found" xml:space="preserve">
+		<value>{0} lights and switches found. Pick the printer light.</value>
+	</data>
+	<data name="Saved" xml:space="preserve">
+		<value>Saved.</value>
+	</data>
+	<data name="Save" xml:space="preserve">
+		<value>Save</value>
+	</data>
+	<data name="Hint" xml:space="preserve">
+		<value>Test checks the URL and token and lists the lights and switches. The light is only switched off if it was switched on for the print or timelapse. Use VIRTUAL as the URL to try it with a light that only exists in PrintDeck.</value>
+	</data>
+</root>

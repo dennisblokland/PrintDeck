@@ -6,7 +6,7 @@ OctoPrint-style 3D-printer host in .NET 11 / Blazor Server, for Marlin printers 
 
 ```bash
 dotnet build
-dotnet test                                               # all four test projects
+dotnet test                                               # all five test projects
 dotnet test --project tests/PrintDeck.Application.Tests   # one project
 cd src/PrintDeck.Web && npm test                          # viewer TypeScript: tsc + vitest
 dotnet run --project src/PrintDeck.Web --urls http://0.0.0.0:5000
@@ -36,6 +36,8 @@ Clean Architecture with CQRS through source-generated Mediator (`martinothamar/M
   - Feature slices live in `Features/<Slice>/{Commands,Queries,Handlers,Dtos}`.
   - Ports live in `Abstractions/Interfaces`.
 - `PrintDeck.Infrastructure`: serial transport, the virtual printer (`Virtual/VirtualPrinterTransport*.cs`, a Marlin imitation with heaters, SD card and M600 prompts), file and JSON storage, and Identity on SQLite with EF migrations in `Identity/Migrations`.
+- `PrintDeck.Plugins.Abstractions`: the module contract (`IPrintDeckModule`, `IPluginContext`). No references to the rest of PrintDeck.
+- `PrintDeck.Modules.*`: in-tree modules (Home Assistant light). They reference only the contract (`ModuleBoundaryTests`); if a module needs more, `IPluginContext` grows (implemented by `Application/Plugins/PluginContext` on top of Mediator). Modules are listed in `Program.cs` and switched on in Settings → Modules; their UI text lives in their own `Resources/`.
 - `PrintDeck.Web`:
   - Blazor UI. Components inherit `Components/Shared/PrinterComponent`, read through queries, write through commands, and re-query on `IPrinterEvents` changes.
   - The OctoPrint-compatible slicer API lives in `Api/`.
@@ -77,6 +79,7 @@ xUnit v3 on Microsoft.Testing.Platform. Each test project mirrors the folders of
   - The scripted printer answers the moment a line is written. Wait for the last connect command (`M20 L`) before emitting lines whose order matters.
 - Infrastructure: `VirtualPrinterTransportTests` talks to the virtual printer directly. `PrinterSessionWithVirtualPrinterTests` runs the real session against it.
 - Web: `WebApplicationFactory` endpoint tests, plus the TypeScript checks.
+- Modules: each module's tests drive it through a fake `IPluginContext`; they reference only the module.
 
 ## Roadmap workflow
 
